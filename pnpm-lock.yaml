@@ -11,22 +11,19 @@ importers:
       '@typescript-eslint/utils':
         specifier: ^8.32.1
         version: 8.32.1(eslint@9.27.0)(typescript@5.8.3)
-    devDependencies:
-      '@typescript-eslint/parser':
-        specifier: ^8.32.1
-        version: 8.32.1(eslint@9.27.0)(typescript@5.8.3)
-      '@typescript-eslint/rule-tester':
-        specifier: ^8.32.1
-        version: 8.32.1(eslint@9.27.0)(typescript@5.8.3)
-      '@typescript-eslint/type-utils':
-        specifier: ^8.32.1
-        version: 8.32.1(eslint@9.27.0)(typescript@5.8.3)
       eslint:
         specifier: ^9.27.0
         version: 9.27.0
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
+    devDependencies:
+      '@typescript-eslint/rule-tester':
+        specifier: ^8.32.1
+        version: 8.32.1(eslint@9.27.0)(typescript@5.8.3)
+      '@typescript-eslint/type-utils':
+        specifier: ^8.32.1
+        version: 8.32.1(eslint@9.27.0)(typescript@5.8.3)
 
 packages:
 
