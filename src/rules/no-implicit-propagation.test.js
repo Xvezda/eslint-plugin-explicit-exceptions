@@ -1,8 +1,16 @@
-const test = require('ava');
-const AvaRuleTester = require('eslint-ava-rule-tester').default;
+const { RuleTester } = require('@typescript-eslint/rule-tester');
 const rule = require('./no-implicit-propagation');
 
-const ruleTester = new AvaRuleTester(test);
+// https://github.com/typescript-eslint/typescript-eslint/blob/main/docs/packages/Rule_Tester.mdx#type-aware-testing
+const ruleTester = new RuleTester({
+  languageOptions: {
+    parserOptions: {
+      projectService: {
+        allowDefaultProject: ['*.ts*'],
+      },
+    },
+  },
+});
 
 ruleTester.run(
   'no-implicit-propagation',

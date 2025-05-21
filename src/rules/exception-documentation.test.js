@@ -1,8 +1,7 @@
-const test = require('ava');
-const AvaRuleTester = require('eslint-ava-rule-tester').default;
+const { RuleTester } = require('@typescript-eslint/rule-tester');
 const rule = require('./exception-documentation');
 
-const ruleTester = new AvaRuleTester(test);
+const ruleTester = new RuleTester();
 
 ruleTester.run(
   'exception-documentation',

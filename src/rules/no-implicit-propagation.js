@@ -1,14 +1,19 @@
 // @ts-check
+const { ESLintUtils } = require('@typescript-eslint/utils');
 const toolkit = require('estree-toolkit');
 const { hasThrowsTag } = require('../utils');
 
-module.exports = /** @type {import('eslint').Rule.RuleModule} */({
+const createRule = ESLintUtils.RuleCreator(
+  name => `https://github.com/Xvezda/eslint-plugin-exception-documentation/blob/main/docs/rules/${name}.md`,
+);
+
+module.exports = createRule({
+  name: 'no-implicit-propagation',
   meta: {
     type: 'problem',
     docs: {
       description:
         'Do not allows implicit propagation of exceptions',
-      recommended: true,
     },
     fixable: 'code',
     messages: {
@@ -24,7 +29,8 @@ module.exports = /** @type {import('eslint').Rule.RuleModule} */({
         _traverse(node, context);
       },
     };
-  }
+  },
+  defaultOptions: [],
 });
 
 /**
@@ -39,6 +45,12 @@ function _traverse(node, context) {
     $: { scope: true },
     CallExpression(path) {
       if (!path.node || !path.scope) return;
+
+      // @ts-ignore
+      const services = ESLintUtils.getParserServices(context);
+      // @ts-ignore
+      const type = services.getTypeAtLocation(path.node.callee);
+      console.log('type:', type);
 
       if (is.identifier(path.node.callee)) {
         const binding = path.scope.getBinding(path.node.callee.name);

@@ -1,10 +1,11 @@
 {
   "name": "eslint-plugin-explicit-exceptions",
+  "type": "commonjs",
   "version": "0.1.0",
   "description": "ESLint rules for explicitly handling exceptions",
   "main": "src/plugin.js",
   "scripts": {
-    "test": "ava"
+    "test": "node --require ./test-setup.js --test"
   },
   "keywords": [
     "eslint",
@@ -17,9 +18,18 @@
   "license": "MIT",
   "packageManager": "pnpm@10.10.0",
   "devDependencies": {
-    "ava": "^6.3.0",
+    "@typescript-eslint/parser": "^8.32.1",
+    "@typescript-eslint/rule-tester": "^8.32.1",
     "eslint": "^9.27.0",
-    "eslint-ava-rule-tester": "^5.0.1",
-    "estree-toolkit": "^1.7.13"
+    "estree-toolkit": "^1.7.13",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@typescript-eslint/utils": "^8.32.1"
+  },
+  "peerDependencies": {
+    "@typescript-eslint/parser": "^8.32.1",
+    "eslint": "^9.27.0",
+    "typescript": "^5.8.3"
   }
 }
