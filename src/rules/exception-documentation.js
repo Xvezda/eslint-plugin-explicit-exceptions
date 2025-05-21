@@ -1,10 +1,6 @@
 // @ts-check
 const toolkit = require('estree-toolkit');
-
-/** @param {string} comment */
-const hasThrowsTag = comment =>
-  comment.includes('@throws') ||
-  comment.includes('@exception');
+const { hasThrowsTag } = require('../utils');
 
 module.exports = /** @type {import('eslint').Rule.RuleModule} */({
   meta: {
