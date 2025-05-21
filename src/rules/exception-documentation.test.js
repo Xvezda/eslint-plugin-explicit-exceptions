@@ -1,3 +1,4 @@
+// @ts-ignore
 const { RuleTester } = require('@typescript-eslint/rule-tester');
 const rule = require('./exception-documentation');
 
@@ -52,7 +53,7 @@ ruleTester.run(
           'function foo() {\n' +
           '  throw new Error("foo");\n' +
           '}',
-        errors: 1,
+        errors: [{ messageId: 'missingThrowsTag' }],
       },
       {
         code:
@@ -88,6 +89,40 @@ ruleTester.run(
           '  throw "lol";\n' +
           '}',
         errors: [{ messageId: 'throwTypeMismatch' }],
+      },
+      {
+        code:
+          '/**\n' +
+          ' * foo bar baz\n' +
+          ' *\n' +
+          ' * @throws {string}\n' +
+          ' */\n' +
+          'function foo() {\n' +
+          '  if (Math.random() > 0.5) {\n' +
+          '    throw "lol";\n' +
+          '  } else {\n' +
+          '    throw 42;\n' +
+          '  }\n' +
+          '}',
+        output:
+          '/**\n' +
+          ' * foo bar baz\n' +
+          ' *\n' +
+          ' * @throws {string|number}\n' +
+          ' */\n' +
+          'function foo() {\n' +
+          '  if (Math.random() > 0.5) {\n' +
+          '    throw "lol";\n' +
+          '  } else {\n' +
+          '    throw 42;\n' +
+          '  }\n' +
+          '}',
+        errors: [{ messageId: 'throwTypeMismatch' }],
+        options: [
+          {
+            useBaseTypeOfLiteral: true,
+          },
+        ],
       },
     ],
   },
