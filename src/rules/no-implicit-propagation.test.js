@@ -1,10 +1,11 @@
-const { RuleTester } = require('eslint');
-const rule = require('./rule');
+const test = require('ava');
+const AvaRuleTester = require('eslint-ava-rule-tester').default;
+const rule = require('./no-implicit-propagation');
 
-const ruleTester = new RuleTester({});
+const ruleTester = new AvaRuleTester(test);
 
 ruleTester.run(
-  'enforce-foo-bar',
+  'no-implicit-propagation',
   rule,
   {
     valid: [
@@ -17,32 +18,26 @@ ruleTester.run(
           function foo() {
             throw new Error('foo');
           }
+          function bar() {
+            try {
+              foo();
+            } catch {}
+          }
         `,
       },
     ],
     invalid: [
       {
         code:
-          'function foo() {\n' +
-          '  throw new Error("foo");\n' +
-          '}',
-        output:
           '/**\n' +
           ' * @throws {Error}\n' +
           ' */\n' +
           'function foo() {\n' +
           '  throw new Error("foo");\n' +
-          '}',
-        errors: 1,
-      },
-      {
-        code:
-          'function foo() {\n' +
-          '  throw new Error("foo");\n' +
           '}\n' +
           'function bar() {\n' +
           '  foo();\n' +
-          '}', 
+          '}',
         output:
           '/**\n' +
           ' * @throws {Error}\n' +
@@ -60,4 +55,4 @@ ruleTester.run(
     ],
   },
 );
-console.log('Tests completed successfully.');
+

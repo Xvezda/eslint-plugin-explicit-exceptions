@@ -4,14 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node rule.test.js"
+    "test": "ava"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.10.0",
   "devDependencies": {
+    "ava": "^6.3.0",
     "eslint": "^9.27.0",
+    "eslint-ava-rule-tester": "^5.0.1",
     "estree-toolkit": "^1.7.13"
   }
 }
