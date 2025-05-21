@@ -81,6 +81,38 @@ ruleTester.run(
           /**
            * foo bar baz
            *
+           * @throws {string|number}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           *
+           * @throws {number|string}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           *
            * @exception {string}
            * @exception {number}
            */
