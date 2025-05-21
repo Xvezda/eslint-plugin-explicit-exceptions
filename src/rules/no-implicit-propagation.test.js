@@ -23,10 +23,10 @@ ruleTester.run(
         code: `
           /**
            * foo bar baz
-           * @throws {Error}
+           * @throws {string}
            */
           function foo() {
-            throw new Error('foo');
+            throw "lol";
           }
           function bar() {
             try {

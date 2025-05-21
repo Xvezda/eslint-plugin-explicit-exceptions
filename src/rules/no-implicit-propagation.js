@@ -1,7 +1,7 @@
 // @ts-check
 const { ESLintUtils } = require('@typescript-eslint/utils');
 const { hasThrowsTag } = require('../utils');
-const ts = require('typescript');
+const { findParent } = require('../utils');
 
 const createRule = ESLintUtils.RuleCreator(
   name => `https://github.com/Xvezda/eslint-plugin-exception-documentation/blob/main/docs/rules/${name}.md`,
@@ -37,28 +37,10 @@ module.exports = createRule({
     ],
   },
   create(context) {
+    const [{ tabLength }] = context.options;
+
     const sourceCode = context.sourceCode;
-
-    let [{ tabLength }] = context.options;
-
-    /**
-     * @param {import('@typescript-eslint/utils').TSESTree.Node} node
-     * @param {function(import('@typescript-eslint/utils').TSESTree.Node): boolean} callback
-     * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
-     */
-    const findParent = (node, callback) => {
-      do {
-        if (!node.parent) return null;
-
-        node = node.parent;
-
-        if (callback(node)) {
-          return node;
-        }
-      } while (node);
-
-      return null;
-    };
+    const services = ESLintUtils.getParserServices(context);
 
     return {
       /** @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node */
@@ -75,8 +57,6 @@ module.exports = createRule({
             .some(hasThrowsTag);
 
         if (isCommented) return;
-
-        const services = ESLintUtils.getParserServices(context);
 
         const calleeType = services.getTypeAtLocation(node.callee);
         const calleeTags = calleeType.symbol.getJsDocTags();

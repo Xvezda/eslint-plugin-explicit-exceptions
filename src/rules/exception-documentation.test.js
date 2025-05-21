@@ -20,6 +20,16 @@ ruleTester.run(
       {
         code: `
           /**
+           * @throws {Error}
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+        `,
+      },
+      {
+        code: `
+          /**
            * foo bar baz
            * @throws {Error}
            */
@@ -43,6 +53,41 @@ ruleTester.run(
           '  throw new Error("foo");\n' +
           '}',
         errors: 1,
+      },
+      {
+        code:
+          'function foo() {\n' +
+          '  throw "lol";\n' +
+          '}',
+        output:
+          '/**\n' +
+          ' * @throws {string}\n' +
+          ' */\n' +
+          'function foo() {\n' +
+          '  throw "lol";\n' +
+          '}',
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code:
+          '/**\n' +
+          ' * foo bar baz\n' +
+          ' *\n' +
+          ' * @throws {number}\n' +
+          ' */\n' +
+          'function foo() {\n' +
+          '  throw "lol";\n' +
+          '}',
+        output:
+          '/**\n' +
+          ' * foo bar baz\n' +
+          ' *\n' +
+          ' * @throws {string}\n' +
+          ' */\n' +
+          'function foo() {\n' +
+          '  throw "lol";\n' +
+          '}',
+        errors: [{ messageId: 'throwTypeMismatch' }],
       },
     ],
   },
