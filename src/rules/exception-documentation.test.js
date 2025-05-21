@@ -39,84 +39,146 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          /**
+           * @throws {"lol"}
+           */
+          function foo() {
+            throw "lol";
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {string}
+           */
+          function foo() {
+            throw "lol";
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           *
+           * @throws {string}
+           * @throws {number}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           *
+           * @exception {string}
+           * @exception {number}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+        `,
+      },
     ],
     invalid: [
       {
-        code:
-          'function foo() {\n' +
-          '  throw new Error("foo");\n' +
-          '}',
-        output:
-          '/**\n' +
-          ' * @throws {Error}\n' +
-          ' */\n' +
-          'function foo() {\n' +
-          '  throw new Error("foo");\n' +
-          '}',
+        code: `
+          function foo() {
+            throw new Error("foo");
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          function foo() {
+            throw new Error("foo");
+          }
+        `,
         errors: [{ messageId: 'missingThrowsTag' }],
       },
       {
-        code:
-          'function foo() {\n' +
-          '  throw "lol";\n' +
-          '}',
-        output:
-          '/**\n' +
-          ' * @throws {string}\n' +
-          ' */\n' +
-          'function foo() {\n' +
-          '  throw "lol";\n' +
-          '}',
+        code: `
+          function foo() {
+            throw "lol";
+          }
+        `,
+        output: `
+          /**
+           * @throws {string}
+           */
+          function foo() {
+            throw "lol";
+          }
+        `,
         errors: [{ messageId: 'missingThrowsTag' }],
       },
       {
-        code:
-          '/**\n' +
-          ' * foo bar baz\n' +
-          ' *\n' +
-          ' * @throws {number}\n' +
-          ' */\n' +
-          'function foo() {\n' +
-          '  throw "lol";\n' +
-          '}',
-        output:
-          '/**\n' +
-          ' * foo bar baz\n' +
-          ' *\n' +
-          ' * @throws {string}\n' +
-          ' */\n' +
-          'function foo() {\n' +
-          '  throw "lol";\n' +
-          '}',
+        code: `
+          /**
+           * foo bar baz
+           *
+           * @throws {number}
+           */
+          function foo() {
+            throw "lol";
+          }
+        `,
+        output: `
+          /**
+           * foo bar baz
+           *
+           * @throws {string}
+           */
+          function foo() {
+            throw "lol";
+          }
+        `,
         errors: [{ messageId: 'throwTypeMismatch' }],
       },
       {
-        code:
-          '/**\n' +
-          ' * foo bar baz\n' +
-          ' *\n' +
-          ' * @throws {string}\n' +
-          ' */\n' +
-          'function foo() {\n' +
-          '  if (Math.random() > 0.5) {\n' +
-          '    throw "lol";\n' +
-          '  } else {\n' +
-          '    throw 42;\n' +
-          '  }\n' +
-          '}',
-        output:
-          '/**\n' +
-          ' * foo bar baz\n' +
-          ' *\n' +
-          ' * @throws {string|number}\n' +
-          ' */\n' +
-          'function foo() {\n' +
-          '  if (Math.random() > 0.5) {\n' +
-          '    throw "lol";\n' +
-          '  } else {\n' +
-          '    throw 42;\n' +
-          '  }\n' +
-          '}',
+        code: `
+          /**
+           * foo bar baz
+           *
+           * @throws {string}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+        `,
+        output: `
+          /**
+           * foo bar baz
+           *
+           * @throws {string|number}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+        `,
         errors: [{ messageId: 'throwTypeMismatch' }],
         options: [
           {
