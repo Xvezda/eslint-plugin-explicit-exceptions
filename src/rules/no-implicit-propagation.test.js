@@ -75,6 +75,52 @@ ruleTester.run(
           },
         ],
       },
+      {
+        code: `
+          /**
+           * foo bar baz
+           * @throws {Error}
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+          function bar() {
+            try {
+              something();
+            } catch {
+              foo();
+            }
+          }
+        `,
+        output: `
+          /**
+           * foo bar baz
+           * @throws {Error}
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+          function bar() {
+            try {
+              something();
+            } catch {
+              try {
+                foo();
+              } catch {}
+            }
+          }
+        `,
+        errors: [
+          {
+            messageId: 'implicitPropagation',
+          },
+        ],
+        options: [
+          {
+            tabLength: 2,
+          },
+        ],
+      }
     ],
   },
 );

@@ -43,8 +43,8 @@ module.exports = createRule({
     const services = ESLintUtils.getParserServices(context);
 
     return {
-      /** @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node */
-      'FunctionDeclaration:not(:has(TryStatement)) CallExpression'(node) {
+      /** @param {import('@typescript-eslint/utils').TSESTree.ExpressionStatement} node */
+      'FunctionDeclaration :not(TryStatement > BlockStatement) ExpressionStatement:has(> CallExpression)'(node) {
         const declaration =
           /** @type {import('@typescript-eslint/utils').TSESTree.FunctionDeclaration} */
           (findParent(node, (n) => n.type === 'FunctionDeclaration'));
@@ -58,36 +58,38 @@ module.exports = createRule({
 
         if (isCommented) return;
 
-        const calleeType = services.getTypeAtLocation(node.callee);
+        if (node.expression.type !== 'CallExpression') return;
+
+        const calleeType = services.getTypeAtLocation(node.expression.callee);
+        if (!calleeType.symbol) return;
         const calleeTags = calleeType.symbol.getJsDocTags();
 
         const isCalleeThrowable = calleeTags
           .some((tag) => tag.name === 'throws' || tag.name === 'exception');
 
-        if (isCalleeThrowable) {
-          context.report({
-            node: node.parent,
-            messageId: 'implicitPropagation',
-            fix(fixer) {
-              const indent = ' '.repeat(node.loc.start.column);
+        if (!isCalleeThrowable) return;
 
-              const fixes = [];
+        const lines = sourceCode.getLines();
+        const currentLine = lines[node.loc.start.line - 1];
+        const indent = currentLine.match(/^\s*/)?.[0] ?? '';
+        const newIndent = indent + ' '.repeat(tabLength);
+        const prevLine = lines[node.loc.start.line - 2];
 
-              fixes.push(fixer.insertTextBefore(node.parent, 'try {\n'));
-              fixes.push(
-                fixer.insertTextAfter(
-                  node.parent,
-                  `${indent + ' '.repeat(tabLength)}` +
-                  `${sourceCode.getText(node.parent)}\n` +
-                  `${indent}` +
-                  `} catch {}`
-                )
-              );
-              fixes.push(fixer.remove(node.parent));
-              return fixes;
-            },
-          });
-        }
+        // TODO: Better way to handle this?
+        if (/^\s*try\s*\{/.test(prevLine)) return;
+
+        context.report({
+          node,
+          messageId: 'implicitPropagation',
+          fix(fixer) {
+            const fixes = [];
+            fixes.push(
+              fixer.insertTextBefore(node, `try {\n${newIndent}`),
+              fixer.insertTextAfter(node, `\n${indent}} catch {}`),
+            );
+            return fixes;
+          },
+        });
       },
     };
   },

@@ -45,9 +45,9 @@ module.exports = createRule({
     const services = ESLintUtils.getParserServices(context);
     const checker = services.program.getTypeChecker();
 
-    const options = Object.assign({}, ...context.options);
+    const options = Object.assign(Object.create(null), ...context.options);
 
-    /** @type {Map<`${number}:${number}`, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>} */
+    /** @type {Map<number, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>} */
     const throwStatements = new Map();
 
     /** @param {import('typescript').Type[]} types */
@@ -56,26 +56,23 @@ module.exports = createRule({
 
     return {
       /** @param {import('@typescript-eslint/utils').TSESTree.ThrowStatement} node */
-      'FunctionDeclaration:not(:has(TryStatement)) ThrowStatement'(node) {
+      'FunctionDeclaration :not(TryStatement > BlockStatement) ThrowStatement'(node) {
         const declaration =
           /** @type {import('@typescript-eslint/utils').TSESTree.FunctionDeclaration} */
           (findParent(node, (n) => n.type === 'FunctionDeclaration'));
 
-        /** @type {`${number}:${number}`} */
-        const key = `${declaration.range[0]}:${declaration.range[1]}`;
-        if (!throwStatements.has(key)) {
-          throwStatements.set(key, []);
+        if (!throwStatements.has(declaration.range[0])) {
+          throwStatements.set(declaration.range[0], []);
         }
         const throwStatementNodes =
           /** @type {import('@typescript-eslint/utils').TSESTree.ThrowStatement[]} */
-          (throwStatements.get(key));
+          (throwStatements.get(declaration.range[0]));
 
         throwStatementNodes.push(node);
       },
       /** @param {import('@typescript-eslint/utils').TSESTree.FunctionDeclaration} node */
-      'FunctionDeclaration:not(:has(TryStatement)):has(ThrowStatement):exit'(node) {
-        const throwStatementNodes = throwStatements
-          .get(`${node.range[0]}:${node.range[1]}`);
+      'FunctionDeclaration:has(:not(TryStatement > BlockStatement) ThrowStatement):exit'(node) {
+        const throwStatementNodes = throwStatements.get(node.range[0]);
 
         if (!throwStatementNodes) return;
 
