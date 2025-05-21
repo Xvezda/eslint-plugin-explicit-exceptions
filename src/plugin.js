@@ -13,7 +13,7 @@ module.exports = /** @type {import('eslint').ESLint.Plugin} */({
     version: packageJson.version,
   },
   rules: {
-    'exception-documentation': require('./rules/exception-documentation'),
+    'no-undocumented-throws': require('./rules/no-undocumented-throws'),
     'no-implicit-propagation': require('./rules/no-implicit-propagation'),
   },
 });

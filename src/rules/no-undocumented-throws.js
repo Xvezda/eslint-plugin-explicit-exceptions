@@ -7,11 +7,11 @@ const { hasThrowsTag, findParent } = require('../utils');
 const ts = require('typescript');
 
 const createRule = ESLintUtils.RuleCreator(
-  name => `https://github.com/Xvezda/eslint-plugin-exception-documentation/blob/main/docs/rules/${name}.md`,
+  name => `https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/main/docs/rules/${name}.md`,
 );
 
 module.exports = createRule({
-  name: 'exception-documentation',
+  name: 'no-undocumented-throws',
   meta: {
     type: 'problem',
     docs: {

@@ -1,6 +1,6 @@
 // @ts-ignore
 const { RuleTester } = require('@typescript-eslint/rule-tester');
-const rule = require('./exception-documentation');
+const rule = require('./no-undocumented-throws');
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -14,7 +14,7 @@ const ruleTester = new RuleTester({
 });
 
 ruleTester.run(
-  'exception-documentation',
+  'no-undocumented-throws',
   rule,
   {
     valid: [
