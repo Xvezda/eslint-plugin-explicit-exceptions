@@ -23,6 +23,7 @@
   "license": "MIT",
   "packageManager": "pnpm@10.10.0",
   "devDependencies": {
+    "@types/node": "^22.15.21",
     "@typescript-eslint/rule-tester": "^8.32.1",
     "@typescript-eslint/type-utils": "^8.32.1"
   },
