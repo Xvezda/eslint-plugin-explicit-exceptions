@@ -135,12 +135,16 @@ module.exports = createRule({
           node,
           messageId: 'missingThrowsTag',
           fix(fixer) {
+            const lines = sourceCode.getLines();
+            const currentLine = lines[node.loc.start.line - 1];
+            const indent = currentLine.match(/^\s*/)?.[0] ?? '';
             return fixer
               .insertTextBefore(
                 node,
                 `/**\n` +
-                ` * @throws {${typesToUnionString(throwTypes)}}\n` +
-                ` */\n`
+                `${indent} * @throws {${typesToUnionString(throwTypes)}}\n` +
+                `${indent} */\n` +
+                `${indent}`
               );
           },
         });
