@@ -7,7 +7,7 @@ module.exports = /** @type {import('eslint').Rule.RuleModule} */({
     type: 'problem',
     docs: {
       description:
-        'Explicitly document exceptions thrown by functions and do not allows implicit propagation of exceptions.',
+        'Explicitly document exceptions thrown by functions',
       recommended: true,
     },
     fixable: 'code',

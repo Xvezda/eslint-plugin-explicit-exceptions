@@ -7,7 +7,7 @@ module.exports = /** @type {import('eslint').Rule.RuleModule} */({
     type: 'problem',
     docs: {
       description:
-        'Explicitly document exceptions thrown by functions and do not allows implicit propagation of exceptions.',
+        'Do not allows implicit propagation of exceptions',
       recommended: true,
     },
     fixable: 'code',
@@ -69,7 +69,7 @@ function _traverse(node, context) {
               // TODO: Apply proper indentation?
               return fixer.replaceText(
                 expressionStatementNode,
-                `try {\n    ${sourceCode.getText(expressionStatementNode)}\n  } catch {}`,
+                `try { ${sourceCode.getText(expressionStatementNode)} } catch {}`,
               );
             },
           });

@@ -46,9 +46,7 @@ ruleTester.run(
           '  throw new Error("foo");\n' +
           '}\n' +
           'function bar() {\n' +
-          '  try {\n' +
-          '    foo();\n' +
-          '  } catch {}\n' +
+          '  try { foo(); } catch {}\n' +
           '}',
         errors: 1,
       },
