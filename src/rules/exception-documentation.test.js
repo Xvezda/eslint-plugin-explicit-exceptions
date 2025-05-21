@@ -1,7 +1,16 @@
 const { RuleTester } = require('@typescript-eslint/rule-tester');
 const rule = require('./exception-documentation');
 
-const ruleTester = new RuleTester();
+const ruleTester = new RuleTester({
+  languageOptions: {
+    parserOptions: {
+      projectService: {
+        allowDefaultProject: ['*.ts*'],
+      },
+      JSDocParsingMode: 'all',
+    },
+  },
+});
 
 ruleTester.run(
   'exception-documentation',

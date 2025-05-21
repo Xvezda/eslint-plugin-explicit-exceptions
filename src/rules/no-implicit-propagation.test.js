@@ -8,6 +8,7 @@ const ruleTester = new RuleTester({
       projectService: {
         allowDefaultProject: ['*.ts*'],
       },
+      JSDocParsingMode: 'all',
     },
   },
 });

@@ -1,6 +1,5 @@
 // @ts-check
 const { ESLintUtils } = require('@typescript-eslint/utils');
-const toolkit = require('estree-toolkit');
 const { hasThrowsTag } = require('../utils');
 
 const createRule = ESLintUtils.RuleCreator(
@@ -23,71 +22,67 @@ module.exports = createRule({
     schema: [],
   },
   create(context) {
+    const sourceCode = context.sourceCode;
+
+    /**
+     * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+     * @param {function(import('@typescript-eslint/utils').TSESTree.Node): boolean} callback
+     * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
+     */
+    const findParent = (node, callback) => {
+      do {
+        if (!node.parent) return null;
+
+        node = node.parent;
+
+        if (callback(node)) {
+          return node;
+        }
+      } while (node);
+
+      return null;
+    };
+
     return {
-      Program(node) {
-        // @ts-ignore
-        _traverse(node, context);
+      /** @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node */
+      'FunctionDeclaration:not(:has(TryStatement)) CallExpression'(node) {
+        const declaration =
+          /** @type {import('@typescript-eslint/utils').TSESTree.FunctionDeclaration} */
+          (findParent(node, (n) => n.type === 'FunctionDeclaration'));
+
+        const comments = sourceCode.getCommentsBefore(declaration);
+        const isCommented =
+          comments.length &&
+          comments
+            .map(({ value }) => value)
+            .some(hasThrowsTag);
+
+        if (isCommented) return;
+
+        const services = ESLintUtils.getParserServices(context);
+
+        const calleeType = services.getTypeAtLocation(node.callee);
+        const calleeTags = calleeType.symbol.getJsDocTags();
+
+        if (
+          calleeTags.some((tag) =>
+            tag.name === 'throws' || tag.name === 'exception'
+          )
+        ) {
+          context.report({
+            node,
+            messageId: 'implicitPropagation',
+            fix(fixer) {
+              // TODO: Apply proper indentation?
+              return fixer.replaceText(
+                node.parent,
+                `try { ${sourceCode.getText(node.parent)} } catch {}`,
+              );
+            },
+          });
+        }
       },
     };
   },
   defaultOptions: [],
 });
-
-/**
- * @param {import('eslint').Rule.Node} node
- * @param {import('eslint').Rule.RuleContext} context
- */
-function _traverse(node, context) {
-  const { traverse, utils: u, builders: b, is } = toolkit;
-  const sourceCode = context.sourceCode;
-
-  traverse(node, {
-    $: { scope: true },
-    CallExpression(path) {
-      if (!path.node || !path.scope) return;
-
-      // @ts-ignore
-      const services = ESLintUtils.getParserServices(context);
-      // @ts-ignore
-      const type = services.getTypeAtLocation(path.node.callee);
-      console.log('type:', type);
-
-      if (is.identifier(path.node.callee)) {
-        const binding = path.scope.getBinding(path.node.callee.name);
-        if (
-          !binding ||
-          !is.functionDeclaration(binding.path.node)
-        ) return;
-
-        const comments = sourceCode
-          .getCommentsBefore(binding.path.node)
-          .map(({ value }) => value);
-
-        if (
-          comments.some(hasThrowsTag) &&
-          path.findParent(is.tryStatement) === null
-        ) {
-          const expressionStatement = path.findParent(is.expressionStatement);
-          if (!expressionStatement || !expressionStatement.node) return;
-
-          const expressionStatementNode = 
-            /** @type {import('estree-toolkit').types.BlockStatement} */
-            (expressionStatement.node);
-
-          context.report({
-            node: expressionStatementNode,
-            messageId: 'implicitPropagation',
-            fix(fixer) {
-              // TODO: Apply proper indentation?
-              return fixer.replaceText(
-                expressionStatementNode,
-                `try { ${sourceCode.getText(expressionStatementNode)} } catch {}`,
-              );
-            },
-          });
-        }
-      }
-    },
-  });
-}
-

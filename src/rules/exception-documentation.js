@@ -1,14 +1,18 @@
 // @ts-check
-const toolkit = require('estree-toolkit');
+const { ESLintUtils } = require('@typescript-eslint/utils');
 const { hasThrowsTag } = require('../utils');
 
-module.exports = /** @type {import('eslint').Rule.RuleModule} */({
+const createRule = ESLintUtils.RuleCreator(
+  name => `https://github.com/Xvezda/eslint-plugin-exception-documentation/blob/main/docs/rules/${name}.md`,
+);
+
+module.exports = createRule({
+  name: 'exception-documentation',
   meta: {
     type: 'problem',
     docs: {
       description:
         'Explicitly document exceptions thrown by functions',
-      recommended: true,
     },
     fixable: 'code',
     messages: {
@@ -17,35 +21,12 @@ module.exports = /** @type {import('eslint').Rule.RuleModule} */({
     schema: [],
   },
   create(context) {
+    const sourceCode = context.sourceCode;
+
     return {
-      Program(node) {
-        // @ts-ignore
-        _traverse(node, context);
-      },
-    };
-  }
-});
-
-/**
- * @param {import('eslint').Rule.Node} node
- * @param {import('eslint').Rule.RuleContext} context
- */
-function _traverse(node, context) {
-  const { traverse, utils: u, builders: b, is } = toolkit;
-  const sourceCode = context.sourceCode;
-
-  traverse(node, {
-    ThrowStatement(path) {
-      const functionDeclarationPath =
-        path.findParent(is.functionDeclaration);
-
-      if (functionDeclarationPath) {
-        const functionDeclarationNode =
-          /** @type {import('estree-toolkit').types.FunctionDeclaration} */
-          (functionDeclarationPath.node);
-
-        const comments = sourceCode
-          .getCommentsBefore(functionDeclarationNode);
+      /** @param {import('@typescript-eslint/utils').TSESTree.FunctionDeclaration} node */
+      'FunctionDeclaration:has(ThrowStatement):not(:has(TryStatement))'(node) {
+        const comments = sourceCode.getCommentsBefore(node);
 
         const isCommented = 
           comments.length &&
@@ -55,20 +36,20 @@ function _traverse(node, context) {
 
         if (!isCommented) {
           context.report({
-            node: functionDeclarationNode,
+            node,
             messageId: 'missingThrowsTag',
             fix(fixer) {
               return fixer
                 .insertTextBefore(
-                  functionDeclarationNode,
+                  node,
                   // TODO: Grab exact type of thrown exception
                   '/**\n * @throws {Error}\n */\n'
                 );
             },
           });
         }
-      }
-    },
-  });
-}
-
+      },
+    };
+  },
+  defaultOptions: [],
+});
