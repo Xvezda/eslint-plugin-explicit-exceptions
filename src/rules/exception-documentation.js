@@ -17,8 +17,6 @@ module.exports = /** @type {import('eslint').Rule.RuleModule} */({
     fixable: 'code',
     messages: {
       missingThrowsTag: 'Missing @throws (or @exception) tag in JSDoc comment.',
-      implicitPropagation:
-        'Implicit propagation of exceptions is not allowed. Use try/catch to handle exceptions.',
     },
     schema: [],
   },
@@ -41,7 +39,6 @@ function _traverse(node, context) {
   const sourceCode = context.sourceCode;
 
   traverse(node, {
-    $: { scope: true },
     ThrowStatement(path) {
       const functionDeclarationPath =
         path.findParent(is.functionDeclaration);
@@ -71,44 +68,6 @@ function _traverse(node, context) {
                   // TODO: Grab exact type of thrown exception
                   '/**\n * @throws {Error}\n */\n'
                 );
-            },
-          });
-        }
-      }
-    },
-    CallExpression(path) {
-      if (!path.node || !path.scope) return;
-
-      if (is.identifier(path.node.callee)) {
-        const binding = path.scope.getBinding(path.node.callee.name);
-        if (
-          !binding ||
-          !is.functionDeclaration(binding.path.node)
-        ) return;
-
-        const comments = sourceCode
-          .getCommentsBefore(binding.path.node)
-          .map(({ value }) => value);
-
-        if (
-          comments.some(hasThrowsTag) &&
-          path.findParent(is.tryStatement) === null
-        ) {
-          const expressionStatement = path.findParent(is.expressionStatement);
-          if (!expressionStatement || !expressionStatement.node) return;
-
-          const expressionStatementNode = 
-            /** @type {import('estree-toolkit').types.BlockStatement} */
-            (expressionStatement.node);
-
-          context.report({
-            node: expressionStatementNode,
-            messageId: 'implicitPropagation',
-            fix(fixer) {
-              return fixer.replaceText(
-                expressionStatementNode,
-                `try {\n  ${sourceCode.getText(expressionStatementNode)}\n} catch {}`,
-              );
             },
           });
         }

@@ -16,7 +16,6 @@ module.exports = /** @type {import('eslint').Rule.RuleModule} */({
     },
     fixable: 'code',
     messages: {
-      missingThrowsTag: 'Missing @throws (or @exception) tag in JSDoc comment.',
       implicitPropagation:
         'Implicit propagation of exceptions is not allowed. Use try/catch to handle exceptions.',
     },
@@ -42,40 +41,6 @@ function _traverse(node, context) {
 
   traverse(node, {
     $: { scope: true },
-    ThrowStatement(path) {
-      const functionDeclarationPath =
-        path.findParent(is.functionDeclaration);
-
-      if (functionDeclarationPath) {
-        const functionDeclarationNode =
-          /** @type {import('estree-toolkit').types.FunctionDeclaration} */
-          (functionDeclarationPath.node);
-
-        const comments = sourceCode
-          .getCommentsBefore(functionDeclarationNode);
-
-        const isCommented = 
-          comments.length &&
-          comments
-            .map(({ value }) => value)
-            .some(hasThrowsTag);
-
-        if (!isCommented) {
-          context.report({
-            node: functionDeclarationNode,
-            messageId: 'missingThrowsTag',
-            fix(fixer) {
-              return fixer
-                .insertTextBefore(
-                  functionDeclarationNode,
-                  // TODO: Grab exact type of thrown exception
-                  '/**\n * @throws {Error}\n */\n'
-                );
-            },
-          });
-        }
-      }
-    },
     CallExpression(path) {
       if (!path.node || !path.scope) return;
 
