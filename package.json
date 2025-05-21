@@ -1,0 +1,17 @@
+{
+  "name": "eslint-plugin-explicit-exceptions",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node rule.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.10.0",
+  "devDependencies": {
+    "eslint": "^9.27.0",
+    "estree-toolkit": "^1.7.13"
+  }
+}
