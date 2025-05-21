@@ -2,6 +2,7 @@ const { RuleTester } = require('@typescript-eslint/rule-tester');
 const rule = require('./no-implicit-propagation');
 
 // https://github.com/typescript-eslint/typescript-eslint/blob/main/docs/packages/Rule_Tester.mdx#type-aware-testing
+/** @type {import('@typescript-eslint/rule-tester/dist').RuleTester} */
 const ruleTester = new RuleTester({
   languageOptions: {
     parserOptions: {
@@ -37,27 +38,42 @@ ruleTester.run(
     ],
     invalid: [
       {
-        code:
-          '/**\n' +
-          ' * @throws {Error}\n' +
-          ' */\n' +
-          'function foo() {\n' +
-          '  throw new Error("foo");\n' +
-          '}\n' +
-          'function bar() {\n' +
-          '  foo();\n' +
-          '}',
-        output:
-          '/**\n' +
-          ' * @throws {Error}\n' +
-          ' */\n' +
-          'function foo() {\n' +
-          '  throw new Error("foo");\n' +
-          '}\n' +
-          'function bar() {\n' +
-          '  try { foo(); } catch {}\n' +
-          '}',
-        errors: 1,
+        code: `
+          /**
+           * foo bar baz
+           * @throws {Error}
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+          function bar() {
+            foo();
+          }
+        `,
+        output: `
+          /**
+           * foo bar baz
+           * @throws {Error}
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+          function bar() {
+            try {
+              foo();
+            } catch {}
+          }
+        `,
+        errors: [
+          {
+            messageId: 'implicitPropagation',
+          },
+        ],
+        options: [
+          {
+            tabLength: 2,
+          },
+        ],
       },
     ],
   },

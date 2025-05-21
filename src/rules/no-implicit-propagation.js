@@ -1,6 +1,7 @@
 // @ts-check
 const { ESLintUtils } = require('@typescript-eslint/utils');
 const { hasThrowsTag } = require('../utils');
+const ts = require('typescript');
 
 const createRule = ESLintUtils.RuleCreator(
   name => `https://github.com/Xvezda/eslint-plugin-exception-documentation/blob/main/docs/rules/${name}.md`,
@@ -19,10 +20,26 @@ module.exports = createRule({
       implicitPropagation:
         'Implicit propagation of exceptions is not allowed. Use try/catch to handle exceptions.',
     },
-    schema: [],
+    defaultOptions: [
+      { tabLength: 4 },
+    ],
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          tabLength: {
+            type: 'number',
+            default: 4,
+          },
+        },
+        additionalProperties: false,
+      },
+    ],
   },
   create(context) {
     const sourceCode = context.sourceCode;
+
+    let [{ tabLength }] = context.options;
 
     /**
      * @param {import('@typescript-eslint/utils').TSESTree.Node} node
@@ -64,25 +81,35 @@ module.exports = createRule({
         const calleeType = services.getTypeAtLocation(node.callee);
         const calleeTags = calleeType.symbol.getJsDocTags();
 
-        if (
-          calleeTags.some((tag) =>
-            tag.name === 'throws' || tag.name === 'exception'
-          )
-        ) {
+        const isCalleeThrowable = calleeTags
+          .some((tag) => tag.name === 'throws' || tag.name === 'exception');
+
+        if (isCalleeThrowable) {
           context.report({
-            node,
+            node: node.parent,
             messageId: 'implicitPropagation',
             fix(fixer) {
-              // TODO: Apply proper indentation?
-              return fixer.replaceText(
-                node.parent,
-                `try { ${sourceCode.getText(node.parent)} } catch {}`,
+              const indent = ' '.repeat(node.loc.start.column);
+
+              const fixes = [];
+
+              fixes.push(fixer.insertTextBefore(node.parent, 'try {\n'));
+              fixes.push(
+                fixer.insertTextAfter(
+                  node.parent,
+                  `${indent + ' '.repeat(tabLength)}` +
+                  `${sourceCode.getText(node.parent)}\n` +
+                  `${indent}` +
+                  `} catch {}`
+                )
               );
+              fixes.push(fixer.remove(node.parent));
+              return fixes;
             },
           });
         }
       },
     };
   },
-  defaultOptions: [],
+  defaultOptions: [{ tabLength: 4 }],
 });
