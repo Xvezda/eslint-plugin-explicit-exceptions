@@ -6,7 +6,7 @@ const { hasThrowsTag, findParent } = require('../utils');
 const ts = require('typescript');
 
 const createRule = ESLintUtils.RuleCreator(
-  name => `https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/main/docs/rules/${name}.md`,
+  name => `https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/${name}.md`,
 );
 
 module.exports = createRule({
