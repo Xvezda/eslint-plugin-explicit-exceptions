@@ -3,7 +3,7 @@
   "type": "commonjs",
   "version": "0.1.0",
   "description": "ESLint rules for explicitly handling exceptions",
-  "main": "src/plugin.js",
+  "main": "./src/plugin.js",
   "scripts": {
     "test": "node --require ./test-setup.js --test"
   },
