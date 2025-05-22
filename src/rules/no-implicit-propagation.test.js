@@ -50,6 +50,69 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          /**
+           * foo bar baz
+           *
+           * @throws {string | number}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+          /** @throws {string | number} */
+          function bar() {
+            foo();
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           *
+           * @throws {string | number}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+          /** @throws {number | string} */
+          function bar() {
+            foo();
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           *
+           * @throws {string | number}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+          /**
+           * @throws {string}
+           * @throws {number}
+           */
+          function bar() {
+            foo();
+          }
+        `,
+      },
     ],
     invalid: [
       {
@@ -181,7 +244,102 @@ ruleTester.run(
             tabLength: 2,
           },
         ],
-      }
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           *
+           * @throws {string | number}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+          /** @throws {string} */
+          function bar() {
+            foo();
+          }
+        `,
+        output: `
+          /**
+           * foo bar baz
+           *
+           * @throws {string | number}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+          /** @throws {string | number} */
+          function bar() {
+            foo();
+          }
+        `,
+        errors: [{
+          messageId: 'throwTypeMismatch',
+        }],
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           *
+           * @throws {string | number | Error}
+           */
+          function foo() {
+            const rand = Math.random();
+            if (rand > 0.5) {
+              throw "lol";
+            } else if (rand < 0.2) {
+              throw 42;
+            } else {
+              throw new Error();
+            }
+          }
+          /**
+           * @throws {string}
+           * @throws {number}
+           */
+          function bar() {
+            foo();
+          }
+        `,
+        output: `
+          /**
+           * foo bar baz
+           *
+           * @throws {string | number | Error}
+           */
+          function foo() {
+            const rand = Math.random();
+            if (rand > 0.5) {
+              throw "lol";
+            } else if (rand < 0.2) {
+              throw 42;
+            } else {
+              throw new Error();
+            }
+          }
+          /**
+           * @throws {string}
+           * @throws {number}
+           * @throws {Error}
+           */
+          function bar() {
+            foo();
+          }
+        `,
+        errors: [{
+          messageId: 'throwTypeMismatch',
+        }],
+      },
     ],
   },
 );
