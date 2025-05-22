@@ -1,10 +1,10 @@
-# no-undocumented-throws
+# `no-undocumented-throws`
 
-This rule reports any function containing a throw statement that is not documented with a @throws (or @exception) tag in its JSDoc.
+This rule reports any function containing a throw statement that is not documented with a `@throws` (or `@exception`) tag in its JSDoc.
 
 ## Fixer
 
-Inserts a @throws JSDoc tag (matching the thrown type) immediately above the function declaration.
+Inserts a `@throws` JSDoc tag (matching the thrown type) immediately above the function declaration.
 
 ## Options
 
