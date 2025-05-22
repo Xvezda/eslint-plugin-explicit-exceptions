@@ -44,4 +44,6 @@ export default tseslint.config(
 ## TODO
 - [x] Report undocumented throws
 - [x] Report unhandled throwable function calls
+- [ ] Report builtin exceptions (e.g. `null.foo` throws `TypeError`)
 - [ ] Non type checked preset
+- [ ] Support async/await
