@@ -30,7 +30,9 @@ export default tseslint.config(
 );
 ```
 
-See https://typescript-eslint.io/getting-started/typed-linting for more details.
+## Rules
+ - [`no-implicit-propagation`](docs/rules/no-implicit-propagation.md)
+ - [`no-undocumented-throws`](docs/rules/no-undocumented-throws.md)
 
 ## TODO
 - [x] Report undocumented throws
