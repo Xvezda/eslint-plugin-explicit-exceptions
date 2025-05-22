@@ -21,6 +21,9 @@ importers:
       '@types/node':
         specifier: ^22.15.21
         version: 22.15.21
+      '@typescript-eslint/parser':
+        specifier: ^8.32.1
+        version: 8.32.1(eslint@9.27.0)(typescript@5.8.3)
       '@typescript-eslint/rule-tester':
         specifier: ^8.32.1
         version: 8.32.1(eslint@9.27.0)(typescript@5.8.3)

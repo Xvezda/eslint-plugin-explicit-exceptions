@@ -6,6 +6,7 @@ const eslintPlugin = require("../src/plugin");
 
 module.exports = tseslint.config(
   tseslint.configs.recommendedTypeChecked,
+  eslintPlugin.configs.recommendedTypeChecked,
   {
     files: ["**/*.js"],
     languageOptions: {
@@ -18,14 +19,6 @@ module.exports = tseslint.config(
     },
     rules: {
       "@typescript-eslint/no-require-imports": "off",
-    },
-  },
-  {
-    plugins: {
-      'explicit-exceptions': eslintPlugin,
-    },
-    rules: {
-      "explicit-exceptions/no-implicit-propagation": ["error", { tabLength: 2 }],
     },
   },
 );
