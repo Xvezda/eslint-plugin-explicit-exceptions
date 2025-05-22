@@ -25,7 +25,8 @@
   "devDependencies": {
     "@types/node": "^22.15.21",
     "@typescript-eslint/rule-tester": "^8.32.1",
-    "@typescript-eslint/type-utils": "^8.32.1"
+    "@typescript-eslint/type-utils": "^8.32.1",
+    "typescript-eslint": "^8.32.1"
   },
   "dependencies": {
     "@typescript-eslint/utils": "^8.32.1"

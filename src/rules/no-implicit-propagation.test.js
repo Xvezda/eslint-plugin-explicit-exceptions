@@ -2,7 +2,7 @@ const { RuleTester } = require('@typescript-eslint/rule-tester');
 const rule = require('./no-implicit-propagation');
 
 // https://github.com/typescript-eslint/typescript-eslint/blob/main/docs/packages/Rule_Tester.mdx#type-aware-testing
-/** @type {import('@typescript-eslint/rule-tester/dist').RuleTester} */
+/** @type {import('@typescript-eslint/rule-tester').RuleTester} */
 const ruleTester = new RuleTester({
   languageOptions: {
     parserOptions: {

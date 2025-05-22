@@ -1,6 +1,6 @@
 // @ts-check
 const { ESLintUtils } = require('@typescript-eslint/utils');
-/** @type {import('@typescript-eslint/type-utils/dist')} */
+/** @type {import('@typescript-eslint/type-utils')} */
 // @ts-ignore
 const utils = require('@typescript-eslint/type-utils');
 const { hasThrowsTag, findParent } = require('../utils');

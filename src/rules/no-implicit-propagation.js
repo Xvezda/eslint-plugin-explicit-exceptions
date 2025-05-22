@@ -1,5 +1,5 @@
 // @ts-check
-const { ESLintUtils } = require('@typescript-eslint/utils');
+const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const { hasThrowsTag } = require('../utils');
 const { findParent } = require('../utils');
 
@@ -47,7 +47,7 @@ module.exports = createRule({
       'FunctionDeclaration :not(TryStatement > BlockStatement) ExpressionStatement:has(> CallExpression)'(node) {
         const declaration =
           /** @type {import('@typescript-eslint/utils').TSESTree.FunctionDeclaration} */
-          (findParent(node, (n) => n.type === 'FunctionDeclaration'));
+          (findParent(node, (n) => n.type === AST_NODE_TYPES.FunctionDeclaration));
 
         const comments = sourceCode.getCommentsBefore(declaration);
         const isCommented =
@@ -58,7 +58,7 @@ module.exports = createRule({
 
         if (isCommented) return;
 
-        if (node.expression.type !== 'CallExpression') return;
+        if (node.expression.type !== AST_NODE_TYPES.CallExpression) return;
 
         const calleeType = services.getTypeAtLocation(node.expression.callee);
         if (!calleeType.symbol) return;
