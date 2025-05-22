@@ -1,1 +1,4 @@
+examples/
 **/*.test.js 
+test-setup.js
+.*
