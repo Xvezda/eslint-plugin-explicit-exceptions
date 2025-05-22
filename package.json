@@ -20,6 +20,11 @@
     "eslint-rules"
   ],
   "author": "Xvezda <xvezda@naver.com>",
+  "homepage": "https://github.com/Xvezda/eslint-plugin-explicit-exceptions",
+  "bugs": {
+    "url": "https://github.com/Xvezda/eslint-plugin-explicit-exceptions/issues",
+    "email": "xvezda@naver.com"
+  },
   "license": "MIT",
   "packageManager": "pnpm@10.10.0",
   "devDependencies": {
