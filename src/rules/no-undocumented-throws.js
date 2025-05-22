@@ -54,7 +54,7 @@ module.exports = createRule({
 
     /** @param {import('typescript').Type[]} types */
     const typesToUnionString = (types) =>
-      types.map(t => utils.getTypeName(checker, t)).join('|');
+      types.map(t => utils.getTypeName(checker, t)).join(' | ');
 
     return {
       /** @param {import('@typescript-eslint/utils').TSESTree.ThrowStatement} node */
@@ -95,7 +95,8 @@ module.exports = createRule({
             return options.useBaseTypeOfLiteral && ts.isLiteralTypeLiteral(tsNode)
               ? checker.getBaseTypeOfLiteralType(type)
               : type;
-          });
+          })
+          .flatMap(t => t.isUnion() ? t.types : t);
 
         if (isCommented) {
           const tags =

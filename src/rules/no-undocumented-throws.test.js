@@ -80,7 +80,7 @@ ruleTester.run(
           /**
            * foo bar baz
            *
-           * @throws {string|number}
+           * @throws {string | number}
            */
           function foo() {
             if (Math.random() > 0.5) {
@@ -96,7 +96,7 @@ ruleTester.run(
           /**
            * foo bar baz
            *
-           * @throws {number|string}
+           * @throws {number | string}
            */
           function foo() {
             if (Math.random() > 0.5) {
@@ -200,7 +200,7 @@ ruleTester.run(
           /**
            * foo bar baz
            *
-           * @throws {string|number}
+           * @throws {string | number}
            */
           function foo() {
             if (Math.random() > 0.5) {
