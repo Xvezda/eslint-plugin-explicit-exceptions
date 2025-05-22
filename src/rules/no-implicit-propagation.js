@@ -2,12 +2,12 @@
 const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
-const { hasThrowsTag } = require('../utils');
-const { findParent } = require('../utils');
-
-const createRule = ESLintUtils.RuleCreator(
-  name => `https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/${name}.md`,
-);
+const {
+  createRule,
+  hasThrowsTag,
+  findParent,
+  getOptionsFromContext
+} = require('../utils');
 
 module.exports = createRule({
   name: 'no-implicit-propagation',
@@ -41,7 +41,7 @@ module.exports = createRule({
     ],
   },
   create(context) {
-    const [{ tabLength }] = context.options;
+    const options = getOptionsFromContext(context);
 
     const sourceCode = context.sourceCode;
     const services = ESLintUtils.getParserServices(context);
@@ -151,7 +151,7 @@ module.exports = createRule({
         const currentLine = lines[node.loc.start.line - 1];
         const prevLine = lines[node.loc.start.line - 2];
         const indent = currentLine.match(/^\s*/)?.[0] ?? '';
-        const newIndent = indent + ' '.repeat(tabLength);
+        const newIndent = indent + ' '.repeat(options.tabLength);
 
         // TODO: Better way to handle this?
         if (/^\s*try\s*\{/.test(prevLine)) return;

@@ -1,3 +1,4 @@
+// @ts-check
 const { RuleTester } = require('@typescript-eslint/rule-tester');
 const rule = require('./no-undocumented-throws');
 
