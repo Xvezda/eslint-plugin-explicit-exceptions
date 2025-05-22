@@ -16,6 +16,8 @@ module.exports = tseslint.config(
     },
     rules: {
       "@typescript-eslint/no-require-imports": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
     },
   },
 );

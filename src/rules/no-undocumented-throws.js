@@ -1,13 +1,13 @@
 // @ts-check
 const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
-/** @type {import('@typescript-eslint/type-utils')} */
 const utils = require('@typescript-eslint/type-utils');
-const { hasThrowsTag, findParent } = require('../utils');
 const ts = require('typescript');
-
-const createRule = ESLintUtils.RuleCreator(
-  name => `https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/${name}.md`,
-);
+const {
+  createRule,
+  hasThrowsTag,
+  findParent,
+  getOptionsFromContext
+} = require('../utils');
 
 module.exports = createRule({
   name: 'no-undocumented-throws',
@@ -44,10 +44,7 @@ module.exports = createRule({
     const services = ESLintUtils.getParserServices(context);
     const checker = services.program.getTypeChecker();
     
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const options =
-      /** @type {Record<string, unknown>} */
-      (Object.assign(Object.create(null), ...context.options));
+    const options = getOptionsFromContext(context);
 
     /** @type {Map<number, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>} */
     const throwStatements = new Map();
