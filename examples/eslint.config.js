@@ -1,6 +1,8 @@
 "use strict";
 
+const path = require("path");
 const tseslint = require("typescript-eslint");
+const eslintPlugin = require("../src/plugin");
 
 module.exports = tseslint.config(
   tseslint.configs.recommendedTypeChecked,
@@ -11,11 +13,19 @@ module.exports = tseslint.config(
       ecmaVersion: "latest",
       parserOptions: {
         projectService: true,
-        tsconfigRootDir: __dirname,
+        tsconfigRootDir: path.resolve(__dirname, '..'),
       },
     },
     rules: {
       "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
+    plugins: {
+      'explicit-exceptions': eslintPlugin,
+    },
+    rules: {
+      "explicit-exceptions/no-implicit-propagation": ["error", { tabLength: 2 }],
     },
   },
 );

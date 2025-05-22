@@ -1,3 +1,4 @@
+/* eslint-disable */
 const test = require('node:test');
 const { RuleTester } = require('@typescript-eslint/rule-tester');
 
