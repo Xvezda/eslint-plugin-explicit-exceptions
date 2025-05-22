@@ -3,7 +3,10 @@
 ## Usage
 
 ```sh
-npm install --save-dev eslint @eslint/js typescript typescript-eslint eslint-plugin-explicit-exceptions
+# https://typescript-eslint.io/getting-started/#step-1-installation
+npm install --save-dev eslint @eslint/js typescript typescript-eslint
+
+npm install --save-dev eslint-plugin-explicit-exceptions
 ```
 
 Create `eslint.config.mjs`
