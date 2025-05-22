@@ -1,7 +1,6 @@
 // @ts-check
-const { ESLintUtils } = require('@typescript-eslint/utils');
+const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 /** @type {import('@typescript-eslint/type-utils')} */
-// @ts-ignore
 const utils = require('@typescript-eslint/type-utils');
 const { hasThrowsTag, findParent } = require('../utils');
 const ts = require('typescript');
@@ -44,8 +43,11 @@ module.exports = createRule({
     const sourceCode = context.sourceCode;
     const services = ESLintUtils.getParserServices(context);
     const checker = services.program.getTypeChecker();
-
-    const options = Object.assign(Object.create(null), ...context.options);
+    
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const options =
+      /** @type {Record<string, unknown>} */
+      (Object.assign(Object.create(null), ...context.options));
 
     /** @type {Map<number, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>} */
     const throwStatements = new Map();
@@ -59,7 +61,7 @@ module.exports = createRule({
       'FunctionDeclaration :not(TryStatement > BlockStatement) ThrowStatement'(node) {
         const declaration =
           /** @type {import('@typescript-eslint/utils').TSESTree.FunctionDeclaration} */
-          (findParent(node, (n) => n.type === 'FunctionDeclaration'));
+          (findParent(node, (n) => n.type === AST_NODE_TYPES.FunctionDeclaration));
 
         if (!throwStatements.has(declaration.range[0])) {
           throwStatements.set(declaration.range[0], []);
