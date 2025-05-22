@@ -6,3 +6,8 @@ function bar() {
   foo();
 }
 bar();
+
+function baz() {
+  foo();
+}
+baz();

@@ -12,3 +12,8 @@ function bar() {
 }
 bar();
 
+/** @throws {Error} */
+function baz() {
+  foo();
+}
+baz();
