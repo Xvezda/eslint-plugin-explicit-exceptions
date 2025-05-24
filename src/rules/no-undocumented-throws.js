@@ -6,7 +6,10 @@ const {
   createRule,
   hasThrowsTag,
   findParent,
-  getOptionsFromContext
+  getOptionsFromContext,
+  getJSDocThrowsTags,
+  getJSDocThrowsTagTypes,
+  isTypesAssignableTo,
 } = require('../utils');
 
 module.exports = createRule({
@@ -46,7 +49,10 @@ module.exports = createRule({
     
     const options = getOptionsFromContext(context);
 
-    /** @type {Map<number, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>} */
+    /**
+     * Group throw statements in functions
+     * @type {Map<number, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>}
+     */
     const throwStatements = new Map();
 
     /** @param {import('typescript').Type[]} types */
@@ -56,16 +62,17 @@ module.exports = createRule({
     return {
       /** @param {import('@typescript-eslint/utils').TSESTree.ThrowStatement} node */
       'FunctionDeclaration :not(TryStatement > BlockStatement) ThrowStatement'(node) {
-        const declaration =
+        const functionDeclaration =
           /** @type {import('@typescript-eslint/utils').TSESTree.FunctionDeclaration} */
           (findParent(node, (n) => n.type === AST_NODE_TYPES.FunctionDeclaration));
 
-        if (!throwStatements.has(declaration.range[0])) {
-          throwStatements.set(declaration.range[0], []);
+        // TODO: Use "SAFE" unique function identifier
+        if (!throwStatements.has(functionDeclaration.range[0])) {
+          throwStatements.set(functionDeclaration.range[0], []);
         }
         const throwStatementNodes =
           /** @type {import('@typescript-eslint/utils').TSESTree.ThrowStatement[]} */
-          (throwStatements.get(declaration.range[0]));
+          (throwStatements.get(functionDeclaration.range[0]));
 
         throwStatementNodes.push(node);
       },
@@ -96,27 +103,22 @@ module.exports = createRule({
           .flatMap(t => t.isUnion() ? t.types : t);
 
         if (isCommented) {
-          const tags =
-            /** @type {import('typescript').JSDocThrowsTag[]} */
-            (ts.getAllJSDocTagsOfKind(
-              services.esTreeNodeToTSNodeMap.get(node),
-              ts.SyntaxKind.JSDocThrowsTag
-            ));
+          if (!services.esTreeNodeToTSNodeMap.has(node)) return;
 
-          const tagTypeNodes = tags
+          const functionDeclarationTSNode = services.esTreeNodeToTSNodeMap.get(node);
+
+          const throwsTags = getJSDocThrowsTags(functionDeclarationTSNode);
+          const throwsTagTypeNodes = throwsTags
             .map(tag => tag.typeExpression?.type)
             .filter(tag => !!tag);
 
-          if (!tagTypeNodes.length) return;
+          if (!throwsTagTypeNodes.length) return;
 
-          const isAllThrowsAssignable = throwTypes
-            .every(t => tagTypeNodes
-              .some(n => checker
-                .isTypeAssignableTo(t, checker.getTypeFromTypeNode(n))));
+          const throwsTagTypes = getJSDocThrowsTagTypes(checker, functionDeclarationTSNode);
 
-          if (isAllThrowsAssignable) return;
+          if (isTypesAssignableTo(checker, throwTypes, throwsTagTypes)) return;
 
-          const lastTagtypeNode = tagTypeNodes[tagTypeNodes.length - 1];
+          const lastTagtypeNode = throwsTagTypeNodes[throwsTagTypeNodes.length - 1];
 
           context.report({
             node,
