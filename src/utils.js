@@ -100,13 +100,19 @@ const getCalleeDeclaration = (services, node) => {
     case AST_NODE_TYPES.CallExpression:
       return declarations[0];
     case AST_NODE_TYPES.MemberExpression:
-    case AST_NODE_TYPES.AssignmentExpression:
-      return declarations
+      const getter = declarations
         .find(declaration =>
-          services.tsNodeToESTreeNodeMap.get(declaration).kind ===
-            (node.expression.type === AST_NODE_TYPES.AssignmentExpression
-              ? 'set' : 'get')
-        )
+          services.tsNodeToESTreeNodeMap
+            .get(declaration).kind === 'get'
+        );
+      return getter ?? declarations[0];
+    case AST_NODE_TYPES.AssignmentExpression:
+      const setter = declarations
+        .find(declaration =>
+          services.tsNodeToESTreeNodeMap
+            .get(declaration).kind === 'set'
+        );
+      return setter ?? declarations[0];
   }
   return null;
 };
