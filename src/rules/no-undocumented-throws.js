@@ -12,6 +12,64 @@ const {
   isTypesAssignableTo,
 } = require('../utils');
 
+/**
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
+ */
+const findParentFunctionNode = (node) => {
+  return findParent(node, (n) =>
+    n.type === AST_NODE_TYPES.FunctionDeclaration ||
+    n.type === AST_NODE_TYPES.FunctionExpression ||
+    n.type === AST_NODE_TYPES.ArrowFunctionExpression
+  );
+};
+
+/**
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
+ */
+const findNodeToComment = (node) => {
+  switch (node.type) {
+    case AST_NODE_TYPES.FunctionDeclaration:
+      return node;
+    case AST_NODE_TYPES.FunctionExpression:
+    case AST_NODE_TYPES.ArrowFunctionExpression:
+      return (
+        /**
+         * @example
+         * ```
+         * class Klass {
+         *   // here
+         *   target() { ... }
+         * }
+         * ```
+         */
+        findParent(node, (n) => n.type === AST_NODE_TYPES.MethodDefinition) ??
+        /**
+         * @example
+         * ```
+         * const obj = {
+         *   // here
+         *   target: () => { ... },
+         * };
+         * ```
+         */
+        findParent(node, (n) => n.type === AST_NODE_TYPES.Property) ??
+        /**
+         * @example
+         * ```
+         * // here
+         * const target = () => { ... };
+         * ```
+         */
+        findParent(node, (n) => n.type === AST_NODE_TYPES.VariableDeclaration)
+      );
+    default:
+      break;
+  }
+  return null;
+};
+
 module.exports = createRule({
   name: 'no-undocumented-throws',
   meta: {
@@ -59,12 +117,114 @@ module.exports = createRule({
     const typesToUnionString = (types) =>
       types.map(t => utils.getTypeName(checker, t)).join(' | ');
 
+    /** @param {import('@typescript-eslint/utils').TSESTree.Node} node */
+    const visitOnExit = (node) => {
+      const nodeToComment = findNodeToComment(node);
+
+      if (!nodeToComment) return;
+
+      const comments = sourceCode.getCommentsBefore(nodeToComment);
+
+      const throwStatementNodes = throwStatements.get(node.range[0]);
+
+      if (!throwStatementNodes) return;
+
+      const isCommented = 
+        comments.length &&
+        comments
+        .map(({ value }) => value)
+        .some(hasThrowsTag);
+
+      /** @type {import('typescript').Type[]} */
+      const throwTypes = throwStatementNodes
+        .map(n => {
+          const type = services.getTypeAtLocation(n.argument);
+          const tsNode = services.esTreeNodeToTSNodeMap.get(n.argument);
+
+          return options.useBaseTypeOfLiteral && ts.isLiteralTypeLiteral(tsNode)
+            ? checker.getBaseTypeOfLiteralType(type)
+            : type;
+        })
+        .flatMap(t => t.isUnion() ? t.types : t);
+
+      if (isCommented) {
+        if (!services.esTreeNodeToTSNodeMap.has(nodeToComment)) return;
+
+        const functionDeclarationTSNode = services.esTreeNodeToTSNodeMap.get(node);
+
+        const throwsTags = getJSDocThrowsTags(functionDeclarationTSNode);
+        const throwsTagTypeNodes = throwsTags
+          .map(tag => tag.typeExpression?.type)
+          .filter(tag => !!tag);
+
+        if (!throwsTagTypeNodes.length) return;
+
+        const throwsTagTypes = getJSDocThrowsTagTypes(checker, functionDeclarationTSNode);
+
+        if (isTypesAssignableTo(checker, throwTypes, throwsTagTypes)) return;
+
+        const lastTagtypeNode = throwsTagTypeNodes[throwsTagTypeNodes.length - 1];
+
+        context.report({
+          node,
+          messageId: 'throwTypeMismatch',
+          fix(fixer) {
+            return fixer.replaceTextRange(
+              [lastTagtypeNode.pos, lastTagtypeNode.end],
+              typesToUnionString(throwTypes)
+            );
+          },
+        });
+        return;
+      }
+
+      context.report({
+        node,
+        messageId: 'missingThrowsTag',
+        fix(fixer) {
+          const lines = sourceCode.getLines();
+          const currentLine = lines[nodeToComment.loc.start.line - 1];
+          const indent = currentLine.match(/^\s*/)?.[0] ?? '';
+          return fixer
+            .insertTextBefore(
+              nodeToComment,
+              `/**\n` +
+              `${indent} * @throws {${typesToUnionString(throwTypes)}}\n` +
+              `${indent} */\n` +
+              `${indent}`
+            );
+        },
+      });
+      return;
+    };
+
+    const unhandledThrowStatementSelector =
+      ':not(TryStatement > BlockStatement) ThrowStatement';
+
+    const createExpressionVisitors = () =>
+      ['ArrowFunctionExpression', 'FunctionExpression']
+        .reduce((acc, nodeType) => {
+          const targetNodeSelector =
+            `${nodeType}:has(${unhandledThrowStatementSelector})`;
+
+          return {
+            ...acc,
+            [`VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ${targetNodeSelector}:exit`]: visitOnExit,
+            [`Property > ${targetNodeSelector}:exit`]: visitOnExit,
+            [`MethodDefinition > ${targetNodeSelector}:exit`]: visitOnExit,
+          };
+        }, {});
+
     return {
-      /** @param {import('@typescript-eslint/utils').TSESTree.ThrowStatement} node */
-      'FunctionDeclaration :not(TryStatement > BlockStatement) ThrowStatement'(node) {
-        const functionDeclaration =
-          /** @type {import('@typescript-eslint/utils').TSESTree.FunctionDeclaration} */
-          (findParent(node, (n) => n.type === AST_NODE_TYPES.FunctionDeclaration));
+      /**
+       * Collect and group throw statements in functions
+       *
+       * @param {import('@typescript-eslint/utils').TSESTree.ThrowStatement} node
+       */
+      [unhandledThrowStatementSelector](node) {
+        const functionDeclaration = findParentFunctionNode(node);
+
+        if (!functionDeclaration) return;
 
         // TODO: Use "SAFE" unique function identifier
         if (!throwStatements.has(functionDeclaration.range[0])) {
@@ -76,82 +236,10 @@ module.exports = createRule({
 
         throwStatementNodes.push(node);
       },
-      /** @param {import('@typescript-eslint/utils').TSESTree.FunctionDeclaration} node */
-      'FunctionDeclaration:has(:not(TryStatement > BlockStatement) ThrowStatement):exit'(node) {
-        const throwStatementNodes = throwStatements.get(node.range[0]);
 
-        if (!throwStatementNodes) return;
+      [`FunctionDeclaration:has(${unhandledThrowStatementSelector}):exit`]: visitOnExit,
 
-        const comments = sourceCode.getCommentsBefore(node);
-
-        const isCommented = 
-          comments.length &&
-          comments
-            .map(({ value }) => value)
-            .some(hasThrowsTag);
-
-        /** @type {import('typescript').Type[]} */
-        const throwTypes = throwStatementNodes
-          .map(n => {
-            const type = services.getTypeAtLocation(n.argument);
-            const tsNode = services.esTreeNodeToTSNodeMap.get(n.argument);
-
-            return options.useBaseTypeOfLiteral && ts.isLiteralTypeLiteral(tsNode)
-              ? checker.getBaseTypeOfLiteralType(type)
-              : type;
-          })
-          .flatMap(t => t.isUnion() ? t.types : t);
-
-        if (isCommented) {
-          if (!services.esTreeNodeToTSNodeMap.has(node)) return;
-
-          const functionDeclarationTSNode = services.esTreeNodeToTSNodeMap.get(node);
-
-          const throwsTags = getJSDocThrowsTags(functionDeclarationTSNode);
-          const throwsTagTypeNodes = throwsTags
-            .map(tag => tag.typeExpression?.type)
-            .filter(tag => !!tag);
-
-          if (!throwsTagTypeNodes.length) return;
-
-          const throwsTagTypes = getJSDocThrowsTagTypes(checker, functionDeclarationTSNode);
-
-          if (isTypesAssignableTo(checker, throwTypes, throwsTagTypes)) return;
-
-          const lastTagtypeNode = throwsTagTypeNodes[throwsTagTypeNodes.length - 1];
-
-          context.report({
-            node,
-            messageId: 'throwTypeMismatch',
-            fix(fixer) {
-              return fixer.replaceTextRange(
-                [lastTagtypeNode.pos, lastTagtypeNode.end],
-                typesToUnionString(throwTypes)
-              );
-            },
-          });
-          return;
-        }
-
-        context.report({
-          node,
-          messageId: 'missingThrowsTag',
-          fix(fixer) {
-            const lines = sourceCode.getLines();
-            const currentLine = lines[node.loc.start.line - 1];
-            const indent = currentLine.match(/^\s*/)?.[0] ?? '';
-            return fixer
-              .insertTextBefore(
-                node,
-                `/**\n` +
-                `${indent} * @throws {${typesToUnionString(throwTypes)}}\n` +
-                `${indent} */\n` +
-                `${indent}`
-              );
-          },
-        });
-        return;
-      },
+      ...createExpressionVisitors(),
     };
   },
 });

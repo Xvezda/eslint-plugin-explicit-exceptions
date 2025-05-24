@@ -42,6 +42,53 @@ ruleTester.run(
       {
         code: `
           /**
+           * foo bar baz
+           * @throws {Error}
+           */
+          const foo = () => {
+            throw new Error('foo');
+          };
+        `,
+      },
+      {
+        code: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            bar() {
+              throw new Error('baz');
+            }
+          }
+        `,
+      },
+      {
+        code: `
+          const obj = {
+            /**
+             * @throws {Error}
+             */
+            foo: function () {
+              throw new Error('foo');
+            },
+          };
+        `,
+      },
+      {
+        code: `
+          const obj = {
+            /**
+             * @throws {Error}
+             */
+            foo: () => {
+              throw new Error('foo');
+            },
+          };
+        `,
+      },
+      {
+        code: `
+          /**
            * @throws {"lol"}
            */
           function foo() {
@@ -139,6 +186,146 @@ ruleTester.run(
            */
           function foo() {
             throw new Error("foo");
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          const foo = () => {
+            throw new Error('foo');
+          };
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          const foo = () => {
+            throw new Error('foo');
+          };
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          const obj = {
+            foo: function () {
+              throw new Error('foo');
+            },
+          };
+        `,
+        output: `
+          const obj = {
+            /**
+             * @throws {Error}
+             */
+            foo: function () {
+              throw new Error('foo');
+            },
+          };
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          const obj = {
+            foo: () => {
+              throw new Error('foo');
+            },
+          };
+        `,
+        output: `
+          const obj = {
+            /**
+             * @throws {Error}
+             */
+            foo: () => {
+              throw new Error('foo');
+            },
+          };
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          const { foo, bar } = {
+            foo: function () {},
+            bar: () => {
+              throw new Error('baz');
+            },
+          };
+        `,
+        output: `
+          const { foo, bar } = {
+            foo: function () {},
+            /**
+             * @throws {Error}
+             */
+            bar: () => {
+              throw new Error('baz');
+            },
+          };
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          const name = 'foo';
+          const obj = {
+            [name]: () => {
+              throw new Error('foo');
+            },
+          };
+        `,
+        output: `
+          const name = 'foo';
+          const obj = {
+            /**
+             * @throws {Error}
+             */
+            [name]: () => {
+              throw new Error('foo');
+            },
+          };
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          class Foo {
+            bar() {
+              throw new Error('baz');
+            }
+          }
+        `,
+        output: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            bar() {
+              throw new Error('baz');
+            }
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          class Foo {
+            static bar() {
+              throw new Error('baz');
+            }
+          }
+        `,
+        output: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            static bar() {
+              throw new Error('baz');
+            }
           }
         `,
         errors: [{ messageId: 'missingThrowsTag' }],
