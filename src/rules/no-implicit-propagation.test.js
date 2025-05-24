@@ -41,6 +41,22 @@ ruleTester.run(
            * foo bar baz
            * @throws {string}
            */
+          const foo = () => {
+            throw "lol";
+          };
+          const bar = () => {
+            try {
+              foo();
+            } catch {}
+          };
+        `,
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           * @throws {string}
+           */
           function foo() {
             throw "lol";
           }
@@ -147,6 +163,148 @@ ruleTester.run(
             messageId: 'implicitPropagation',
           },
         ],
+        options: [
+          {
+            tabLength: 2,
+          },
+        ],
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           * @throws {Error}
+           */
+          const foo = () => {
+            throw new Error('foo');
+          };
+          const bar = () => {
+            foo();
+          };
+        `,
+        output: `
+          /**
+           * foo bar baz
+           * @throws {Error}
+           */
+          const foo = () => {
+            throw new Error('foo');
+          };
+          const bar = () => {
+            try {
+              foo();
+            } catch {}
+          };
+        `,
+        errors: [
+          {
+            messageId: 'implicitPropagation',
+          },
+        ],
+        options: [
+          {
+            tabLength: 2,
+          },
+        ],
+      },
+      {
+        code: `
+          const obj = {
+            /** @throws {Error} */
+            foo: () => {
+              throw new Error('foo');
+            },
+          };
+          const bar = () => {
+            obj.foo();
+          };
+        `,
+        output: `
+          const obj = {
+            /** @throws {Error} */
+            foo: () => {
+              throw new Error('foo');
+            },
+          };
+          const bar = () => {
+            try {
+              obj.foo();
+            } catch {}
+          };
+        `,
+        errors: [{ messageId: 'implicitPropagation' }],
+        options: [
+          {
+            tabLength: 2,
+          },
+        ],
+      },
+      {
+        code: `
+          const obj = {
+            /** @throws {Error} */
+            foo: () => {
+              try {
+                throw new Error('foo');
+              } finally {
+                console.log('error');
+              }
+            },
+          };
+          const bar = () => {
+            obj.foo();
+          };
+        `,
+        output: `
+          const obj = {
+            /** @throws {Error} */
+            foo: () => {
+              try {
+                throw new Error('foo');
+              } finally {
+                console.log('error');
+              }
+            },
+          };
+          const bar = () => {
+            try {
+              obj.foo();
+            } catch {}
+          };
+        `,
+        errors: [{ messageId: 'implicitPropagation' }],
+        options: [
+          {
+            tabLength: 2,
+          },
+        ],
+      },
+      {
+        code: `
+          class Foo {
+            /** @throws {Error} */
+            foo() {
+              throw new Error('foo');
+            }
+          }
+          const bar = () => {
+            new Foo().foo();
+          };
+        `,
+        output: `
+          class Foo {
+            /** @throws {Error} */
+            foo() {
+              throw new Error('foo');
+            }
+          }
+          const bar = () => {
+            try {
+              new Foo().foo();
+            } catch {}
+          };
+        `,
+        errors: [{ messageId: 'implicitPropagation' }],
         options: [
           {
             tabLength: 2,

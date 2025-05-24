@@ -10,69 +10,9 @@ const {
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
   isTypesAssignableTo,
+  findClosestFunctionNode,
+  findNodeToComment,
 } = require('../utils');
-
-/**
- * Find closest function where exception is thrown
- *
- * @param {import('@typescript-eslint/utils').TSESTree.Node} node
- * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
- */
-const findParentFunctionNode = (node) => {
-  return findParent(node, (n) =>
-    n.type === AST_NODE_TYPES.FunctionDeclaration ||
-    n.type === AST_NODE_TYPES.FunctionExpression ||
-    n.type === AST_NODE_TYPES.ArrowFunctionExpression
-  );
-};
-
-/**
- * Find where JSDoc comment should be added
- *
- * @param {import('@typescript-eslint/utils').TSESTree.Node} node
- * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
- */
-const findNodeToComment = (node) => {
-  switch (node.type) {
-    case AST_NODE_TYPES.FunctionDeclaration:
-      return node;
-    case AST_NODE_TYPES.FunctionExpression:
-    case AST_NODE_TYPES.ArrowFunctionExpression:
-      return (
-        /**
-         * @example
-         * ```
-         * class Klass {
-         *   // here
-         *   target() { ... }
-         * }
-         * ```
-         */
-        findParent(node, (n) => n.type === AST_NODE_TYPES.MethodDefinition) ??
-        /**
-         * @example
-         * ```
-         * const obj = {
-         *   // here
-         *   target: () => { ... },
-         * };
-         * ```
-         */
-        findParent(node, (n) => n.type === AST_NODE_TYPES.Property) ??
-        /**
-         * @example
-         * ```
-         * // here
-         * const target = () => { ... };
-         * ```
-         */
-        findParent(node, (n) => n.type === AST_NODE_TYPES.VariableDeclaration)
-      );
-    default:
-      break;
-  }
-  return null;
-};
 
 
 module.exports = createRule({
@@ -198,35 +138,27 @@ module.exports = createRule({
             );
         },
       });
-      return;
     };
-
-    const unhandledThrowStatementSelector =
-      ':not(TryStatement > BlockStatement) ThrowStatement';
-
-    const createExpressionVisitors = () =>
-      ['ArrowFunctionExpression', 'FunctionExpression']
-        .reduce((acc, nodeType) => {
-          const targetNodeSelector =
-            `${nodeType}:has(${unhandledThrowStatementSelector})`;
-
-          return {
-            ...acc,
-            [`VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ${targetNodeSelector}:exit`]: visitOnExit,
-            [`Property > ${targetNodeSelector}:exit`]: visitOnExit,
-            [`MethodDefinition > ${targetNodeSelector}:exit`]: visitOnExit,
-          };
-        }, {});
 
     return {
       /**
        * Collect and group throw statements in functions
-       *
-       * @param {import('@typescript-eslint/utils').TSESTree.ThrowStatement} node
        */
-      [unhandledThrowStatementSelector](node) {
-        const functionDeclaration = findParentFunctionNode(node);
+      ThrowStatement(node) {
+        let tryStatement =
+          /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement | null} */
+          (findParent(node, (n) => n.type === AST_NODE_TYPES.TryStatement));
 
+        while (tryStatement) {
+          // Exit if exception handled
+          if (tryStatement?.handler) return;
+
+          tryStatement =
+            /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement | null} */
+            (findParent(tryStatement, (n) => n.type === AST_NODE_TYPES.TryStatement));
+        }
+
+        const functionDeclaration = findClosestFunctionNode(node);
         if (!functionDeclaration) return;
 
         // TODO: Use "SAFE" unique function identifier
@@ -240,9 +172,15 @@ module.exports = createRule({
         throwStatementNodes.push(node);
       },
 
-      [`FunctionDeclaration:has(${unhandledThrowStatementSelector}):exit`]: visitOnExit,
+      'FunctionDeclaration:exit': visitOnExit,
+      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:exit': visitOnExit,
+      'Property > ArrowFunctionExpression:exit': visitOnExit,
+      'PropertyDefinition > ArrowFunctionExpression:exit': visitOnExit,
 
-      ...createExpressionVisitors(),
+      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > FunctionExpression:exit': visitOnExit,
+      'Property > FunctionExpression:exit': visitOnExit,
+      'PropertyDefinition > FunctionExpression:exit': visitOnExit,
+      'MethodDefinition > FunctionExpression:exit': visitOnExit,
     };
   },
 });

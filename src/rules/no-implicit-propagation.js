@@ -4,13 +4,14 @@ const utils = require('@typescript-eslint/type-utils');
 const {
   createRule,
   hasThrowsTag,
-  findParent,
   getOptionsFromContext,
   getDeclarationTSNodeOfESTreeNode,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
   toFlattenedTypeArray,
   isTypesAssignableTo,
+  findClosestFunctionNode,
+  findNodeToComment,
 } = require('../utils');
 
 
@@ -52,134 +53,139 @@ module.exports = createRule({
     const services = ESLintUtils.getParserServices(context);
     const checker = services.program.getTypeChecker();
 
-    return {
-      /** @param {import('@typescript-eslint/utils').TSESTree.ExpressionStatement} node */
-      'FunctionDeclaration :not(TryStatement > BlockStatement) ExpressionStatement:has(> CallExpression)'(node) {
-        if (node.expression.type !== AST_NODE_TYPES.CallExpression) return;
+    /** @param {import('@typescript-eslint/utils').TSESTree.ExpressionStatement} node */
+    const visitExpressionStatement = (node) => {
+      if (node.expression.type !== AST_NODE_TYPES.CallExpression) return;
 
-        const callerDeclaration =
-          /** @type {import('@typescript-eslint/utils').TSESTree.FunctionDeclaration} */
-          (findParent(node, (n) => n.type === AST_NODE_TYPES.FunctionDeclaration));
+      const callerDeclaration = findClosestFunctionNode(node);
+      if (!callerDeclaration) return;
 
-        const comments = sourceCode.getCommentsBefore(callerDeclaration);
-        const isCommented =
-          comments.length &&
-          comments
-            .map(({ value }) => value)
-            .some(hasThrowsTag);
+      const nodeToComment = findNodeToComment(callerDeclaration);
+      if (!nodeToComment) return;
 
-        // TODO: Branching type checking or not
-        if (isCommented) {
-          const calleeDeclarationTSNode =
-            getDeclarationTSNodeOfESTreeNode(services, node.expression.callee);
+      const comments = sourceCode.getCommentsBefore(nodeToComment);
+      const isCommented =
+        comments.length &&
+        comments
+        .map(({ value }) => value)
+        .some(hasThrowsTag);
 
-          if (!calleeDeclarationTSNode) return;
+      // TODO: Branching type checking or not
+      if (isCommented) {
+        const calleeDeclarationTSNode =
+          getDeclarationTSNodeOfESTreeNode(services, node.expression.callee);
 
-          const callerDeclarationTSNode =
-            getDeclarationTSNodeOfESTreeNode(services, callerDeclaration);
+        if (!calleeDeclarationTSNode) return;
 
-          if (!callerDeclarationTSNode) return;
+        const callerDeclarationTSNode =
+          getDeclarationTSNodeOfESTreeNode(services, callerDeclaration);
 
-          const calleeThrowsTypes =
-            toFlattenedTypeArray(
-              getJSDocThrowsTagTypes(checker, calleeDeclarationTSNode)
-            );
+        if (!callerDeclarationTSNode) return;
 
-          const callerThrowsTags = getJSDocThrowsTags(callerDeclarationTSNode);
-          const callerThrowsTypeNodes =
-            callerThrowsTags
-              .map(tag => tag.typeExpression?.type)
-              .filter(tag => !!tag);
+        const calleeThrowsTypes =
+          toFlattenedTypeArray(
+            getJSDocThrowsTagTypes(checker, calleeDeclarationTSNode)
+          );
 
-          const callerThrowsTypes = getJSDocThrowsTagTypes(checker, callerDeclarationTSNode);
+        const callerThrowsTags = getJSDocThrowsTags(callerDeclarationTSNode);
+        const callerThrowsTypeNodes =
+          callerThrowsTags
+          .map(tag => tag.typeExpression?.type)
+          .filter(tag => !!tag);
 
-          if (
-            isTypesAssignableTo(checker, calleeThrowsTypes, callerThrowsTypes)
-          ) {
-            return;
-          }
+        const callerThrowsTypes = getJSDocThrowsTagTypes(checker, callerDeclarationTSNode);
 
-          context.report({
-            node,
-            messageId: 'throwTypeMismatch',
-            fix(fixer) {
-              const lastThrowsTypeNode =
-                callerThrowsTypeNodes[callerThrowsTypeNodes.length - 1];
-
-              if (callerThrowsTags.length > 1) {
-                const lastThrowsTag = callerThrowsTags[callerThrowsTags.length - 1];
-                const notAssignableThrows = calleeThrowsTypes
-                  .filter((t) => !callerThrowsTypes
-                    .some((n) => checker.isTypeAssignableTo(t, n)));
-
-                const callerJSDocTSNode = lastThrowsTag.parent;
-                /**
-                 * @param {string} jsdocString
-                 * @param {import('typescript').Type[]} types
-                 * @returns {string}
-                 */
-                const appendThrowsTags = (jsdocString, types) =>
-                  types.reduce((acc, t) =>
-                    acc.replace(
-                      /([^*\n]+)(\*+[/])/,
-                      `$1* @throws {${utils.getTypeName(checker, t)}}\n$1$2`
-                    ),
-                    jsdocString
-                  );
-
-                return fixer.replaceTextRange(
-                  [callerJSDocTSNode.getStart(), callerJSDocTSNode.getEnd()],
-                  appendThrowsTags(
-                    callerJSDocTSNode.getFullText(),
-                    notAssignableThrows
-                  )
-                );
-              }
-
-              // If there is only one throws tag, make it as a union type
-              return fixer.replaceTextRange(
-                [lastThrowsTypeNode.pos, lastThrowsTypeNode.end],
-                calleeThrowsTypes
-                  .map(t => utils.getTypeName(checker, t)).join(' | '),
-              );
-            },
-          });
-
+        if (
+          isTypesAssignableTo(checker, calleeThrowsTypes, callerThrowsTypes)
+        ) {
           return;
         }
 
-        const calleeType = services.getTypeAtLocation(node.expression.callee);
-        if (!calleeType.symbol) return;
-
-        const calleeTags = calleeType.symbol.getJsDocTags();
-
-        const isCalleeThrowable = calleeTags
-          .some((tag) => tag.name === 'throws' || tag.name === 'exception');
-
-        if (!isCalleeThrowable) return;
-
-        const lines = sourceCode.getLines();
-
-        const currentLine = lines[node.loc.start.line - 1];
-        const prevLine = lines[node.loc.start.line - 2];
-
-        const indent = currentLine.match(/^\s*/)?.[0] ?? '';
-        const newIndent = indent + ' '.repeat(options.tabLength);
-
-        // TODO: Better way to handle this?
-        if (/^\s*try\s*\{/.test(prevLine)) return;
-
         context.report({
           node,
-          messageId: 'implicitPropagation',
+          messageId: 'throwTypeMismatch',
           fix(fixer) {
-            return [
-              fixer.insertTextBefore(node, `try {\n${newIndent}`),
-              fixer.insertTextAfter(node, `\n${indent}} catch {}`),
-            ];
+            const lastThrowsTypeNode =
+              callerThrowsTypeNodes[callerThrowsTypeNodes.length - 1];
+
+            if (callerThrowsTags.length > 1) {
+              const lastThrowsTag = callerThrowsTags[callerThrowsTags.length - 1];
+              const notAssignableThrows = calleeThrowsTypes
+                .filter((t) => !callerThrowsTypes
+                  .some((n) => checker.isTypeAssignableTo(t, n)));
+
+              const callerJSDocTSNode = lastThrowsTag.parent;
+              /**
+               * @param {string} jsdocString
+               * @param {import('typescript').Type[]} types
+               * @returns {string}
+               */
+              const appendThrowsTags = (jsdocString, types) =>
+                types.reduce((acc, t) =>
+                  acc.replace(
+                    /([^*\n]+)(\*+[/])/,
+                    `$1* @throws {${utils.getTypeName(checker, t)}}\n$1$2`
+                  ),
+                  jsdocString
+                );
+
+              return fixer.replaceTextRange(
+                [callerJSDocTSNode.getStart(), callerJSDocTSNode.getEnd()],
+                appendThrowsTags(
+                  callerJSDocTSNode.getFullText(),
+                  notAssignableThrows
+                )
+              );
+            }
+
+            // If there is only one throws tag, make it as a union type
+            return fixer.replaceTextRange(
+              [lastThrowsTypeNode.pos, lastThrowsTypeNode.end],
+              calleeThrowsTypes
+              .map(t => utils.getTypeName(checker, t)).join(' | '),
+            );
           },
         });
-      },
+
+        return;
+      }
+
+      const calleeType = services.getTypeAtLocation(node.expression.callee);
+      if (!calleeType.symbol) return;
+
+      const calleeTags = calleeType.symbol.getJsDocTags();
+
+      const isCalleeThrowable = calleeTags
+        .some((tag) => tag.name === 'throws' || tag.name === 'exception');
+
+      if (!isCalleeThrowable) return;
+
+      const lines = sourceCode.getLines();
+
+      const currentLine = lines[node.loc.start.line - 1];
+      const prevLine = lines[node.loc.start.line - 2];
+
+      const indent = currentLine.match(/^\s*/)?.[0] ?? '';
+      const newIndent = indent + ' '.repeat(options.tabLength);
+
+      // TODO: Better way to handle this?
+      if (/^\s*try\s*\{/.test(prevLine)) return;
+
+      context.report({
+        node,
+        messageId: 'implicitPropagation',
+        fix(fixer) {
+          return [
+            fixer.insertTextBefore(node, `try {\n${newIndent}`),
+            fixer.insertTextAfter(node, `\n${indent}} catch {}`),
+          ];
+        },
+      });
+    };
+
+    return {
+      'ArrowFunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement:has(> CallExpression)': visitExpressionStatement,
+      'FunctionDeclaration :not(TryStatement[handler!=null]) ExpressionStatement:has(> CallExpression)': visitExpressionStatement,
     };
   },
   defaultOptions: [{ tabLength: 4 }],
