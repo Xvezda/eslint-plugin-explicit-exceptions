@@ -129,6 +129,148 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          const foo = {
+            /**
+             * @throws {Error}
+             */
+            get bar() {
+              throw new Error('baz');
+            },
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            },
+          };
+          const baz = () => {
+            try {
+              foo.bar;
+            } catch {}
+          };
+        `,
+      },
+      {
+        code: `
+          const foo = {
+            /**
+             * @throws {Error}
+             */
+            get bar() {
+              throw new Error('baz');
+            },
+            /**
+             * @param {number} value
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            },
+          };
+          /**
+           * @throws {Error}
+           * @throws {TypeError}
+           */
+          const baz = () => {
+            foo.bar;
+          };
+        `,
+      },
+      {
+        code: `
+          const foo = {
+            /**
+             * @throws {Error}
+             */
+            get bar() {
+              throw new Error('baz');
+            },
+            /**
+             * @param {number} value
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            },
+          };
+          /**
+           * @throws {Error}
+           * @throws {TypeError}
+           */
+          const baz = () => {
+            foo.bar = 42;
+          };
+        `,
+      },
+      {
+        code: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            get bar() {
+              throw new Error('baz');
+            }
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            }
+          };
+          const baz = () => {
+            try {
+              new Foo().bar;
+            } catch {}
+          };
+        `,
+      },
+      {
+        code: `
+          class Foo {
+            /**
+             * @throws {SyntaxError}
+             */
+            get bar() {
+              throw new SyntaxError('baz');
+            }
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            }
+          };
+          /** @throws {SyntaxError} */
+          const baz = () => {
+            new Foo().bar;
+          };
+        `,
+      },
+      {
+        code: `
+          class Foo {
+            /**
+             * @throws {SyntaxError}
+             */
+            get bar() {
+              throw new SyntaxError('baz');
+            }
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            }
+          };
+          /** @throws {TypeError} */
+          const baz = () => {
+            new Foo().bar = 42;
+          };
+        `,
+      },
     ],
     invalid: [
       {
@@ -497,6 +639,156 @@ ruleTester.run(
         errors: [{
           messageId: 'throwTypeMismatch',
         }],
+      },
+      {
+        code: `
+          const foo = {
+            /**
+             * @throws {Error}
+             */
+            get bar() {
+              throw new Error('baz');
+            },
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            },
+          };
+          const baz = () => {
+            foo.bar = 42;
+          };
+        `,
+        output: `
+          const foo = {
+            /**
+             * @throws {Error}
+             */
+            get bar() {
+              throw new Error('baz');
+            },
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            },
+          };
+          const baz = () => {
+            try {
+              foo.bar = 42;
+            } catch {}
+          };
+        `,
+        errors: [
+          { messageId: 'implicitPropagation' },
+        ],
+        options: [
+          {
+            tabLength: 2,
+          },
+        ],
+      },
+      {
+        code: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            get bar() {
+              throw new Error('baz');
+            }
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            }
+          };
+          const baz = () => {
+            new Foo().bar = 42;
+          };
+        `,
+        output: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            get bar() {
+              throw new Error('baz');
+            }
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            }
+          };
+          const baz = () => {
+            try {
+              new Foo().bar = 42;
+            } catch {}
+          };
+        `,
+        errors: [
+          { messageId: 'implicitPropagation' },
+        ],
+        options: [
+          {
+            tabLength: 2,
+          },
+        ],
+      },
+      {
+        code: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            get bar() {
+              throw new Error('baz');
+            }
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            }
+          };
+          const baz = () => {
+            new Foo().bar;
+          };
+        `,
+        output: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            get bar() {
+              throw new Error('baz');
+            }
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            }
+          };
+          const baz = () => {
+            try {
+              new Foo().bar;
+            } catch {}
+          };
+        `,
+        errors: [
+          { messageId: 'implicitPropagation' },
+        ],
+        options: [
+          {
+            tabLength: 2,
+          },
+        ],
       },
     ],
   },

@@ -5,6 +5,7 @@ const {
   createRule,
   hasThrowsTag,
   getOptionsFromContext,
+  getCalleeDeclaration,
   getDeclarationTSNodeOfESTreeNode,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
@@ -55,8 +56,6 @@ module.exports = createRule({
 
     /** @param {import('@typescript-eslint/utils').TSESTree.ExpressionStatement} node */
     const visitExpressionStatement = (node) => {
-      if (node.expression.type !== AST_NODE_TYPES.CallExpression) return;
-
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
@@ -72,20 +71,16 @@ module.exports = createRule({
 
       // TODO: Branching type checking or not
       if (isCommented) {
-        const calleeDeclarationTSNode =
-          getDeclarationTSNodeOfESTreeNode(services, node.expression.callee);
+        const calleeDeclaration = getCalleeDeclaration(services, node);
+        if (!calleeDeclaration) return;
 
-        if (!calleeDeclarationTSNode) return;
+        const calleeThrowsTypes = toFlattenedTypeArray(getJSDocThrowsTagTypes(checker, calleeDeclaration));
+        if (!calleeThrowsTypes.length) return;
 
         const callerDeclarationTSNode =
           getDeclarationTSNodeOfESTreeNode(services, callerDeclaration);
 
         if (!callerDeclarationTSNode) return;
-
-        const calleeThrowsTypes =
-          toFlattenedTypeArray(
-            getJSDocThrowsTagTypes(checker, calleeDeclarationTSNode)
-          );
 
         const callerThrowsTags = getJSDocThrowsTags(callerDeclarationTSNode);
         const callerThrowsTypeNodes =
@@ -142,7 +137,7 @@ module.exports = createRule({
             return fixer.replaceTextRange(
               [lastThrowsTypeNode.pos, lastThrowsTypeNode.end],
               calleeThrowsTypes
-              .map(t => utils.getTypeName(checker, t)).join(' | '),
+                .map(t => utils.getTypeName(checker, t)).join(' | '),
             );
           },
         });
@@ -150,15 +145,13 @@ module.exports = createRule({
         return;
       }
 
-      const calleeType = services.getTypeAtLocation(node.expression.callee);
-      if (!calleeType.symbol) return;
+      const calleeDeclaration = getCalleeDeclaration(services, node);
+      if (!calleeDeclaration) return;
 
-      const calleeTags = calleeType.symbol.getJsDocTags();
+      const calleeTags = getJSDocThrowsTags(calleeDeclaration);
+      const isCalleeThrows = calleeTags.length > 0;
 
-      const isCalleeThrowable = calleeTags
-        .some((tag) => tag.name === 'throws' || tag.name === 'exception');
-
-      if (!isCalleeThrowable) return;
+      if (!isCalleeThrows) return;
 
       const lines = sourceCode.getLines();
 
@@ -186,6 +179,13 @@ module.exports = createRule({
     return {
       'ArrowFunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement:has(> CallExpression)': visitExpressionStatement,
       'FunctionDeclaration :not(TryStatement[handler!=null]) ExpressionStatement:has(> CallExpression)': visitExpressionStatement,
+      'FunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement:has(> CallExpression)': visitExpressionStatement,
+      'ArrowFunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement:has(> MemberExpression)': visitExpressionStatement,
+      'FunctionDeclaration :not(TryStatement[handler!=null]) ExpressionStatement:has(> MemberExpression)': visitExpressionStatement,
+      'FunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement:has(> MemberExpression)': visitExpressionStatement,
+      'ArrowFunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement:has(> AssignmentExpression[left.type="MemberExpression"])': visitExpressionStatement,
+      'FunctionDeclaration :not(TryStatement[handler!=null]) ExpressionStatement:has(> AssignmentExpression[left.type="MemberExpression"])': visitExpressionStatement,
+      'FunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement:has(> AssignmentExpression[left.type="MemberExpression"])': visitExpressionStatement,
     };
   },
   defaultOptions: [{ tabLength: 4 }],

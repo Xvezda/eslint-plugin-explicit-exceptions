@@ -57,6 +57,69 @@ const getOptionsFromContext = (context) => {
 /**
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @return {import('typescript').Declaration[] | undefined}
+ */
+const getDeclarationsByNode = (services, node) => {
+  return services
+    .getSymbolAtLocation(node)
+    ?.declarations;
+};
+
+/**
+ * @param {import('@typescript-eslint/utils').TSESTree.ExpressionStatement} node
+ * @return {import('@typescript-eslint/utils').TSESTree.Node | null}
+ */
+const getCalleeFromExpression = (node) => {
+  switch (node.expression.type) {
+    case AST_NODE_TYPES.CallExpression:
+      return node.expression.callee;
+    case AST_NODE_TYPES.AssignmentExpression:
+      return node.expression.left;
+    case AST_NODE_TYPES.MemberExpression:
+      return node.expression.property;
+    default:
+      break;
+  }
+  return null;
+};
+
+/**
+ * @param {import('@typescript-eslint/utils').ParserServices} services
+ * @param {import('@typescript-eslint/utils').TSESTree.ExpressionStatement} node
+ * @return {import('typescript').Node | null}
+ */
+const getCalleeDeclaration = (services, node) => {
+  const calleeNode = getCalleeFromExpression(node);
+  const declarations = getDeclarationsByNode(services, calleeNode);
+
+  if (!declarations || !declarations.length) {
+    return null;
+  }
+
+  switch (node.expression.type) {
+    case AST_NODE_TYPES.CallExpression:
+      return declarations[0];
+    case AST_NODE_TYPES.MemberExpression:
+      const getter = declarations
+        .find(declaration =>
+          services.tsNodeToESTreeNodeMap
+            .get(declaration).kind === 'get'
+        );
+      return getter ?? declarations[0];
+    case AST_NODE_TYPES.AssignmentExpression:
+      const setter = declarations
+        .find(declaration =>
+          services.tsNodeToESTreeNodeMap
+            .get(declaration).kind === 'set'
+        );
+      return setter ?? declarations[0];
+  }
+  return null;
+};
+
+/**
+ * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @returns {import('typescript').Node | undefined}
  */
 const getDeclarationTSNodeOfESTreeNode = (services, node) =>
@@ -189,6 +252,7 @@ module.exports = {
   findClosest,
   findParent,
   getOptionsFromContext,
+  getCalleeDeclaration,
   getDeclarationTSNodeOfESTreeNode,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
