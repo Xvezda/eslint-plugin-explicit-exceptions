@@ -198,16 +198,22 @@ module.exports = createRule({
       return;
     };
 
-    const createExpressionVisitors = () => {
-      return ['ArrowFunctionExpression', 'FunctionExpression'].reduce((acc, type) => {
-        return {
-          ...acc,
-          [`VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ${type}:has(:not(TryStatement > BlockStatement) ThrowStatement):exit`]: visitOnExit,
-          [`Property > ${type}:has(:not(TryStatement > BlockStatement) ThrowStatement):exit`]: visitOnExit,
-          [`MethodDefinition > ${type}:has(:not(TryStatement > BlockStatement) ThrowStatement):exit`]: visitOnExit,
-        };
-      }, {});
-    };
+    const unhandledThrowStatementSelector =
+      ':not(TryStatement > BlockStatement) ThrowStatement';
+
+    const createExpressionVisitors = () =>
+      ['ArrowFunctionExpression', 'FunctionExpression']
+        .reduce((acc, nodeType) => {
+          const targetNodeSelector =
+            `${nodeType}:has(${unhandledThrowStatementSelector})`;
+
+          return {
+            ...acc,
+            [`VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ${targetNodeSelector}:exit`]: visitOnExit,
+            [`Property > ${targetNodeSelector}:exit`]: visitOnExit,
+            [`MethodDefinition > ${targetNodeSelector}:exit`]: visitOnExit,
+          };
+        }, {});
 
     return {
       /**
@@ -215,7 +221,7 @@ module.exports = createRule({
        *
        * @param {import('@typescript-eslint/utils').TSESTree.ThrowStatement} node
        */
-      ':not(TryStatement > BlockStatement) ThrowStatement'(node) {
+      [unhandledThrowStatementSelector](node) {
         const functionDeclaration = findParentFunctionNode(node);
 
         if (!functionDeclaration) return;
@@ -231,7 +237,7 @@ module.exports = createRule({
         throwStatementNodes.push(node);
       },
 
-      'FunctionDeclaration:has(:not(TryStatement > BlockStatement) ThrowStatement):exit': visitOnExit,
+      [`FunctionDeclaration:has(${unhandledThrowStatementSelector}):exit`]: visitOnExit,
 
       ...createExpressionVisitors(),
     };
