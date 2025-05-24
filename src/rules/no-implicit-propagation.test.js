@@ -204,6 +204,73 @@ ruleTester.run(
           };
         `,
       },
+      {
+        code: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            get bar() {
+              throw new Error('baz');
+            }
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            }
+          };
+          const baz = () => {
+            try {
+              new Foo().bar;
+            } catch {}
+          };
+        `,
+      },
+      {
+        code: `
+          class Foo {
+            /**
+             * @throws {SyntaxError}
+             */
+            get bar() {
+              throw new SyntaxError('baz');
+            }
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            }
+          };
+          /** @throws {SyntaxError} */
+          const baz = () => {
+            new Foo().bar;
+          };
+        `,
+      },
+      {
+        code: `
+          class Foo {
+            /**
+             * @throws {SyntaxError}
+             */
+            get bar() {
+              throw new SyntaxError('baz');
+            }
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            }
+          };
+          /** @throws {TypeError} */
+          const baz = () => {
+            new Foo().bar = 42;
+          };
+        `,
+      },
     ],
     invalid: [
       {
@@ -611,6 +678,106 @@ ruleTester.run(
           const baz = () => {
             try {
               foo.bar = 42;
+            } catch {}
+          };
+        `,
+        errors: [
+          { messageId: 'implicitPropagation' },
+        ],
+        options: [
+          {
+            tabLength: 2,
+          },
+        ],
+      },
+      {
+        code: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            get bar() {
+              throw new Error('baz');
+            }
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            }
+          };
+          const baz = () => {
+            new Foo().bar = 42;
+          };
+        `,
+        output: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            get bar() {
+              throw new Error('baz');
+            }
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            }
+          };
+          const baz = () => {
+            try {
+              new Foo().bar = 42;
+            } catch {}
+          };
+        `,
+        errors: [
+          { messageId: 'implicitPropagation' },
+        ],
+        options: [
+          {
+            tabLength: 2,
+          },
+        ],
+      },
+      {
+        code: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            get bar() {
+              throw new Error('baz');
+            }
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            }
+          };
+          const baz = () => {
+            new Foo().bar;
+          };
+        `,
+        output: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            get bar() {
+              throw new Error('baz');
+            }
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            }
+          };
+          const baz = () => {
+            try {
+              new Foo().bar;
             } catch {}
           };
         `,
