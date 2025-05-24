@@ -102,7 +102,7 @@ module.exports = createRule({
             node,
             messageId: 'throwTypeMismatch',
             fix(fixer) {
-              const lastTagtypeNode =
+              const lastThrowsTypeNode =
                 callerThrowsTypeNodes[callerThrowsTypeNodes.length - 1];
 
               if (callerThrowsTags.length > 1) {
@@ -111,22 +111,35 @@ module.exports = createRule({
                   .filter((t) => !callerThrowsTypes
                     .some((n) => checker.isTypeAssignableTo(t, n)));
 
+                const callerJSDocTSNode = lastThrowsTag.parent;
+                /**
+                 * @param {string} jsdocString
+                 * @param {import('typescript').Type[]} types
+                 * @returns {string}
+                 */
+                const appendThrowsTags = (jsdocString, types) =>
+                  types.reduce((acc, t) =>
+                    acc.replace(
+                      /([^*\n]+)(\*+[/])/,
+                      `$1* @throws {${utils.getTypeName(checker, t)}}\n$1$2`
+                    ),
+                    jsdocString
+                  );
+
                 return fixer.replaceTextRange(
-                  [lastThrowsTag.parent.getStart(), lastThrowsTag.parent.getEnd()],
-                  notAssignableThrows
-                    .reduce((acc, t) =>
-                      acc.replace(
-                        /([^*\n]+)(\*+[/])/,
-                        `$1* @throws {${utils.getTypeName(checker, t)}}\n$1$2`
-                      ),
-                      lastThrowsTag.parent.getFullText()
-                    )
+                  [callerJSDocTSNode.getStart(), callerJSDocTSNode.getEnd()],
+                  appendThrowsTags(
+                    callerJSDocTSNode.getFullText(),
+                    notAssignableThrows
+                  )
                 );
               }
 
+              // If there is only one throws tag, make it as a union type
               return fixer.replaceTextRange(
-                [lastTagtypeNode.pos, lastTagtypeNode.end],
-                calleeThrowsTypes.map(t => utils.getTypeName(checker, t)).join(' | '),
+                [lastThrowsTypeNode.pos, lastThrowsTypeNode.end],
+                calleeThrowsTypes
+                  .map(t => utils.getTypeName(checker, t)).join(' | '),
               );
             },
           });
