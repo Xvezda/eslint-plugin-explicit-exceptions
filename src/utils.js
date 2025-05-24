@@ -1,4 +1,4 @@
-const { ESLintUtils } = require('@typescript-eslint/utils');
+const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const ts = require('typescript');
 
 
@@ -10,6 +10,21 @@ const createRule = ESLintUtils.RuleCreator(
 const hasThrowsTag = comment =>
   comment.includes('@throws') ||
   comment.includes('@exception');
+
+/**
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @param {function(import('@typescript-eslint/utils').TSESTree.Node): boolean} callback
+ * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
+ */
+const findClosest = (node, callback) => {
+  do {
+    if (callback(node)) {
+      return node;
+    }
+  } while ((node = node?.parent));
+
+  return null;
+};
 
 /**
  * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node
@@ -95,10 +110,83 @@ const isTypesAssignableTo = (checker, source, target) =>
         .some(targetType => checker.isTypeAssignableTo(sourceType, targetType))
     );
 
+/**
+ * Find closest function where exception is thrown
+ *
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
+ */
+const findClosestFunctionNode = (node) => {
+  return findParent(node, (n) =>
+    n.type === AST_NODE_TYPES.FunctionDeclaration ||
+    n.type === AST_NODE_TYPES.FunctionExpression ||
+    n.type === AST_NODE_TYPES.ArrowFunctionExpression
+  );
+};
+
+/**
+ * Find where JSDoc comment should be added
+ *
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
+ */
+const findNodeToComment = (node) => {
+  switch (node.type) {
+    case AST_NODE_TYPES.FunctionDeclaration:
+      return node;
+    case AST_NODE_TYPES.FunctionExpression:
+    case AST_NODE_TYPES.ArrowFunctionExpression:
+      return (
+        /**
+         * @example
+         * ```
+         * class Klass {
+         *   // here
+         *   target() { ... }
+         * }
+         * ```
+         */
+        findParent(node, (n) => n.type === AST_NODE_TYPES.MethodDefinition) ??
+        /**
+         * @example
+         * ```
+         * class Klass {
+         *   // here
+         *   target = () => { ... }
+         * }
+         * ```
+         */
+        findParent(node, (n) => n.type === AST_NODE_TYPES.PropertyDefinition) ??
+        /**
+         * @example
+         * ```
+         * const obj = {
+         *   // here
+         *   target: () => { ... },
+         * };
+         * ```
+         */
+        findParent(node, (n) => n.type === AST_NODE_TYPES.Property) ??
+        /**
+         * @example
+         * ```
+         * // here
+         * const target = () => { ... };
+         * ```
+         */
+        findParent(node, (n) => n.type === AST_NODE_TYPES.VariableDeclaration)
+      );
+    default:
+      break;
+  }
+  return null;
+};
+
 
 module.exports = {
   createRule,
   hasThrowsTag,
+  findClosest,
   findParent,
   getOptionsFromContext,
   getDeclarationTSNodeOfESTreeNode,
@@ -106,4 +194,6 @@ module.exports = {
   getJSDocThrowsTagTypes,
   toFlattenedTypeArray,
   isTypesAssignableTo,
+  findClosestFunctionNode,
+  findNodeToComment,
 };

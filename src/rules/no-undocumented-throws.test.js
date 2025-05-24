@@ -30,12 +30,47 @@ ruleTester.run(
       },
       {
         code: `
+          function foo() {
+            try {
+              throw new Error('foo');
+            } catch (e) {}
+          }
+        `,
+      },
+      {
+        code: `
+          function foo() {
+            try {
+              try {
+                if (true) {
+                  throw new Error('foo');
+                }
+              } finally {}
+            } catch (e) {}
+          }
+        `,
+      },
+      {
+        code: `
           /**
            * foo bar baz
            * @throws {Error}
            */
           function foo() {
             throw new Error('foo');
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           * @throws {Error}
+           */
+          function foo() {
+            {
+              throw new Error('foo');
+            }
           }
         `,
       },
@@ -192,6 +227,82 @@ ruleTester.run(
       },
       {
         code: `
+          function foo() {
+            try {
+              throw new Error("bar");
+            } finally {
+              console.log("baz");
+            }
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          function foo() {
+            try {
+              throw new Error("bar");
+            } finally {
+              console.log("baz");
+            }
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          function foo() {
+            try {
+              if (true) {
+                throw new Error("bar");
+              }
+            } finally {
+              console.log("baz");
+            }
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          function foo() {
+            try {
+              if (true) {
+                throw new Error("bar");
+              }
+            } finally {
+              console.log("baz");
+            }
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          function foo() {
+            try {
+              throw new Error("foo");
+            } finally {
+              console.log("bar");
+            }
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          function foo() {
+            try {
+              throw new Error("foo");
+            } finally {
+              console.log("bar");
+            }
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
           const foo = () => {
             throw new Error('foo');
           };
@@ -304,6 +415,26 @@ ruleTester.run(
              * @throws {Error}
              */
             bar() {
+              throw new Error('baz');
+            }
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          class Foo {
+            bar = () => {
+              throw new Error('baz');
+            }
+          }
+        `,
+        output: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            bar = () => {
               throw new Error('baz');
             }
           }
