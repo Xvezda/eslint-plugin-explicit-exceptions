@@ -1,6 +1,7 @@
 const { ESLintUtils } = require('@typescript-eslint/utils');
 const ts = require('typescript');
 
+
 const createRule = ESLintUtils.RuleCreator(
   name => `https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/${name}.md`,
 );
@@ -11,21 +12,16 @@ const hasThrowsTag = comment =>
   comment.includes('@exception');
 
 /**
- * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node
  * @param {function(import('@typescript-eslint/utils').TSESTree.Node): boolean} callback
  * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
  */
 const findParent = (node, callback) => {
-  do {
-    if (!node.parent) return null;
-
-    node = node.parent;
-
+  while ((node = node?.parent)) {
     if (callback(node)) {
       return node;
     }
-  } while (node);
-
+  }
   return null;
 };
 
@@ -48,22 +44,19 @@ const getOptionsFromContext = (context) => {
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @returns {import('typescript').Node | undefined}
  */
-const getDeclarationTSNodeOfESTreeNode = (services, node) => {
-  return services
+const getDeclarationTSNodeOfESTreeNode = (services, node) =>
+  services
     .getTypeAtLocation(node)
     .symbol
     .valueDeclaration;
-};
 
 /**
  * @param {import('typescript').Node} node
  * @returns {Readonly<import('typescript').JSDocThrowsTag[]>}
  */
-const getJSDocThrowsTags = (node) => {
-  return /** @type {Readonly<import('typescript').JSDocThrowsTag[]>} */(
-    ts.getAllJSDocTagsOfKind(node, ts.SyntaxKind.JSDocThrowsTag)
-  );
-};
+const getJSDocThrowsTags = (node) =>
+  /** @type {Readonly<import('typescript').JSDocThrowsTag[]>} */
+  (ts.getAllJSDocTagsOfKind(node, ts.SyntaxKind.JSDocThrowsTag));
 
 /**
  * @param {import('typescript').TypeChecker} checker
@@ -95,11 +88,13 @@ const toFlattenedTypeArray = (types) =>
  * @param {import('typescript').Type[]} target
  * @returns {boolean}
  */
-const isTypesAssignableTo = (checker, source, target) => {
-  return source.every(sourceType =>
-    target.some(targetType => checker.isTypeAssignableTo(sourceType, targetType))
-  );
-};
+const isTypesAssignableTo = (checker, source, target) =>
+  source
+    .every(sourceType =>
+      target
+        .some(targetType => checker.isTypeAssignableTo(sourceType, targetType))
+    );
+
 
 module.exports = {
   createRule,
