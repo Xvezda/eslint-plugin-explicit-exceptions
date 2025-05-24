@@ -248,6 +248,50 @@ ruleTester.run(
       },
       {
         code: `
+          const { foo, bar } = {
+            foo: function () {},
+            bar: () => {
+              throw new Error('baz');
+            },
+          };
+        `,
+        output: `
+          const { foo, bar } = {
+            foo: function () {},
+            /**
+             * @throws {Error}
+             */
+            bar: () => {
+              throw new Error('baz');
+            },
+          };
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          const name = 'foo';
+          const obj = {
+            [name]: () => {
+              throw new Error('foo');
+            },
+          };
+        `,
+        output: `
+          const name = 'foo';
+          const obj = {
+            /**
+             * @throws {Error}
+             */
+            [name]: () => {
+              throw new Error('foo');
+            },
+          };
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
           class Foo {
             bar() {
               throw new Error('baz');
@@ -260,6 +304,26 @@ ruleTester.run(
              * @throws {Error}
              */
             bar() {
+              throw new Error('baz');
+            }
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          class Foo {
+            static bar() {
+              throw new Error('baz');
+            }
+          }
+        `,
+        output: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            static bar() {
               throw new Error('baz');
             }
           }
