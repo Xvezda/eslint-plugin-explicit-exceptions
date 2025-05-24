@@ -3,6 +3,7 @@ const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const {
   createRule,
+  findClosest,
   hasThrowsTag,
   getOptionsFromContext,
   getCalleeDeclaration,
@@ -164,25 +165,32 @@ module.exports = createRule({
       // TODO: Better way to handle this?
       if (/^\s*try\s*\{/.test(prevLine)) return;
 
+      const nodeToWrap = findClosest(node, (n) =>
+        n.type === AST_NODE_TYPES.BlockStatement ||
+        n.type === AST_NODE_TYPES.ExpressionStatement ||
+        n.type === AST_NODE_TYPES.VariableDeclaration
+      );
+      if (!nodeToWrap) return;
+
       context.report({
         node,
         messageId: 'implicitPropagation',
         fix(fixer) {
           return [
-            fixer.insertTextBefore(node, `try {\n${newIndent}`),
-            fixer.insertTextAfter(node, `\n${indent}} catch {}`),
+            fixer.insertTextBefore(nodeToWrap, `try {\n${newIndent}`),
+            fixer.insertTextAfter(nodeToWrap, `\n${indent}} catch {}`),
           ];
         },
       });
     };
 
     return {
+      'ArrowFunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpressionStatement,
+      'FunctionDeclaration :not(TryStatement[handler!=null]) ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpressionStatement,
+      'FunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpressionStatement,
       'ArrowFunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement:has(> CallExpression)': visitExpressionStatement,
       'FunctionDeclaration :not(TryStatement[handler!=null]) ExpressionStatement:has(> CallExpression)': visitExpressionStatement,
       'FunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement:has(> CallExpression)': visitExpressionStatement,
-      'ArrowFunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement:has(> MemberExpression)': visitExpressionStatement,
-      'FunctionDeclaration :not(TryStatement[handler!=null]) ExpressionStatement:has(> MemberExpression)': visitExpressionStatement,
-      'FunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement:has(> MemberExpression)': visitExpressionStatement,
       'ArrowFunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement:has(> AssignmentExpression[left.type="MemberExpression"])': visitExpressionStatement,
       'FunctionDeclaration :not(TryStatement[handler!=null]) ExpressionStatement:has(> AssignmentExpression[left.type="MemberExpression"])': visitExpressionStatement,
       'FunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement:has(> AssignmentExpression[left.type="MemberExpression"])': visitExpressionStatement,

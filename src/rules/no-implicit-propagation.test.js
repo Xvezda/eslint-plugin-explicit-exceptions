@@ -790,7 +790,56 @@ ruleTester.run(
           },
         ],
       },
+      {
+        code: `
+          const egg = {
+            get ham() {
+              return {
+                /**
+                 * @throws {Error}
+                 */
+                get spam() {
+                  throw new Error();
+                },
+              };
+            }
+          };
+
+          const lol = () => {
+            console.log(egg.ham.spam);
+          };
+          lol();
+        `,
+        output: `
+          const egg = {
+            get ham() {
+              return {
+                /**
+                 * @throws {Error}
+                 */
+                get spam() {
+                  throw new Error();
+                },
+              };
+            }
+          };
+
+          const lol = () => {
+            try {
+              console.log(egg.ham.spam);
+            } catch {}
+          };
+          lol();
+        `,
+        errors: [
+          { messageId: 'implicitPropagation' },
+        ],
+        options: [
+          {
+            tabLength: 2,
+          },
+        ],
+      },
     ],
   },
 );
-

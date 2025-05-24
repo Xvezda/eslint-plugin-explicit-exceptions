@@ -18,3 +18,18 @@ class Fizz {
   }
 }
 new Fizz().buzz();
+
+const egg = {
+  get ham() {
+    return {
+      get spam() {
+        throw new Error();
+      },
+    };
+  }
+};
+
+const lol = () => {
+  console.log(egg.ham.spam);
+};
+lol();
