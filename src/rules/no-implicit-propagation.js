@@ -13,6 +13,7 @@ const {
   isTypesAssignableTo,
 } = require('../utils');
 
+
 module.exports = createRule({
   name: 'no-implicit-propagation',
   meta: {
@@ -172,12 +173,10 @@ module.exports = createRule({
           node,
           messageId: 'implicitPropagation',
           fix(fixer) {
-            const fixes = [];
-            fixes.push(
+            return [
               fixer.insertTextBefore(node, `try {\n${newIndent}`),
               fixer.insertTextAfter(node, `\n${indent}} catch {}`),
-            );
-            return fixes;
+            ];
           },
         });
       },

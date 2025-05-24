@@ -13,6 +13,8 @@ const {
 } = require('../utils');
 
 /**
+ * Find closest function where exception is thrown
+ *
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
  */
@@ -25,6 +27,8 @@ const findParentFunctionNode = (node) => {
 };
 
 /**
+ * Find where JSDoc comment should be added
+ *
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
  */
@@ -69,6 +73,7 @@ const findNodeToComment = (node) => {
   }
   return null;
 };
+
 
 module.exports = createRule({
   name: 'no-undocumented-throws',
@@ -120,13 +125,11 @@ module.exports = createRule({
     /** @param {import('@typescript-eslint/utils').TSESTree.Node} node */
     const visitOnExit = (node) => {
       const nodeToComment = findNodeToComment(node);
-
       if (!nodeToComment) return;
 
       const comments = sourceCode.getCommentsBefore(nodeToComment);
 
       const throwStatementNodes = throwStatements.get(node.range[0]);
-
       if (!throwStatementNodes) return;
 
       const isCommented = 
