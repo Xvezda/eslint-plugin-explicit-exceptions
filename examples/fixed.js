@@ -27,3 +27,23 @@ class Fizz {
   }
 }
 new Fizz().buzz();
+
+const egg = {
+  get ham() {
+    return {
+      /**
+       * @throws {Error}
+       */
+      get spam() {
+        throw new Error();
+      },
+    };
+  }
+};
+
+const lol = () => {
+  try {
+    console.log(egg.ham.spam);
+  } catch {}
+};
+lol();
