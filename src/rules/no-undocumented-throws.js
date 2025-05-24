@@ -33,7 +33,24 @@ const findNodeToComment = (node) => {
     case AST_NODE_TYPES.FunctionDeclaration:
       return node;
     case AST_NODE_TYPES.ArrowFunctionExpression:
-      return findParent(node, (n) => n.type === AST_NODE_TYPES.VariableDeclaration);
+      return (
+        /**
+         * @example
+         * ```
+         * const obj = {
+         *   target: () => { ... },
+         * };
+         * ```
+         */
+        findParent(node, (n) => n.type === AST_NODE_TYPES.Property) ??
+        /**
+         * @example
+         * ```
+         * const target = () => { ... };
+         * ```
+         */
+        findParent(node, (n) => n.type === AST_NODE_TYPES.VariableDeclaration)
+      );
     default:
       break;
   }
@@ -189,8 +206,9 @@ module.exports = createRule({
 
         throwStatementNodes.push(node);
       },
-      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:has(:not(TryStatement > BlockStatement) ThrowStatement):exit': visitOnExit,
       'FunctionDeclaration:has(:not(TryStatement > BlockStatement) ThrowStatement):exit': visitOnExit,
+      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:has(:not(TryStatement > BlockStatement) ThrowStatement):exit': visitOnExit,
+      'Property > ArrowFunctionExpression:has(:not(TryStatement > BlockStatement) ThrowStatement):exit': visitOnExit,
     };
   },
 });

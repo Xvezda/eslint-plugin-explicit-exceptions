@@ -194,26 +194,26 @@ ruleTester.run(
         `,
         errors: [{ messageId: 'missingThrowsTag' }],
       },
-      // {
-      //   code: `
-      //     const obj = {
-      //       foo: () => {
-      //         throw new Error('foo');
-      //       },
-      //     };
-      //   `,
-      //   output: `
-      //     const obj = {
-      //       /**
-      //        * @throws {Error}
-      //        */
-      //       foo: () => {
-      //         throw new Error('foo');
-      //       },
-      //     };
-      //   `,
-      //   errors: [{ messageId: 'missingThrowsTag' }],
-      // },
+      {
+        code: `
+          const obj = {
+            foo: () => {
+              throw new Error('foo');
+            },
+          };
+        `,
+        output: `
+          const obj = {
+            /**
+             * @throws {Error}
+             */
+            foo: () => {
+              throw new Error('foo');
+            },
+          };
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
       // {
       //   code: `
       //     class Foo {
