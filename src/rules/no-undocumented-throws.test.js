@@ -50,30 +50,42 @@ ruleTester.run(
           };
         `,
       },
-      // {
-      //   code: `
-      //     class Foo {
-      //       /**
-      //        * @throws {Error}
-      //        */
-      //       bar() {
-      //         throw new Error('baz');
-      //       }
-      //     }
-      //   `,
-      // },
-      // {
-      //   code: `
-      //     const obj = {
-      //       /**
-      //        * @throws {Error}
-      //        */
-      //       foo: () => {
-      //         throw new Error('foo');
-      //       },
-      //     };
-      //   `,
-      // },
+      {
+        code: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            bar() {
+              throw new Error('baz');
+            }
+          }
+        `,
+      },
+      {
+        code: `
+          const obj = {
+            /**
+             * @throws {Error}
+             */
+            foo: function () {
+              throw new Error('foo');
+            },
+          };
+        `,
+      },
+      {
+        code: `
+          const obj = {
+            /**
+             * @throws {Error}
+             */
+            foo: () => {
+              throw new Error('foo');
+            },
+          };
+        `,
+      },
       {
         code: `
           /**
@@ -190,6 +202,26 @@ ruleTester.run(
            */
           const foo = () => {
             throw new Error('foo');
+          };
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          const obj = {
+            foo: function () {
+              throw new Error('foo');
+            },
+          };
+        `,
+        output: `
+          const obj = {
+            /**
+             * @throws {Error}
+             */
+            foo: function () {
+              throw new Error('foo');
+            },
           };
         `,
         errors: [{ messageId: 'missingThrowsTag' }],

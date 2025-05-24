@@ -33,21 +33,23 @@ const findNodeToComment = (node) => {
     case AST_NODE_TYPES.FunctionDeclaration:
       return node;
     case AST_NODE_TYPES.FunctionExpression:
-      return findParent(node, (n) => n.type === AST_NODE_TYPES.MethodDefinition);
     case AST_NODE_TYPES.ArrowFunctionExpression:
       return (
         /**
          * @example
          * ```
          * const obj = {
+         *   // here
          *   target: () => { ... },
          * };
          * ```
          */
         findParent(node, (n) => n.type === AST_NODE_TYPES.Property) ??
+        findParent(node, (n) => n.type === AST_NODE_TYPES.MethodDefinition) ??
         /**
          * @example
          * ```
+         * // here
          * const target = () => { ... };
          * ```
          */
@@ -187,6 +189,17 @@ module.exports = createRule({
       return;
     };
 
+    const createExpressionVisitors = () => {
+      return ['ArrowFunctionExpression', 'FunctionExpression'].reduce((acc, type) => {
+        return {
+          ...acc,
+          [`VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ${type}:has(:not(TryStatement > BlockStatement) ThrowStatement):exit`]: visitOnExit,
+          [`Property > ${type}:has(:not(TryStatement > BlockStatement) ThrowStatement):exit`]: visitOnExit,
+          [`MethodDefinition > ${type}:has(:not(TryStatement > BlockStatement) ThrowStatement):exit`]: visitOnExit,
+        };
+      }, {});
+    };
+
     return {
       /**
        * Collect and group throw statements in functions
@@ -208,10 +221,10 @@ module.exports = createRule({
 
         throwStatementNodes.push(node);
       },
+
       'FunctionDeclaration:has(:not(TryStatement > BlockStatement) ThrowStatement):exit': visitOnExit,
-      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:has(:not(TryStatement > BlockStatement) ThrowStatement):exit': visitOnExit,
-      'Property > ArrowFunctionExpression:has(:not(TryStatement > BlockStatement) ThrowStatement):exit': visitOnExit,
-      'MethodDefinition > FunctionExpression:has(:not(TryStatement > BlockStatement) ThrowStatement):exit': visitOnExit,
+
+      ...createExpressionVisitors(),
     };
   },
 });
