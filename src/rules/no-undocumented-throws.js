@@ -38,6 +38,16 @@ const findNodeToComment = (node) => {
         /**
          * @example
          * ```
+         * class Klass {
+         *   // here
+         *   target() { ... }
+         * }
+         * ```
+         */
+        findParent(node, (n) => n.type === AST_NODE_TYPES.MethodDefinition) ??
+        /**
+         * @example
+         * ```
          * const obj = {
          *   // here
          *   target: () => { ... },
@@ -45,7 +55,6 @@ const findNodeToComment = (node) => {
          * ```
          */
         findParent(node, (n) => n.type === AST_NODE_TYPES.Property) ??
-        findParent(node, (n) => n.type === AST_NODE_TYPES.MethodDefinition) ??
         /**
          * @example
          * ```
