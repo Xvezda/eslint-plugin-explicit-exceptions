@@ -32,6 +32,8 @@ const findNodeToComment = (node) => {
   switch (node.type) {
     case AST_NODE_TYPES.FunctionDeclaration:
       return node;
+    case AST_NODE_TYPES.FunctionExpression:
+      return findParent(node, (n) => n.type === AST_NODE_TYPES.MethodDefinition);
     case AST_NODE_TYPES.ArrowFunctionExpression:
       return (
         /**
@@ -209,6 +211,7 @@ module.exports = createRule({
       'FunctionDeclaration:has(:not(TryStatement > BlockStatement) ThrowStatement):exit': visitOnExit,
       'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:has(:not(TryStatement > BlockStatement) ThrowStatement):exit': visitOnExit,
       'Property > ArrowFunctionExpression:has(:not(TryStatement > BlockStatement) ThrowStatement):exit': visitOnExit,
+      'MethodDefinition > FunctionExpression:has(:not(TryStatement > BlockStatement) ThrowStatement):exit': visitOnExit,
     };
   },
 });

@@ -214,26 +214,26 @@ ruleTester.run(
         `,
         errors: [{ messageId: 'missingThrowsTag' }],
       },
-      // {
-      //   code: `
-      //     class Foo {
-      //       bar() {
-      //         throw new Error('baz');
-      //       }
-      //     }
-      //   `,
-      //   output: `
-      //     class Foo {
-      //       /**
-      //        * @throws {Error}
-      //        */
-      //       bar() {
-      //         throw new Error('baz');
-      //       }
-      //     }
-      //   `,
-      //   errors: [{ messageId: 'missingThrowsTag' }],
-      // },
+      {
+        code: `
+          class Foo {
+            bar() {
+              throw new Error('baz');
+            }
+          }
+        `,
+        output: `
+          class Foo {
+            /**
+             * @throws {Error}
+             */
+            bar() {
+              throw new Error('baz');
+            }
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
       {
         code: `
           function foo() {
