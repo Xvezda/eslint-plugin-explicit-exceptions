@@ -536,6 +536,38 @@ ruleTester.run(
           },
         ],
       },
+      {
+        code: `
+          const foo = {
+            get bar() {
+              throw new Error('baz');
+            },
+            set bar(value) {
+              throw new TypeError('baz');
+            },
+          };
+        `,
+        output: `
+          const foo = {
+            /**
+             * @throws {Error}
+             */
+            get bar() {
+              throw new Error('baz');
+            },
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            },
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
     ],
   },
 );
