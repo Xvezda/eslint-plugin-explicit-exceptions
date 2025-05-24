@@ -11,3 +11,10 @@ function baz() {
   foo();
 }
 baz();
+
+class Fizz {
+  buzz() {
+    throw new Error();
+  }
+}
+new Fizz().buzz();

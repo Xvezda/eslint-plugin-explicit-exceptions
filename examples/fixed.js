@@ -17,3 +17,13 @@ function baz() {
   foo();
 }
 baz();
+
+class Fizz {
+  /**
+   * @throws {Error}
+   */
+  buzz() {
+    throw new Error();
+  }
+}
+new Fizz().buzz();
