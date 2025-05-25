@@ -47,3 +47,6 @@ export default tseslint.config(
   },
 );
 ```
+
+## License
+[MIT License](./LICENSE)
