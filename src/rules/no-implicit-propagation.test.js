@@ -302,6 +302,19 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function foo() {
+            throw new Error();
+          }
+          async function bar() {
+            await foo().catch(() => {});
+          }
+        `,
+      },
     ],
     invalid: [
       {
