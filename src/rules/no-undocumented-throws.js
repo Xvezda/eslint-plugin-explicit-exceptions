@@ -1,5 +1,6 @@
 // @ts-check
 const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
+const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 const {
   createRule,
@@ -175,6 +176,11 @@ module.exports = createRule({
       'NewExpression[callee.type="Identifier"][callee.name="Promise"]'(node) {
         const functionDeclaration = findClosestFunctionNode(node);
         if (!functionDeclaration) return;
+
+        const calleeType = services.getTypeAtLocation(node.callee);
+        if (!utils.isPromiseConstructorLike(services.program, calleeType)) {
+          return;
+        }
 
         const nodeToComment = findNodeToComment(functionDeclaration);
         if (!nodeToComment) return;
