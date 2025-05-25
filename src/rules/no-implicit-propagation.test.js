@@ -271,6 +271,50 @@ ruleTester.run(
           };
         `,
       },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function foo() {
+            throw new Error();
+          }
+          async function bar() {
+            try {
+              await foo();
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function foo() {
+            throw new Error();
+          }
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function bar() {
+            await foo();
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function foo() {
+            throw new Error();
+          }
+          async function bar() {
+            await foo().catch(() => {});
+          }
+        `,
+      },
     ],
     invalid: [
       {
@@ -791,6 +835,66 @@ ruleTester.run(
             console.log(egg.ham.spam);
           };
           lol();
+        `,
+        errors: [
+          { messageId: 'implicitPropagation' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function foo() {
+            throw new Error();
+          }
+          async function bar() {
+            await foo();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function foo() {
+            throw new Error();
+          }
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function bar() {
+            await foo();
+          }
+        `,
+        errors: [
+          { messageId: 'implicitPropagation' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return new Promise((_, r) => r(new Error()));
+          }
+          async function bar() {
+            await foo();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return new Promise((_, r) => r(new Error()));
+          }
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function bar() {
+            await foo();
+          }
         `,
         errors: [
           { messageId: 'implicitPropagation' },

@@ -39,10 +39,13 @@ module.exports = createRule({
     const services = ESLintUtils.getParserServices(context);
     const checker = services.program.getTypeChecker();
 
-    const warnedNodes = new Set();
+    const visitedNodes = new Set();
 
     /** @param {import('@typescript-eslint/utils').TSESTree.ExpressionStatement} node */
     const visitExpressionStatement = (node) => {
+      if (visitedNodes.has(node.range[0])) return;
+      visitedNodes.add(node.range[0]);
+
       if (isInHandledContext(node)) return;
 
       const callerDeclaration = findClosestFunctionNode(node);
@@ -133,9 +136,6 @@ module.exports = createRule({
 
         return;
       }
-
-      if (warnedNodes.has(node.range[0])) return;
-      warnedNodes.add(node.range[0]);
 
       const calleeDeclaration = getCalleeDeclaration(services, node);
       if (!calleeDeclaration) return;

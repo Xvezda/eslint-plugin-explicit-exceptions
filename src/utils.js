@@ -290,6 +290,55 @@ const findNodeToComment = (node) => {
 };
 
 /**
+ * @param {Readonly<import('@typescript-eslint/utils').TSESLint.SourceCode>} sourceCode
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @return {import('@typescript-eslint/utils').TSESTree.Node | null}
+ */
+const findIdentifierDeclaration = (sourceCode, node) => {
+  /** @type {import('@typescript-eslint/utils').TSESLint.Scope.Definition[]} */
+  let defs = [];
+
+  /** @type {ReturnType<typeof sourceCode.getScope> | null} */
+  let scope = sourceCode.getScope(node);
+  do {
+    const variable = scope.set.get(node.name);
+    if (variable) {
+      defs =
+        /** @type {import('@typescript-eslint/utils').TSESLint.Scope.Definition[]} */
+        (variable.defs);
+      break;
+    }
+    scope = scope.upper;
+  } while (scope);
+
+  if (!defs.length) return null;
+
+  const definition = defs
+    .map(def => {
+      if (
+        def.node.type === AST_NODE_TYPES.VariableDeclarator &&
+        def.node.init
+      ) {
+        switch (def.node.init.type) {
+          case AST_NODE_TYPES.ArrowFunctionExpression:
+          case AST_NODE_TYPES.FunctionExpression:
+            return def.node.init;
+          default:
+            return null;
+        }
+      } else if (def.node.type === AST_NODE_TYPES.FunctionDeclaration) {
+        return def.node;
+      }
+      return null;
+    })
+    .filter(def => !!def);
+
+  if (!definition.length) return null;
+
+  return definition[0];
+};
+
+/**
  * Check if node is in try-catch block where exception is handled
  *
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
@@ -331,5 +380,6 @@ module.exports = {
   isTypesAssignableTo,
   findClosestFunctionNode,
   findNodeToComment,
+  findIdentifierDeclaration,
   isInHandledContext,
 };

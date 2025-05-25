@@ -3,6 +3,7 @@ const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const ts = require('typescript');
 const {
   createRule,
+  findParent,
   hasThrowsTag,
   typesToUnionString,
   isInHandledContext,
@@ -12,6 +13,7 @@ const {
   isTypesAssignableTo,
   findClosestFunctionNode,
   findNodeToComment,
+  findIdentifierDeclaration,
 } = require('../utils');
 
 
@@ -52,14 +54,19 @@ module.exports = createRule({
     
     const options = getOptionsFromContext(context);
 
+    const visitedNodes = new Set();
+
     /**
      * Group throw statements in functions
      * @type {Map<number, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>}
      */
     const throwStatements = new Map();
 
-    /** @param {import('@typescript-eslint/utils').TSESTree.Node} node */
+    /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */
     const visitOnExit = (node) => {
+      if (visitedNodes.has(node.range[0])) return;
+      visitedNodes.add(node.range[0]);
+
       const nodeToComment = findNodeToComment(node);
       if (!nodeToComment) return;
 
@@ -98,7 +105,9 @@ module.exports = createRule({
 
         if (!throwsTagTypeNodes.length) return;
 
-        const throwsTagTypes = getJSDocThrowsTagTypes(checker, functionDeclarationTSNode);
+        const throwsTagTypes = getJSDocThrowsTagTypes(checker, functionDeclarationTSNode)
+          .map(t => node.async ? checker.getAwaitedType(t) : t)
+          .filter(t => !!t);
 
         if (isTypesAssignableTo(checker, throwTypes, throwsTagTypes)) return;
 
@@ -124,11 +133,16 @@ module.exports = createRule({
           const lines = sourceCode.getLines();
           const currentLine = lines[nodeToComment.loc.start.line - 1];
           const indent = currentLine.match(/^\s*/)?.[0] ?? '';
+
+          const throwsTypeString = node.async
+            ? `Promise<${typesToUnionString(checker, throwTypes)}>`
+            : typesToUnionString(checker, throwTypes);
+
           return fixer
             .insertTextBefore(
               nodeToComment,
               `/**\n` +
-              `${indent} * @throws {${typesToUnionString(checker, throwTypes)}}\n` +
+              `${indent} * @throws {${throwsTypeString}}\n` +
               `${indent} */\n` +
               `${indent}`
             );
@@ -168,6 +182,111 @@ module.exports = createRule({
       'PropertyDefinition > FunctionExpression:exit': visitOnExit,
       'MethodDefinition > FunctionExpression:exit': visitOnExit,
       'ReturnStatement > FunctionExpression:exit': visitOnExit,
+
+      /**
+       * Visitor for checking `new Promise()` calls
+       * @param {import('@typescript-eslint/utils').TSESTree.NewExpression} node
+       */
+      'NewExpression[callee.type="Identifier"][callee.name="Promise"]'(node) {
+        const functionDeclaration = findClosestFunctionNode(node);
+        if (!functionDeclaration) return;
+
+        const nodeToComment = findNodeToComment(functionDeclaration);
+        if (!nodeToComment) return;
+
+        const comments = sourceCode.getCommentsBefore(nodeToComment);
+        const isCommented =
+          comments.length &&
+          comments
+            .map(({ value }) => value)
+            .some(hasThrowsTag);
+
+        if (isCommented) return;
+
+        if (!node.arguments.length) return;
+
+        /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */
+        let callbackNode = null;
+        switch (node.arguments[0].type) {
+          case AST_NODE_TYPES.ArrowFunctionExpression:
+          case AST_NODE_TYPES.FunctionExpression:
+            callbackNode = node.arguments[0];
+            break;
+          case AST_NODE_TYPES.Identifier: {
+            const declaration =
+              findIdentifierDeclaration(sourceCode, node.arguments[0]);
+
+            if (!declaration) return;
+
+            callbackNode =
+              /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */
+              (declaration);
+          }
+          default:
+            break;
+        }
+        if (!callbackNode || callbackNode.params.length < 2) return;
+
+        const rejectCallbackNode = callbackNode.params[1];
+        if (rejectCallbackNode.type !== AST_NODE_TYPES.Identifier) return;
+
+        const callbackScope = sourceCode.getScope(callbackNode)
+        if (!callbackScope) return;
+
+        const rejectCallbackRefs = callbackScope.set.get(rejectCallbackNode.name)?.references;
+        if (!rejectCallbackRefs) return;
+
+        const callRefs = rejectCallbackRefs
+          .filter(ref =>
+            ref.identifier.parent.type === AST_NODE_TYPES.CallExpression)
+          .map(ref =>
+            /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
+            (ref.identifier.parent)
+          );
+
+        if (!callRefs.length) return;
+
+        const rejectTypes = callRefs
+          .map(ref => services.getTypeAtLocation(ref.arguments[0]));
+
+        if (!rejectTypes.length) return;
+
+        const references = sourceCode.getScope(node).references;
+        if (!references.length) return;
+
+        const rejectHandled = references
+          .some(ref =>
+            findParent(ref.identifier, (node) =>
+              node.type === AST_NODE_TYPES.MemberExpression &&
+              node.property.type === AST_NODE_TYPES.Identifier &&
+              node.property.name === 'catch'
+            )
+          );
+
+        if (rejectHandled) return;
+
+        context.report({
+          node,
+          messageId: 'missingThrowsTag',
+          fix(fixer) {
+            const lines = sourceCode.getLines();
+            const currentLine = lines[nodeToComment.loc.start.line - 1];
+            const indent = currentLine.match(/^\s*/)?.[0] ?? '';
+
+            const throwsTypeString =
+              `Promise<${typesToUnionString(checker, rejectTypes)}>`;
+
+            return fixer
+              .insertTextBefore(
+                nodeToComment,
+                `/**\n` +
+                `${indent} * @throws {${throwsTypeString}}\n` +
+                `${indent} */\n` +
+                `${indent}`
+              );
+          },
+        });
+      },
     };
   },
 });

@@ -4,12 +4,18 @@
 
 Just as [Java’s throws keyword](https://dev.java/learn/exceptions/throwing/) does, enforcing the use of [JSDoc’s `@throws` tag](https://jsdoc.app/tags-throws) to explicitly specify which exceptions a function can throw to solve unpredictable propagation of exceptions happening which also known as a [JavaScript's "hidden exceptions"](https://www.youtube.com/watch?v=3iWoNJbGO2U).
 
+See [examples](./examples) for more.
+
 ## Usage
 
+Install dependencies
 ```sh
 # https://typescript-eslint.io/getting-started/#step-1-installation
 npm install --save-dev eslint @eslint/js typescript typescript-eslint
+```
 
+Install plugin
+```
 npm install --save-dev eslint-plugin-explicit-exceptions
 ```
 
