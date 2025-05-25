@@ -53,6 +53,14 @@ const hasThrowsTag = comment =>
   comment.includes('@exception');
 
 /**
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @returns {string}
+ */
+const getNodeID = (node) => {
+  return `${node.loc.start.line}:${node.loc.start.column}`;
+};
+
+/**
  * Check if node has JSDoc comment with @throws or @exception tag.
  *
  * @param {Readonly<import('@typescript-eslint/utils').TSESLint.SourceCode>} sourceCode
@@ -410,6 +418,7 @@ const createInsertJSDocBeforeFixer = (sourceCode, node, typeString) => {
 module.exports = {
   getFirst,
   getLast,
+  getNodeID,
   createRule,
   hasThrowsTag,
   hasJSDocThrowsTag,

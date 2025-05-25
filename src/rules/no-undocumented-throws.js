@@ -5,6 +5,7 @@ const ts = require('typescript');
 const {
   getFirst,
   getLast,
+  getNodeID,
   createRule,
   findParent,
   hasJSDocThrowsTag,
@@ -59,14 +60,6 @@ module.exports = createRule({
     const options = getOptionsFromContext(context);
 
     const visitedNodes = new Set();
-
-    /**
-     * @param {import('@typescript-eslint/utils').TSESTree.Node} node
-     * @returns {string}
-     */
-    const getNodeID = (node) => {
-      return `${node.type}:${node.loc.start.line}:${node.loc.start.column}`;
-    };
 
     /**
      * Group throw statements in functions

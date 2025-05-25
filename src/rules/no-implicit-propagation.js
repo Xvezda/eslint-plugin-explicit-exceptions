@@ -3,6 +3,7 @@ const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const {
   getLast,
+  getNodeID,
   createRule,
   isInHandledContext,
   typesToUnionString,
@@ -147,8 +148,8 @@ module.exports = createRule({
 
     /** @param {import('@typescript-eslint/utils').TSESTree.Expression} node */
     const visitExpression = (node) => {
-      if (visitedNodes.has(node.range[0])) return;
-      visitedNodes.add(node.range[0]);
+      if (visitedNodes.has(getNodeID(node))) return;
+      visitedNodes.add(getNodeID(node));
 
       if (isInHandledContext(node)) return;
 
