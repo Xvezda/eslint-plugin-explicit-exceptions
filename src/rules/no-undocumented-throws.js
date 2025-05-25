@@ -1,5 +1,6 @@
 // @ts-check
-const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
+const { ESLintUtils } = require('@typescript-eslint/utils');
+const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 const {
   createRule,
@@ -52,13 +53,15 @@ module.exports = createRule({
     
     const options = getOptionsFromContext(context);
 
+    const visitedNodes = new Set();
+
     /**
      * Group throw statements in functions
      * @type {Map<number, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>}
      */
     const throwStatements = new Map();
 
-    /** @param {import('@typescript-eslint/utils').TSESTree.Node} node */
+    /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */
     const visitOnExit = (node) => {
       const nodeToComment = findNodeToComment(node);
       if (!nodeToComment) return;
@@ -98,7 +101,9 @@ module.exports = createRule({
 
         if (!throwsTagTypeNodes.length) return;
 
-        const throwsTagTypes = getJSDocThrowsTagTypes(checker, functionDeclarationTSNode);
+        const throwsTagTypes = getJSDocThrowsTagTypes(checker, functionDeclarationTSNode)
+          .map(t => node.async ? checker.getAwaitedType(t) : t)
+          .filter(t => !!t);
 
         if (isTypesAssignableTo(checker, throwTypes, throwsTagTypes)) return;
 
@@ -116,6 +121,8 @@ module.exports = createRule({
         });
         return;
       }
+      if (visitedNodes.has(node.range[0])) return;
+      visitedNodes.add(node.range[0]);
 
       context.report({
         node,
@@ -124,11 +131,16 @@ module.exports = createRule({
           const lines = sourceCode.getLines();
           const currentLine = lines[nodeToComment.loc.start.line - 1];
           const indent = currentLine.match(/^\s*/)?.[0] ?? '';
+
+          const throwsTypeString = node.async
+            ? `Promise<${typesToUnionString(checker, throwTypes)}>`
+            : typesToUnionString(checker, throwTypes);
+
           return fixer
             .insertTextBefore(
               nodeToComment,
               `/**\n` +
-              `${indent} * @throws {${typesToUnionString(checker, throwTypes)}}\n` +
+              `${indent} * @throws {${throwsTypeString}}\n` +
               `${indent} */\n` +
               `${indent}`
             );

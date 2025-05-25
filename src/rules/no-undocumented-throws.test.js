@@ -636,6 +636,24 @@ ruleTester.run(
           { messageId: 'missingThrowsTag' },
         ],
       },
+      {
+        code: `
+          async function foo() {
+            throw new Error();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function foo() {
+            throw new Error();
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
     ],
   },
 );
