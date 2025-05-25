@@ -229,6 +229,29 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          function foo() {
+            return new Promise(function (resolve, reject) {
+              reject(new Error());
+            })
+              .then(console.log)
+              .catch(console.error);
+          }
+        `,
+      },
+      {
+        code: `
+          function foo() {
+            const callback = function (resolve, reject) {
+              reject(new Error());
+            };
+            return new Promise(callback)
+              .then(console.log)
+              .catch(console.error);
+          }
+        `,
+      },
     ],
     invalid: [
       {
@@ -745,6 +768,58 @@ ruleTester.run(
             const promise = new Promise((resolve, reject) => {
               reject(new Error());
             });
+            return promise;
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            const callback = (resolve, reject) => {
+              reject(new Error());
+            };
+            const promise = new Promise(callback);
+            return promise;
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            const callback = (resolve, reject) => {
+              reject(new Error());
+            };
+            const promise = new Promise(callback);
+            return promise;
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function callback(resolve, reject) {
+            reject(new Error());
+          }
+          function foo() {
+            const promise = new Promise(callback);
+            return promise;
+          }
+        `,
+        output: `
+          function callback(resolve, reject) {
+            reject(new Error());
+          }
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            const promise = new Promise(callback);
             return promise;
           }
         `,
