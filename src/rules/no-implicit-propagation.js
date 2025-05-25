@@ -253,15 +253,15 @@ module.exports = createRule({
     };
 
     return {
-      'ArrowFunctionExpression ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpression,
-      'FunctionDeclaration ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpression,
-      'FunctionExpression ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpression,
-      'ArrowFunctionExpression ExpressionStatement CallExpression[callee.type="Identifier"]': visitExpression,
-      'FunctionDeclaration ExpressionStatement CallExpression[callee.type="Identifier"]': visitExpression,
-      'FunctionExpression ExpressionStatement CallExpression[callee.type="Identifier"]': visitExpression,
-      'ArrowFunctionExpression ExpressionStatement AssignmentExpression[left.type="MemberExpression"]': visitExpression,
-      'FunctionDeclaration ExpressionStatement AssignmentExpression[left.type="MemberExpression"]': visitExpression,
-      'FunctionExpression ExpressionStatement AssignmentExpression[left.type="MemberExpression"]': visitExpression,
+      'ArrowFunctionExpression MemberExpression[property.type="Identifier"]': visitExpression,
+      'FunctionDeclaration MemberExpression[property.type="Identifier"]': visitExpression,
+      'FunctionExpression MemberExpression[property.type="Identifier"]': visitExpression,
+      'ArrowFunctionExpression CallExpression[callee.type="Identifier"]': visitExpression,
+      'FunctionDeclaration CallExpression[callee.type="Identifier"]': visitExpression,
+      'FunctionExpression CallExpression[callee.type="Identifier"]': visitExpression,
+      'ArrowFunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitExpression,
+      'FunctionDeclaration AssignmentExpression[left.type="MemberExpression"]': visitExpression,
+      'FunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitExpression,
     };
   },
   defaultOptions: [],
