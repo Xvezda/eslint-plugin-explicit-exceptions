@@ -1,5 +1,5 @@
 // @ts-check
-const { ESLintUtils } = require('@typescript-eslint/utils');
+const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 const {
@@ -124,6 +124,7 @@ module.exports = createRule({
         });
         return;
       }
+
       context.report({
         node,
         messageId: 'missingThrowsTag',
@@ -180,6 +181,75 @@ module.exports = createRule({
       'PropertyDefinition > FunctionExpression:exit': visitOnExit,
       'MethodDefinition > FunctionExpression:exit': visitOnExit,
       'ReturnStatement > FunctionExpression:exit': visitOnExit,
+
+      /** @param {import('@typescript-eslint/utils').TSESTree.NewExpression} node */
+      'NewExpression[callee.type="Identifier"][callee.name="Promise"]'(node) {
+        const functionDeclaration = findClosestFunctionNode(node);
+        if (!functionDeclaration) return;
+
+        const nodeToComment = findNodeToComment(functionDeclaration);
+        if (!nodeToComment) return;
+
+        const comments = sourceCode.getCommentsBefore(nodeToComment);
+        const isCommented =
+          comments.length &&
+          comments
+            .map(({ value }) => value)
+            .some(hasThrowsTag);
+
+        if (isCommented) return;
+
+        if (!node.arguments.length) return;
+
+        if (
+          // TODO: Add other function nodes
+          node.arguments[0].type !== AST_NODE_TYPES.ArrowFunctionExpression
+        ) return;
+
+        const callbackNode = node.arguments[0];
+        if (callbackNode.params.length < 2) return;
+
+        const rejectHandlerNode = callbackNode.params[1];
+        if (rejectHandlerNode.type !== AST_NODE_TYPES.Identifier) return;
+
+        const rejectHandlerName = rejectHandlerNode.name;
+
+        const callbackScope = sourceCode.getScope(callbackNode)
+
+        if (!callbackScope) return;
+
+        const rejectHandlerRefs = callbackScope.set.get(rejectHandlerName)?.references;
+        if (!rejectHandlerRefs) return;
+
+        const callRefs = rejectHandlerRefs
+          .filter(ref => ref.identifier.parent.type === AST_NODE_TYPES.CallExpression)
+          .map(ref => /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */(ref.identifier.parent));
+
+        const throwTypes = callRefs
+          .map(ref => services.getTypeAtLocation(ref.arguments[0]));
+
+        context.report({
+          node,
+          messageId: 'missingThrowsTag',
+          fix(fixer) {
+            const lines = sourceCode.getLines();
+            const currentLine = lines[nodeToComment.loc.start.line - 1];
+            const indent = currentLine.match(/^\s*/)?.[0] ?? '';
+
+            const throwsTypeString =
+              `Promise<${typesToUnionString(checker, throwTypes)}>`;
+
+            return fixer
+              .insertTextBefore(
+                nodeToComment,
+                `/**\n` +
+                `${indent} * @throws {${throwsTypeString}}\n` +
+                `${indent} */\n` +
+                `${indent}`
+              );
+          },
+        });
+      },
     };
   },
 });

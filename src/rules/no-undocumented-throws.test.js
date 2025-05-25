@@ -654,6 +654,58 @@ ruleTester.run(
           { messageId: 'missingThrowsTag' },
         ],
       },
+      {
+        code: `
+          function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            return new Promise((resolve, reject) => {
+              if (Math.random() > 0.5) {
+                reject(new TypeError());
+              } else {
+                reject(new SyntaxError());
+              }
+            });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<TypeError | SyntaxError>}
+           */
+          function foo() {
+            return new Promise((resolve, reject) => {
+              if (Math.random() > 0.5) {
+                reject(new TypeError());
+              } else {
+                reject(new SyntaxError());
+              }
+            });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
     ],
   },
 );
