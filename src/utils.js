@@ -129,6 +129,15 @@ const getCalleeDeclaration = (services, node) => {
   }
 
   switch (node.type) {
+    /**
+     * Return type of setter when assigning
+     *
+     * @example
+     * ```
+     * foo.bar = 'baz';
+     * //  ^ This can be a setter
+     * ```
+     */
     case AST_NODE_TYPES.AssignmentExpression:
       const setter = declarations
         .find(declaration =>
@@ -136,6 +145,15 @@ const getCalleeDeclaration = (services, node) => {
             .get(declaration).kind === 'set'
         );
       return setter ?? declarations[0];
+    /**
+     * Return type of getter when accessing
+     *
+     * @example
+     * ```
+     * const baz = foo.bar;
+     * //              ^ This can be a getter
+     * ```
+     */
     case AST_NODE_TYPES.MemberExpression:
       const getter = declarations
         .find(declaration =>
@@ -229,6 +247,13 @@ const findClosestFunctionNode = (node) => {
  */
 const findNodeToComment = (node) => {
   switch (node.type) {
+    /**
+     * @example
+     * ```
+     * // here
+     * function target() { ... }
+     * ```
+     */
     case AST_NODE_TYPES.FunctionDeclaration:
       return node;
     case AST_NODE_TYPES.FunctionExpression:
@@ -290,6 +315,8 @@ const findNodeToComment = (node) => {
 };
 
 /**
+ * Find declaration node of identifier node
+ *
  * @param {Readonly<import('@typescript-eslint/utils').TSESLint.SourceCode>} sourceCode
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @return {import('@typescript-eslint/utils').TSESTree.Node | null}
