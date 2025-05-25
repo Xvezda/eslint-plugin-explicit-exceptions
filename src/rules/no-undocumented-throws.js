@@ -13,7 +13,7 @@ const {
   getOptionsFromContext,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
-  isTypesAssignableTo,
+  groupTypesByCompatibility,
   findClosestFunctionNode,
   findNodeToComment,
   findIdentifierDeclaration,
@@ -113,7 +113,12 @@ module.exports = createRule({
           .map(t => node.async ? checker.getAwaitedType(t) : t)
           .filter(t => !!t);
 
-        if (isTypesAssignableTo(services.program, throwTypes, throwsTagTypes)) return;
+        const typeGroups = groupTypesByCompatibility(
+          services.program,
+          throwTypes,
+          throwsTagTypes,
+        );
+        if (!typeGroups.incompatible) return;
 
         const lastTagtypeNode = getLast(throwsTagTypeNodes);
         if (!lastTagtypeNode) return;

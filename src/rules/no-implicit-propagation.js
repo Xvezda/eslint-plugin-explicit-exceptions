@@ -11,7 +11,7 @@ const {
   getJSDocThrowsTagTypes,
   getDeclarationTSNodeOfESTreeNode,
   toFlattenedTypeArray,
-  isTypesAssignableTo,
+  groupTypesByCompatibility,
   findClosestFunctionNode,
   findNodeToComment,
   createInsertJSDocBeforeFixer,
@@ -178,28 +178,13 @@ module.exports = createRule({
 
         const callerThrowsTypes = toFlattenedTypeArray(getJSDocThrowsTagTypes(checker, callerDeclarationTSNode));
 
-        if (
-          isTypesAssignableTo(services.program, calleeThrowsTypes, callerThrowsTypes)
-        ) {
+        const typeGroups = groupTypesByCompatibility(services.program, calleeThrowsTypes, callerThrowsTypes);
+        if (!typeGroups.incompatible) {
           return;
         }
 
         const lastThrowsTypeNode = getLast(callerThrowsTypeNodes);
         if (!lastThrowsTypeNode) return;
-
-        const notAssignableThrows = calleeThrowsTypes
-          .filter((calleeType) => !callerThrowsTypes
-            .some((callerType) => {
-              if (
-                utils.isErrorLike(services.program, callerType) &&
-                utils.isErrorLike(services.program, calleeType)
-              ) {
-                return utils.typeIsOrHasBaseType(calleeType, callerType);
-              }
-              return checker.isTypeAssignableTo(calleeType, callerType);
-            }));
-
-        if (!notAssignableThrows.length) return;
 
         context.report({
           node,
@@ -224,11 +209,14 @@ module.exports = createRule({
                   jsdocString
                 );
 
+              if (!typeGroups.incompatible) {
+                return null;
+              }
               return fixer.replaceTextRange(
                 [callerJSDocTSNode.getStart(), callerJSDocTSNode.getEnd()],
                 appendThrowsTags(
                   callerJSDocTSNode.getFullText(),
-                  notAssignableThrows
+                  typeGroups.incompatible,
                 )
               );
             }

@@ -3,6 +3,26 @@ const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 
+// Object.groupBy clone
+/**
+ * Groups an array of objects by a specified key or function.
+ * @template T
+ * @template {string} K
+ * @param {T[]} arr - The array to group.
+ * @param {((item: T) => K)} key
+ * @return {Record<K, T[] | undefined>}
+ */
+const groupBy = (arr, key) => {
+  return arr.reduce((acc, item) => {
+    const groupKey = key(item);
+    if (!acc[groupKey]) {
+      acc[groupKey] = [];
+    }
+    acc[groupKey].push(item);
+    return acc;
+  }, /** @type {Record<string, T[]>} */(Object.create(null)));
+};
+
 /**
  * @template {unknown} T
  * @param {Readonly<T[]>} arr
@@ -173,23 +193,25 @@ const toFlattenedTypeArray = (types) =>
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation['program']} program
  * @param {import('typescript').Type[]} source
  * @param {import('typescript').Type[]} target
- * @returns {boolean}
+ * @returns {{ compatible?: import('typescript').Type[]; incompatible?: import('typescript').Type[] }}
  */
-const isTypesAssignableTo = (program, source, target) => {
+const groupTypesByCompatibility = (program, source, target) => {
   const checker = program.getTypeChecker();
-  return source
-    .every(sourceType =>
-      target
-        .some(targetType => {
-          if (
-            utils.isErrorLike(program, sourceType) &&
-            utils.isErrorLike(program, targetType)
-          ) {
-            return utils.typeIsOrHasBaseType(sourceType, targetType);
-          }
-          return checker.isTypeAssignableTo(sourceType, targetType);
-        })
+
+  return groupBy(source, sourceType => {
+    const isCompatible = target.some(targetType => {
+      if (
+        utils.isErrorLike(program, sourceType) &&
+        utils.isErrorLike(program, targetType)
+      ) {
+        return utils.typeIsOrHasBaseType(sourceType, targetType);
+      }
+      return checker.isTypeAssignableTo(sourceType, targetType);
+    });
+    return /** @type {'compatible'|'incompatible'} */(
+      isCompatible ? 'compatible' : 'incompatible'
     );
+  })
 }
 
 /**
@@ -399,7 +421,7 @@ module.exports = {
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
   toFlattenedTypeArray,
-  isTypesAssignableTo,
+  groupTypesByCompatibility,
   findClosestFunctionNode,
   findNodeToComment,
   findIdentifierDeclaration,
