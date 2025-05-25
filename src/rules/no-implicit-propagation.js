@@ -144,7 +144,7 @@ module.exports = createRule({
 
     const visitedNodes = new Set();
 
-    /** @param {import('@typescript-eslint/utils').TSESTree.ExpressionStatement} node */
+    /** @param {import('@typescript-eslint/utils').TSESTree.Expression} node */
     const visitExpression = (node) => {
       if (visitedNodes.has(node.range[0])) return;
       visitedNodes.add(node.range[0]);
