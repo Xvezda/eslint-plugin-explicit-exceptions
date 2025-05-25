@@ -61,20 +61,28 @@ module.exports = createRule({
     const visitedNodes = new Set();
 
     /**
+     * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+     * @returns {string}
+     */
+    const getNodeID = (node) => {
+      return `${node.type}:${node.loc.start.line}:${node.loc.start.column}`;
+    };
+
+    /**
      * Group throw statements in functions
-     * @type {Map<number, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>}
+     * @type {Map<string, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>}
      */
     const throwStatements = new Map();
 
     /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */
     const visitOnExit = (node) => {
-      if (visitedNodes.has(node.range[0])) return;
-      visitedNodes.add(node.range[0]);
+      if (visitedNodes.has(getNodeID(node))) return;
+      visitedNodes.add(getNodeID(node));
 
       const nodeToComment = findNodeToComment(node);
       if (!nodeToComment) return;
 
-      const throwStatementNodes = throwStatements.get(node.range[0]);
+      const throwStatementNodes = throwStatements.get(getNodeID(node));
       if (!throwStatementNodes) return;
 
       /** @type {import('typescript').Type[]} */
@@ -149,13 +157,12 @@ module.exports = createRule({
         const functionDeclaration = findClosestFunctionNode(node);
         if (!functionDeclaration) return;
 
-        // TODO: Use "SAFE" unique function identifier
-        if (!throwStatements.has(functionDeclaration.range[0])) {
-          throwStatements.set(functionDeclaration.range[0], []);
+        if (!throwStatements.has(getNodeID(functionDeclaration))) {
+          throwStatements.set(getNodeID(functionDeclaration), []);
         }
         const throwStatementNodes =
           /** @type {import('@typescript-eslint/utils').TSESTree.ThrowStatement[]} */
-          (throwStatements.get(functionDeclaration.range[0]));
+          (throwStatements.get(getNodeID(functionDeclaration)));
 
         throwStatementNodes.push(node);
       },
@@ -175,7 +182,7 @@ module.exports = createRule({
        * Visitor for checking `new Promise()` calls
        * @param {import('@typescript-eslint/utils').TSESTree.NewExpression} node
        */
-      'NewExpression[callee.type="Identifier"][callee.name="Promise"]'(node) {
+      'NewExpression[callee.type="Identifier"][callee.name="Promise"]:exit'(node) {
         const functionDeclaration = findClosestFunctionNode(node);
         if (!functionDeclaration) return;
 
@@ -186,7 +193,7 @@ module.exports = createRule({
 
         const nodeToComment = findNodeToComment(functionDeclaration);
         if (!nodeToComment) return;
-
+        
         if (hasJSDocThrowsTag(sourceCode, nodeToComment)) return;
 
         if (!node.arguments.length) return;
@@ -197,10 +204,12 @@ module.exports = createRule({
         /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */
         let callbackNode = null;
         switch (firstArg.type) {
+          // Promise argument is inlined function
           case AST_NODE_TYPES.ArrowFunctionExpression:
           case AST_NODE_TYPES.FunctionExpression:
             callbackNode = firstArg;
             break;
+          // Promise argument is not inlined function
           case AST_NODE_TYPES.Identifier: {
             const declaration =
               findIdentifierDeclaration(sourceCode, firstArg);
@@ -214,36 +223,66 @@ module.exports = createRule({
           default:
             break;
         }
-        if (!callbackNode || callbackNode.params.length < 2) return;
+        if (!callbackNode) return;
 
-        const rejectCallbackNode = callbackNode.params[1];
-        if (rejectCallbackNode.type !== AST_NODE_TYPES.Identifier) return;
+        /** @type {import('typescript').Type[]} */
+        const rejectTypes = [];
 
-        const callbackScope = sourceCode.getScope(callbackNode)
-        if (!callbackScope) return;
+        const isRejectCallbackNameDeclared =
+          callbackNode.params.length >= 2;
 
-        const rejectCallbackRefs = callbackScope.set.get(rejectCallbackNode.name)?.references;
-        if (!rejectCallbackRefs) return;
+        if (isRejectCallbackNameDeclared) {
+          const rejectCallbackNode = callbackNode.params[1];
+          if (rejectCallbackNode.type !== AST_NODE_TYPES.Identifier) return;
 
-        const callRefs = rejectCallbackRefs
-          .filter(ref =>
-            ref.identifier.parent.type === AST_NODE_TYPES.CallExpression)
-          .map(ref =>
-            /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
-            (ref.identifier.parent)
+          const callbackScope = sourceCode.getScope(callbackNode)
+          if (!callbackScope) return;
+
+          const rejectCallbackRefs = callbackScope.set.get(rejectCallbackNode.name)?.references;
+          if (!rejectCallbackRefs) return;
+
+          const callRefs = rejectCallbackRefs
+            .filter(ref =>
+              ref.identifier.parent.type === AST_NODE_TYPES.CallExpression)
+            .map(ref =>
+              /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
+              (ref.identifier.parent)
+            );
+
+          const argumentTypes = callRefs
+            .map(ref => services.getTypeAtLocation(ref.arguments[0]));
+
+          rejectTypes.push(
+            ...argumentTypes.flatMap(t => t.isUnion() ? t.types : t)
           );
+        }
 
-        if (!callRefs.length) return;
+        if (throwStatements.has(getNodeID(callbackNode))) {
+          const throwStatementTypes = throwStatements.get(getNodeID(callbackNode))
+            ?.map(n => services.getTypeAtLocation(n.argument));
 
-        const rejectTypes = callRefs
-          .map(ref => services.getTypeAtLocation(ref.arguments[0]));
+          if (throwStatementTypes) {
+            rejectTypes.push(
+              ...throwStatementTypes.flatMap(t => t.isUnion() ? t.types : t)
+            );
+          }
+        }
+
+        const throwsTagTypes = getJSDocThrowsTagTypes(
+          checker,
+          services.esTreeNodeToTSNodeMap.get(callbackNode)
+        );
+
+        if (throwsTagTypes.length) {
+          rejectTypes.push(...throwsTagTypes);
+        }
 
         if (!rejectTypes.length) return;
 
         const references = sourceCode.getScope(node).references;
         if (!references.length) return;
 
-        const rejectHandled = references
+        const isRejectHandled = references
           .some(ref =>
             findParent(ref.identifier, (node) =>
               node.type === AST_NODE_TYPES.MemberExpression &&
@@ -252,7 +291,7 @@ module.exports = createRule({
             )
           );
 
-        if (rejectHandled) return;
+        if (isRejectHandled) return;
 
         context.report({
           node,

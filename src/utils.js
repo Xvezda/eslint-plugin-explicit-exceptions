@@ -58,7 +58,7 @@ const hasJSDocThrowsTag = (sourceCode, node) => {
  * @return {string}
  */
 const typesToUnionString = (checker, types) =>
-  types.map(t => utils.getTypeName(checker, t)).join(' | ');
+  [...new Set(types.map(t => utils.getTypeName(checker, t)))].join(' | ');
 
 /**
  * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node

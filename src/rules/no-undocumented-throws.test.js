@@ -827,6 +827,94 @@ ruleTester.run(
           { messageId: 'missingThrowsTag' },
         ],
       },
+      {
+        code: `
+          function foo() {
+            const promise = new Promise((resolve, reject) => {
+              throw new Error();
+            });
+            return promise;
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            const promise = new Promise((resolve, reject) => {
+              throw new Error();
+            });
+            return promise;
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            /**
+             * @throws {Error}
+             */
+            const callback = (resolve, reject) => {
+              throw new Error();
+            };
+            const promise = new Promise(callback);
+            return promise;
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            /**
+             * @throws {Error}
+             */
+            const callback = (resolve, reject) => {
+              throw new Error();
+            };
+            const promise = new Promise(callback);
+            return promise;
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function callback(resolve, reject) {
+            throw new Error();
+          }
+          function foo() {
+            const promise = new Promise(callback);
+            return promise;
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          function callback(resolve, reject) {
+            throw new Error();
+          }
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            const promise = new Promise(callback);
+            return promise;
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
     ],
   },
 );
