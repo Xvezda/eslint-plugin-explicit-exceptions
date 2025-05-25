@@ -5,6 +5,7 @@ const ts = require('typescript');
 const {
   getFirst,
   getLast,
+  getNodeID,
   createRule,
   findParent,
   hasJSDocThrowsTag,
@@ -13,7 +14,7 @@ const {
   getOptionsFromContext,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
-  isTypesAssignableTo,
+  groupTypesByCompatibility,
   findClosestFunctionNode,
   findNodeToComment,
   findIdentifierDeclaration,
@@ -61,14 +62,6 @@ module.exports = createRule({
     const visitedNodes = new Set();
 
     /**
-     * @param {import('@typescript-eslint/utils').TSESTree.Node} node
-     * @returns {string}
-     */
-    const getNodeID = (node) => {
-      return `${node.type}:${node.loc.start.line}:${node.loc.start.column}`;
-    };
-
-    /**
      * Group throw statements in functions
      * @type {Map<string, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>}
      */
@@ -113,7 +106,12 @@ module.exports = createRule({
           .map(t => node.async ? checker.getAwaitedType(t) : t)
           .filter(t => !!t);
 
-        if (isTypesAssignableTo(services.program, throwTypes, throwsTagTypes)) return;
+        const typeGroups = groupTypesByCompatibility(
+          services.program,
+          throwTypes,
+          throwsTagTypes,
+        );
+        if (!typeGroups.incompatible) return;
 
         const lastTagtypeNode = getLast(throwsTagTypeNodes);
         if (!lastTagtypeNode) return;
