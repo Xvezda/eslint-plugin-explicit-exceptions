@@ -1,6 +1,5 @@
 // @ts-check
 const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
-const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 const {
   createRule,
@@ -14,6 +13,7 @@ const {
   isTypesAssignableTo,
   findClosestFunctionNode,
   findNodeToComment,
+  findIdentifierDeclaration,
 } = require('../utils');
 
 
@@ -213,58 +213,36 @@ module.exports = createRule({
             callbackNode = node.arguments[0];
             break;
           case AST_NODE_TYPES.Identifier: {
-            /** @type {import('@typescript-eslint/utils').TSESLint.Scope.Definition[]} */
-            let defs = [];
+            const declaration =
+              findIdentifierDeclaration(sourceCode, node.arguments[0]);
 
-            /** @type {ReturnType<typeof sourceCode.getScope> | null} */
-            let scope = sourceCode.getScope(node.arguments[0]);
-            do {
-              const variable = scope.set.get(node.arguments[0].name);
-              if (variable) {
-                defs =
-                  /** @type {import('@typescript-eslint/utils').TSESLint.Scope.Definition[]} */
-                  (variable?.defs);
-                break;
-              }
-              scope = scope.upper;
-            } while (scope);
+            if (!declaration) return;
 
-            if (!defs.length) return;
-
-            if (
-              defs[0].node.type === AST_NODE_TYPES.VariableDeclarator &&
-              defs[0].node.init
-            ) {
-              switch (defs[0].node.init.type) {
-                case AST_NODE_TYPES.ArrowFunctionExpression:
-                case AST_NODE_TYPES.FunctionExpression:
-                  callbackNode = defs[0].node.init;
-                  break;
-              }
-            } else if (defs[0].node.type === AST_NODE_TYPES.FunctionDeclaration) {
-              callbackNode = defs[0].node;
-            }
+            callbackNode =
+              /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */
+              (declaration);
           }
+          default:
+            break;
         }
-        if (!callbackNode) return;
-
-        if (callbackNode.params.length < 2) return;
+        if (!callbackNode || callbackNode.params.length < 2) return;
 
         const rejectCallbackNode = callbackNode.params[1];
         if (rejectCallbackNode.type !== AST_NODE_TYPES.Identifier) return;
 
-        const rejectCallbackName = rejectCallbackNode.name;
-
         const callbackScope = sourceCode.getScope(callbackNode)
-
         if (!callbackScope) return;
 
-        const rejectCallbackRefs = callbackScope.set.get(rejectCallbackName)?.references;
+        const rejectCallbackRefs = callbackScope.set.get(rejectCallbackNode.name)?.references;
         if (!rejectCallbackRefs) return;
 
         const callRefs = rejectCallbackRefs
-          .filter(ref => ref.identifier.parent.type === AST_NODE_TYPES.CallExpression)
-          .map(ref => /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */(ref.identifier.parent));
+          .filter(ref =>
+            ref.identifier.parent.type === AST_NODE_TYPES.CallExpression)
+          .map(ref =>
+            /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
+            (ref.identifier.parent)
+          );
 
         if (!callRefs.length) return;
 
