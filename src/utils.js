@@ -135,7 +135,6 @@ const getCalleeDeclaration = (services, node) => {
           services.tsNodeToESTreeNodeMap
             .get(declaration).kind === 'set'
         );
-      console.log('setter', setter);
       return setter ?? declarations[0];
     case AST_NODE_TYPES.MemberExpression:
       const getter = declarations
