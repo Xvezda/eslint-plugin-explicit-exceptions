@@ -1,20 +1,26 @@
 /**
- * @throws {Error}
+ * @throws {RangeError}
  */
 function foo() {
-  throw new Error();
+  throw new RangeError();
 }
 
+/**
+ * @throws {TypeError}
+ */
 function bar() {
-  try {
-    foo();
-  } catch {}
+  throw new TypeError();
 }
-bar();
 
-/** @throws {Error} */
+/**
+ * @throws {RangeError | TypeError}
+ */
 function baz() {
-  foo();
+  if (Math.random() > 0.5) {
+    foo();
+  } else {
+    bar();
+  }
 }
 baz();
 
@@ -41,10 +47,11 @@ const egg = {
   }
 };
 
+/**
+ * @throws {Error}
+ */
 const lol = () => {
-  try {
-    console.log(egg.ham.spam);
-  } catch {}
+  console.log(egg.ham.spam);
 };
 lol();
 

@@ -170,17 +170,27 @@ const toFlattenedTypeArray = (types) =>
   types.flatMap(type => type.isUnion() ? type.types : type);
 
 /**
- * @param {import('typescript').TypeChecker} checker
+ * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation['program']} program
  * @param {import('typescript').Type[]} source
  * @param {import('typescript').Type[]} target
  * @returns {boolean}
  */
-const isTypesAssignableTo = (checker, source, target) =>
-  source
+const isTypesAssignableTo = (program, source, target) => {
+  const checker = program.getTypeChecker();
+  return source
     .every(sourceType =>
       target
-        .some(targetType => checker.isTypeAssignableTo(sourceType, targetType))
+        .some(targetType => {
+          if (
+            utils.isErrorLike(program, sourceType) &&
+            utils.isErrorLike(program, targetType)
+          ) {
+            return utils.typeIsOrHasBaseType(sourceType, targetType);
+          }
+          return checker.isTypeAssignableTo(sourceType, targetType);
+        })
     );
+}
 
 /**
  * Find closest function where exception is thrown

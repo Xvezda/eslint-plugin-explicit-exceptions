@@ -1,14 +1,17 @@
 function foo() {
-  throw new Error();
+  throw new RangeError();
 }
 
 function bar() {
-  foo();
+  throw new TypeError();
 }
-bar();
 
 function baz() {
-  foo();
+  if (Math.random() > 0.5) {
+    foo();
+  } else {
+    bar();
+  }
 }
 baz();
 
