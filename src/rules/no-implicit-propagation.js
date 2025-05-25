@@ -188,11 +188,16 @@ module.exports = createRule({
         if (!lastThrowsTypeNode) return;
 
         const notAssignableThrows = calleeThrowsTypes
-          .filter((t) => !callerThrowsTypes
-            .some((n) =>
-              utils.isErrorLike(services.program, n) && utils.isErrorLike(services.program, t)
-                ? t.symbol?.name === n.symbol?.name
-                : checker.isTypeAssignableTo(t, n)));
+          .filter((calleeType) => !callerThrowsTypes
+            .some((callerType) => {
+              if (
+                utils.isErrorLike(services.program, callerType) &&
+                utils.isErrorLike(services.program, calleeType)
+              ) {
+                return utils.typeIsOrHasBaseType(calleeType, callerType);
+              }
+              return checker.isTypeAssignableTo(calleeType, callerType);
+            }));
 
         if (!notAssignableThrows.length) return;
 

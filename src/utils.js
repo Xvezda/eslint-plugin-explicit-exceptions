@@ -180,10 +180,15 @@ const isTypesAssignableTo = (program, source, target) => {
   return source
     .every(sourceType =>
       target
-        .some(targetType =>
-          utils.isErrorLike(program, sourceType) && utils.isErrorLike(program, targetType)
-            ? sourceType.symbol?.name === targetType.symbol?.name
-            : checker.isTypeAssignableTo(sourceType, targetType))
+        .some(targetType => {
+          if (
+            utils.isErrorLike(program, sourceType) &&
+            utils.isErrorLike(program, targetType)
+          ) {
+            return utils.typeIsOrHasBaseType(sourceType, targetType);
+          }
+          return checker.isTypeAssignableTo(sourceType, targetType);
+        })
     );
 }
 

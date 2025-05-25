@@ -315,6 +315,35 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function foo() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          /**
+           * @throws {Error}
+           */
+          function baz() {
+            if (Math.random() > 0.5) {
+              foo();
+            } else {
+              bar();
+            }
+          }
+          baz();
+        `,
+      },
     ],
     invalid: [
       {
