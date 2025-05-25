@@ -3,6 +3,8 @@ const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 const {
+  getFirst,
+  getLast,
   createRule,
   findParent,
   hasJSDocThrowsTag,
@@ -105,7 +107,8 @@ module.exports = createRule({
 
         if (isTypesAssignableTo(checker, throwTypes, throwsTagTypes)) return;
 
-        const lastTagtypeNode = throwsTagTypeNodes[throwsTagTypeNodes.length - 1];
+        const lastTagtypeNode = getLast(throwsTagTypeNodes);
+        if (!lastTagtypeNode) return;
 
         context.report({
           node,
@@ -156,7 +159,6 @@ module.exports = createRule({
 
         throwStatementNodes.push(node);
       },
-
       'FunctionDeclaration:exit': visitOnExit,
       'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:exit': visitOnExit,
       'Property > ArrowFunctionExpression:exit': visitOnExit,
@@ -189,16 +191,19 @@ module.exports = createRule({
 
         if (!node.arguments.length) return;
 
+        const firstArg = getFirst(node.arguments);
+        if (!firstArg) return;
+
         /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */
         let callbackNode = null;
-        switch (node.arguments[0].type) {
+        switch (firstArg.type) {
           case AST_NODE_TYPES.ArrowFunctionExpression:
           case AST_NODE_TYPES.FunctionExpression:
-            callbackNode = node.arguments[0];
+            callbackNode = firstArg;
             break;
           case AST_NODE_TYPES.Identifier: {
             const declaration =
-              findIdentifierDeclaration(sourceCode, node.arguments[0]);
+              findIdentifierDeclaration(sourceCode, firstArg);
 
             if (!declaration) return;
 

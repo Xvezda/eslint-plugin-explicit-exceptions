@@ -2,6 +2,7 @@
 const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const {
+  getLast,
   createRule,
   isInHandledContext,
   typesToUnionString,
@@ -187,11 +188,13 @@ module.exports = createRule({
           node,
           messageId: 'throwTypeMismatch',
           fix(fixer) {
-            const lastThrowsTypeNode =
-              callerThrowsTypeNodes[callerThrowsTypeNodes.length - 1];
+            const lastThrowsTypeNode = getLast(callerThrowsTypeNodes);
+            if (!lastThrowsTypeNode) return null;
 
             if (callerThrowsTags.length > 1) {
-              const lastThrowsTag = callerThrowsTags[callerThrowsTags.length - 1];
+              const lastThrowsTag = getLast(callerThrowsTags);
+              if (!lastThrowsTag) return null;
+
               const notAssignableThrows = calleeThrowsTypes
                 .filter((t) => !callerThrowsTypes
                   .some((n) => checker.isTypeAssignableTo(t, n)));

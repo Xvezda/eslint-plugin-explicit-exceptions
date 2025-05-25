@@ -3,6 +3,25 @@ const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 
+/**
+ * @template {unknown} T
+ * @param {Readonly<T[]>} arr
+ * @return {T | null}
+ */
+const getFirst = (arr) =>
+  arr && arr.length
+    ? arr[0]
+    : null;
+
+/**
+ * @template {unknown} T
+ * @param {Readonly<T[]>} arr
+ * @return {T | null}
+ */
+const getLast = (arr) =>
+  arr && arr.length
+    ? arr[arr.length - 1]
+    : null;
 
 const createRule = ESLintUtils.RuleCreator(
   name => `https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/${name}.md`,
@@ -357,6 +376,8 @@ const createInsertJSDocBeforeFixer = (sourceCode, node, typeString) => {
 }
 
 module.exports = {
+  getFirst,
+  getLast,
   createRule,
   hasThrowsTag,
   hasJSDocThrowsTag,
