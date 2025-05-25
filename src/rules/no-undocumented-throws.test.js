@@ -568,6 +568,50 @@ ruleTester.run(
           { messageId: 'missingThrowsTag' },
         ],
       },
+      {
+        code: `
+          function factory() {
+            return function () {
+              throw new Error();
+            }
+          }
+        `,
+        output: `
+          function factory() {
+            /**
+             * @throws {Error}
+             */
+            return function () {
+              throw new Error();
+            }
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function factory() {
+            return () => {
+              throw new Error();
+            }
+          }
+        `,
+        output: `
+          function factory() {
+            /**
+             * @throws {Error}
+             */
+            return () => {
+              throw new Error();
+            }
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
     ],
   },
 );

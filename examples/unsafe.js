@@ -33,3 +33,10 @@ const lol = () => {
   console.log(egg.ham.spam);
 };
 lol();
+
+function factory() {
+  return function () {
+    throw new Error();
+  }
+}
+factory();

@@ -75,8 +75,8 @@ module.exports = createRule({
       const isCommented = 
         comments.length &&
         comments
-        .map(({ value }) => value)
-        .some(hasThrowsTag);
+          .map(({ value }) => value)
+          .some(hasThrowsTag);
 
       /** @type {import('typescript').Type[]} */
       const throwTypes = throwStatementNodes
@@ -176,11 +176,13 @@ module.exports = createRule({
       'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:exit': visitOnExit,
       'Property > ArrowFunctionExpression:exit': visitOnExit,
       'PropertyDefinition > ArrowFunctionExpression:exit': visitOnExit,
+      'ReturnStatement > ArrowFunctionExpression:exit': visitOnExit,
 
       'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > FunctionExpression:exit': visitOnExit,
       'Property > FunctionExpression:exit': visitOnExit,
       'PropertyDefinition > FunctionExpression:exit': visitOnExit,
       'MethodDefinition > FunctionExpression:exit': visitOnExit,
+      'ReturnStatement > FunctionExpression:exit': visitOnExit,
     };
   },
 });
