@@ -184,20 +184,22 @@ module.exports = createRule({
           return;
         }
 
+        const lastThrowsTypeNode = getLast(callerThrowsTypeNodes);
+        if (!lastThrowsTypeNode) return;
+
+        const notAssignableThrows = calleeThrowsTypes
+          .filter((t) => !callerThrowsTypes
+            .some((n) => checker.isTypeAssignableTo(t, n)));
+
+        if (!notAssignableThrows.length) return;
+
         context.report({
           node,
           messageId: 'throwTypeMismatch',
           fix(fixer) {
-            const lastThrowsTypeNode = getLast(callerThrowsTypeNodes);
-            if (!lastThrowsTypeNode) return null;
-
             if (callerThrowsTags.length > 1) {
               const lastThrowsTag = getLast(callerThrowsTags);
               if (!lastThrowsTag) return null;
-
-              const notAssignableThrows = calleeThrowsTypes
-                .filter((t) => !callerThrowsTypes
-                  .some((n) => checker.isTypeAssignableTo(t, n)));
 
               const callerJSDocTSNode = lastThrowsTag.parent;
               /**
