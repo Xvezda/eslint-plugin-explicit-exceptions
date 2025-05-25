@@ -915,6 +915,80 @@ ruleTester.run(
           { messageId: 'missingThrowsTag' },
         ],
       },
+      {
+        code: `
+          function foo() {
+            const promise = new Promise((resolve, reject) => {
+              if (Math.random() > 0.5) {
+                reject(new TypeError());
+              } else {
+                throw new SyntaxError();
+              }
+            });
+            return promise;
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<TypeError | SyntaxError>}
+           */
+          function foo() {
+            const promise = new Promise((resolve, reject) => {
+              if (Math.random() > 0.5) {
+                reject(new TypeError());
+              } else {
+                throw new SyntaxError();
+              }
+            });
+            return promise;
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function callback(resolve, reject) {
+            if (Math.random() > 0.6) {
+              reject(new TypeError());
+            } else if (Math.random() > 0.3) {
+              throw new SyntaxError();
+            } else {
+              reject(new RangeError());
+            }
+          }
+          function foo() {
+            const promise = new Promise(callback);
+            return promise;
+          }
+        `,
+        output: `
+          /**
+           * @throws {SyntaxError}
+           */
+          function callback(resolve, reject) {
+            if (Math.random() > 0.6) {
+              reject(new TypeError());
+            } else if (Math.random() > 0.3) {
+              throw new SyntaxError();
+            } else {
+              reject(new RangeError());
+            }
+          }
+          /**
+           * @throws {Promise<TypeError | RangeError | SyntaxError>}
+           */
+          function foo() {
+            const promise = new Promise(callback);
+            return promise;
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
     ],
   },
 );
