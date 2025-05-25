@@ -63,6 +63,9 @@ module.exports = createRule({
 
     /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */
     const visitOnExit = (node) => {
+      if (visitedNodes.has(node.range[0])) return;
+      visitedNodes.add(node.range[0]);
+
       const nodeToComment = findNodeToComment(node);
       if (!nodeToComment) return;
 
@@ -121,9 +124,6 @@ module.exports = createRule({
         });
         return;
       }
-      if (visitedNodes.has(node.range[0])) return;
-      visitedNodes.add(node.range[0]);
-
       context.report({
         node,
         messageId: 'missingThrowsTag',
