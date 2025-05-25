@@ -13,6 +13,8 @@ const hasThrowsTag = comment =>
   comment.includes('@exception');
 
 /**
+ * Combine multiple types into union type string of given types.
+ *
  * @param {import('typescript').TypeChecker} checker
  * @param {import('typescript').Type[]} types
  * @return {string}
@@ -52,6 +54,7 @@ const findParent = (node, callback) => {
 /**
  * Collects path from node to the root node until the predicate returns true.
  * If the predicate is not provided, it collects the entire path to the root.
+ *
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @param {function(import('@typescript-eslint/utils').TSESTree.Node): boolean} [untilPredicate]
  * @returns {import('@typescript-eslint/utils').TSESTree.Node[]}
@@ -289,8 +292,9 @@ const findNodeToComment = (node) => {
 
 /**
  * Check if node is in try-catch block where exception is handled
+ *
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
- * returns {boolean}
+ * @returns {boolean}
  */
 const isInHandledContext = (node) => {
   while (node) {
