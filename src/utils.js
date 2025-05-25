@@ -13,6 +13,24 @@ const hasThrowsTag = comment =>
   comment.includes('@exception');
 
 /**
+ * Check if node has JSDoc comment with @throws or @exception tag.
+ *
+ * @param {Readonly<import('@typescript-eslint/utils').TSESLint.SourceCode>} sourceCode
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @return {boolean}
+ */
+const hasJSDocThrowsTag = (sourceCode, node) => {
+  const comments = sourceCode.getCommentsBefore(node);
+  const isCommented =
+    comments.length &&
+    comments
+      .map(({ value }) => value)
+      .some(hasThrowsTag);
+
+  return isCommented;
+};
+
+/**
  * Combine multiple types into union type string of given types.
  *
  * @param {import('typescript').TypeChecker} checker
@@ -395,6 +413,7 @@ const isInHandledContext = (node) => {
 module.exports = {
   createRule,
   hasThrowsTag,
+  hasJSDocThrowsTag,
   typesToUnionString,
   findClosest,
   findParent,

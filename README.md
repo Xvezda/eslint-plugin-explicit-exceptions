@@ -6,6 +6,11 @@ Just as [Java’s throws keyword](https://dev.java/learn/exceptions/throwing/) d
 
 See [examples](./examples) for more.
 
+## Features
+- Reports and provides fixes for throwable functions that are not annotated with `@throws`.
+- Reports and provides fixes for async functions and Promise rejections.
+- Verifies that the exception types match the documented types.
+
 ## Usage
 
 Install dependencies
@@ -42,14 +47,3 @@ export default tseslint.config(
   },
 );
 ```
-
-## Rules
- - [`no-implicit-propagation`](docs/rules/no-implicit-propagation.md)
- - [`no-undocumented-throws`](docs/rules/no-undocumented-throws.md)
-
-## TODO
-- [x] Report undocumented throws
-- [x] Report unhandled throwable function calls
-- [ ] Report builtin exceptions (e.g. `null.foo` throws `TypeError`)
-- [ ] Non type checked preset
-- [x] Support async/await
