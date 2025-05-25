@@ -157,10 +157,10 @@ module.exports = createRule({
       const nodeToComment = findNodeToComment(callerDeclaration);
       if (!nodeToComment) return;
 
-      if (hasJSDocThrowsTag(sourceCode, nodeToComment)) {
-        const calleeDeclaration = getCalleeDeclaration(services, node);
-        if (!calleeDeclaration) return;
+      const calleeDeclaration = getCalleeDeclaration(services, node);
+      if (!calleeDeclaration) return;
 
+      if (hasJSDocThrowsTag(sourceCode, nodeToComment)) {
         const calleeThrowsTypes = toFlattenedTypeArray(getJSDocThrowsTagTypes(checker, calleeDeclaration));
         if (!calleeThrowsTypes.length) return;
 
@@ -231,9 +231,6 @@ module.exports = createRule({
 
         return;
       }
-
-      const calleeDeclaration = getCalleeDeclaration(services, node);
-      if (!calleeDeclaration) return;
 
       const calleeTags = getJSDocThrowsTags(calleeDeclaration);
 
