@@ -6,6 +6,11 @@ Just as [Java’s throws keyword](https://dev.java/learn/exceptions/throwing/) d
 
 See [examples](./examples) for more.
 
+## Features
+- Reports and provides fixes for throwable functions that are not annotated with `@throws`.
+- Reports and provides fixes for async functions and Promise rejections.
+- Verifies that the exception types match the documented types.
+
 ## Usage
 
 Install dependencies
