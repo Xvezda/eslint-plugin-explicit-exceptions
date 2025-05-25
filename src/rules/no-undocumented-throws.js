@@ -4,6 +4,7 @@ const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 const {
   createRule,
+  findParent,
   hasThrowsTag,
   typesToUnionString,
   isInHandledContext,
@@ -225,8 +226,26 @@ module.exports = createRule({
           .filter(ref => ref.identifier.parent.type === AST_NODE_TYPES.CallExpression)
           .map(ref => /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */(ref.identifier.parent));
 
-        const throwTypes = callRefs
+        if (!callRefs.length) return;
+
+        const rejectTypes = callRefs
           .map(ref => services.getTypeAtLocation(ref.arguments[0]));
+
+        if (!rejectTypes.length) return;
+
+        const references = sourceCode.getScope(node).references;
+        if (!references.length) return;
+
+        const rejectHandled = references
+          .some(ref =>
+            findParent(ref.identifier, (node) =>
+              node.type === AST_NODE_TYPES.MemberExpression &&
+              node.property.type === AST_NODE_TYPES.Identifier &&
+              node.property.name === 'catch'
+            )
+          );
+
+        if (rejectHandled) return;
 
         context.report({
           node,
@@ -237,7 +256,7 @@ module.exports = createRule({
             const indent = currentLine.match(/^\s*/)?.[0] ?? '';
 
             const throwsTypeString =
-              `Promise<${typesToUnionString(checker, throwTypes)}>`;
+              `Promise<${typesToUnionString(checker, rejectTypes)}>`;
 
             return fixer
               .insertTextBefore(

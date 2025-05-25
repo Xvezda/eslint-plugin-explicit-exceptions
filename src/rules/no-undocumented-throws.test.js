@@ -207,6 +207,28 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          function foo() {
+            new Promise((resolve, reject) => {
+              reject(new Error());
+            })
+              .then(console.log)
+              .catch(console.error);
+          }
+        `,
+      },
+      {
+        code: `
+          function foo() {
+            const promise = new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+
+            promise.catch(console.error);
+          }
+        `,
+      },
     ],
     invalid: [
       {
@@ -700,6 +722,30 @@ ruleTester.run(
                 reject(new SyntaxError());
               }
             });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            const promise = new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+            return promise;
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            const promise = new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+            return promise;
           }
         `,
         errors: [
