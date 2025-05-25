@@ -294,20 +294,16 @@ ruleTester.run(
           function foo() {
             throw new Error('foo');
           }
+          /**
+           * @throws {Error}
+           */
           function bar() {
-            try {
-              foo();
-            } catch {}
+            foo();
           }
         `,
         errors: [
           {
             messageId: 'implicitPropagation',
-          },
-        ],
-        options: [
-          {
-            tabLength: 2,
           },
         ],
       },
@@ -332,10 +328,11 @@ ruleTester.run(
           const foo = () => {
             throw new Error('foo');
           };
+          /**
+           * @throws {Error}
+           */
           const bar = () => {
-            try {
-              foo();
-            } catch {}
+            foo();
           };
         `,
         errors: [
@@ -343,11 +340,6 @@ ruleTester.run(
             messageId: 'implicitPropagation',
           },
         ],
-        options: [
-          {
-            tabLength: 2,
-          },
-        ],
       },
       {
         code: `
@@ -368,18 +360,14 @@ ruleTester.run(
               throw new Error('foo');
             },
           };
+          /**
+           * @throws {Error}
+           */
           const bar = () => {
-            try {
-              obj.foo();
-            } catch {}
+            obj.foo();
           };
         `,
         errors: [{ messageId: 'implicitPropagation' }],
-        options: [
-          {
-            tabLength: 2,
-          },
-        ],
       },
       {
         code: `
@@ -408,18 +396,14 @@ ruleTester.run(
               }
             },
           };
+          /**
+           * @throws {Error}
+           */
           const bar = () => {
-            try {
-              obj.foo();
-            } catch {}
+            obj.foo();
           };
         `,
         errors: [{ messageId: 'implicitPropagation' }],
-        options: [
-          {
-            tabLength: 2,
-          },
-        ],
       },
       {
         code: `
@@ -440,18 +424,14 @@ ruleTester.run(
               throw new Error('foo');
             }
           }
+          /**
+           * @throws {Error}
+           */
           const bar = () => {
-            try {
-              new Foo().foo();
-            } catch {}
+            new Foo().foo();
           };
         `,
         errors: [{ messageId: 'implicitPropagation' }],
-        options: [
-          {
-            tabLength: 2,
-          },
-        ],
       },
       {
         code: `
@@ -478,24 +458,20 @@ ruleTester.run(
           function foo() {
             throw new Error('foo');
           }
+          /**
+           * @throws {Error}
+           */
           function bar() {
             try {
               something();
             } catch {
-              try {
-                foo();
-              } catch {}
+              foo();
             }
           }
         `,
         errors: [
           {
             messageId: 'implicitPropagation',
-          },
-        ],
-        options: [
-          {
-            tabLength: 2,
           },
         ],
       },
@@ -524,24 +500,20 @@ ruleTester.run(
           function foo() {
             throw new Error('foo');
           }
+          /**
+           * @throws {Error}
+           */
           function bar() {
             try {
               something();
             } finally {
-              try {
-                foo();
-              } catch {}
+              foo();
             }
           }
         `,
         errors: [
           {
             messageId: 'implicitPropagation',
-          },
-        ],
-        options: [
-          {
-            tabLength: 2,
           },
         ],
       },
@@ -675,19 +647,15 @@ ruleTester.run(
               throw new TypeError('baz');
             },
           };
+          /**
+           * @throws {TypeError}
+           */
           const baz = () => {
-            try {
-              foo.bar = 42;
-            } catch {}
+            foo.bar = 42;
           };
         `,
         errors: [
           { messageId: 'implicitPropagation' },
-        ],
-        options: [
-          {
-            tabLength: 2,
-          },
         ],
       },
       {
@@ -725,19 +693,15 @@ ruleTester.run(
               throw new TypeError('baz');
             }
           };
+          /**
+           * @throws {TypeError}
+           */
           const baz = () => {
-            try {
-              new Foo().bar = 42;
-            } catch {}
+            new Foo().bar = 42;
           };
         `,
         errors: [
           { messageId: 'implicitPropagation' },
-        ],
-        options: [
-          {
-            tabLength: 2,
-          },
         ],
       },
       {
@@ -775,19 +739,15 @@ ruleTester.run(
               throw new TypeError('baz');
             }
           };
+          /**
+           * @throws {Error}
+           */
           const baz = () => {
-            try {
-              new Foo().bar;
-            } catch {}
+            new Foo().bar;
           };
         `,
         errors: [
           { messageId: 'implicitPropagation' },
-        ],
-        options: [
-          {
-            tabLength: 2,
-          },
         ],
       },
       {
@@ -824,20 +784,16 @@ ruleTester.run(
             }
           };
 
+          /**
+           * @throws {Error}
+           */
           const lol = () => {
-            try {
-              console.log(egg.ham.spam);
-            } catch {}
+            console.log(egg.ham.spam);
           };
           lol();
         `,
         errors: [
           { messageId: 'implicitPropagation' },
-        ],
-        options: [
-          {
-            tabLength: 2,
-          },
         ],
       },
     ],

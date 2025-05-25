@@ -1,11 +1,11 @@
 // @ts-check
 const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
-const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 const {
   createRule,
   hasThrowsTag,
-  findParent,
+  typesToUnionString,
+  isInHandledContext,
   getOptionsFromContext,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
@@ -57,10 +57,6 @@ module.exports = createRule({
      * @type {Map<number, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>}
      */
     const throwStatements = new Map();
-
-    /** @param {import('typescript').Type[]} types */
-    const typesToUnionString = (types) =>
-      types.map(t => utils.getTypeName(checker, t)).join(' | ');
 
     /** @param {import('@typescript-eslint/utils').TSESTree.Node} node */
     const visitOnExit = (node) => {
@@ -114,7 +110,7 @@ module.exports = createRule({
           fix(fixer) {
             return fixer.replaceTextRange(
               [lastTagtypeNode.pos, lastTagtypeNode.end],
-              typesToUnionString(throwTypes)
+              typesToUnionString(checker, throwTypes)
             );
           },
         });
@@ -132,7 +128,7 @@ module.exports = createRule({
             .insertTextBefore(
               nodeToComment,
               `/**\n` +
-              `${indent} * @throws {${typesToUnionString(throwTypes)}}\n` +
+              `${indent} * @throws {${typesToUnionString(checker, throwTypes)}}\n` +
               `${indent} */\n` +
               `${indent}`
             );
@@ -145,18 +141,7 @@ module.exports = createRule({
        * Collect and group throw statements in functions
        */
       ThrowStatement(node) {
-        let tryStatement =
-          /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement | null} */
-          (findParent(node, (n) => n.type === AST_NODE_TYPES.TryStatement));
-
-        while (tryStatement) {
-          // Exit if exception handled
-          if (tryStatement?.handler) return;
-
-          tryStatement =
-            /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement | null} */
-            (findParent(tryStatement, (n) => n.type === AST_NODE_TYPES.TryStatement));
-        }
+        if (isInHandledContext(node)) return; 
 
         const functionDeclaration = findClosestFunctionNode(node);
         if (!functionDeclaration) return;
