@@ -4,7 +4,7 @@ const ts = require('typescript');
 const {
   createRule,
   findParent,
-  hasThrowsTag,
+  hasJSDocThrowsTag,
   typesToUnionString,
   isInHandledContext,
   getOptionsFromContext,
@@ -70,16 +70,8 @@ module.exports = createRule({
       const nodeToComment = findNodeToComment(node);
       if (!nodeToComment) return;
 
-      const comments = sourceCode.getCommentsBefore(nodeToComment);
-
       const throwStatementNodes = throwStatements.get(node.range[0]);
       if (!throwStatementNodes) return;
-
-      const isCommented = 
-        comments.length &&
-        comments
-          .map(({ value }) => value)
-          .some(hasThrowsTag);
 
       /** @type {import('typescript').Type[]} */
       const throwTypes = throwStatementNodes
@@ -93,7 +85,7 @@ module.exports = createRule({
         })
         .flatMap(t => t.isUnion() ? t.types : t);
 
-      if (isCommented) {
+      if (hasJSDocThrowsTag(sourceCode, nodeToComment)) {
         if (!services.esTreeNodeToTSNodeMap.has(nodeToComment)) return;
 
         const functionDeclarationTSNode = services.esTreeNodeToTSNodeMap.get(node);
@@ -194,14 +186,7 @@ module.exports = createRule({
         const nodeToComment = findNodeToComment(functionDeclaration);
         if (!nodeToComment) return;
 
-        const comments = sourceCode.getCommentsBefore(nodeToComment);
-        const isCommented =
-          comments.length &&
-          comments
-            .map(({ value }) => value)
-            .some(hasThrowsTag);
-
-        if (isCommented) return;
+        if (hasJSDocThrowsTag(sourceCode, nodeToComment)) return;
 
         if (!node.arguments.length) return;
 

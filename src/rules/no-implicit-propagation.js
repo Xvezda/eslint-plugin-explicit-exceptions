@@ -6,6 +6,7 @@ const {
   isInHandledContext,
   typesToUnionString,
   hasThrowsTag,
+  hasJSDocThrowsTag,
   getCalleeDeclaration,
   getDeclarationTSNodeOfESTreeNode,
   getJSDocThrowsTags,
@@ -54,14 +55,7 @@ module.exports = createRule({
       const nodeToComment = findNodeToComment(callerDeclaration);
       if (!nodeToComment) return;
 
-      const comments = sourceCode.getCommentsBefore(nodeToComment);
-      const isCommented =
-        comments.length &&
-        comments
-          .map(({ value }) => value)
-          .some(hasThrowsTag);
-
-      if (isCommented) {
+      if (hasJSDocThrowsTag(sourceCode, nodeToComment)) {
         const calleeDeclaration = getCalleeDeclaration(services, node);
         if (!calleeDeclaration) return;
 
@@ -76,8 +70,8 @@ module.exports = createRule({
         const callerThrowsTags = getJSDocThrowsTags(callerDeclarationTSNode);
         const callerThrowsTypeNodes =
           callerThrowsTags
-          .map(tag => tag.typeExpression?.type)
-          .filter(tag => !!tag);
+            .map(tag => tag.typeExpression?.type)
+            .filter(tag => !!tag);
 
         const callerThrowsTypes = getJSDocThrowsTagTypes(checker, callerDeclarationTSNode);
 
