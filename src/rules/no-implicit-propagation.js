@@ -1,11 +1,11 @@
 // @ts-check
-const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
+const { ESLintUtils } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const {
   createRule,
-  findClosest,
+  isInHandledContext,
+  typesToUnionString,
   hasThrowsTag,
-  getOptionsFromContext,
   getCalleeDeclaration,
   getDeclarationTSNodeOfESTreeNode,
   getJSDocThrowsTags,
@@ -28,35 +28,23 @@ module.exports = createRule({
     fixable: 'code',
     messages: {
       implicitPropagation:
-        'Implicit propagation of exceptions is not allowed. Use try/catch to handle exceptions.',
+        'Implicit propagation of exceptions is not allowed. Add JSDoc comment with @throws (or @exception) tag.',
       throwTypeMismatch:
         'The type of the exception thrown does not match the type specified in the @throws (or @exception) tag.',
     },
-    defaultOptions: [
-      { tabLength: 4 },
-    ],
-    schema: [
-      {
-        type: 'object',
-        properties: {
-          tabLength: {
-            type: 'number',
-            default: 4,
-          },
-        },
-        additionalProperties: false,
-      },
-    ],
+    schema: [],
   },
   create(context) {
-    const options = getOptionsFromContext(context);
-
     const sourceCode = context.sourceCode;
     const services = ESLintUtils.getParserServices(context);
     const checker = services.program.getTypeChecker();
 
+    const warnedNodes = new Set();
+
     /** @param {import('@typescript-eslint/utils').TSESTree.ExpressionStatement} node */
     const visitExpressionStatement = (node) => {
+      if (isInHandledContext(node)) return;
+
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
@@ -67,8 +55,8 @@ module.exports = createRule({
       const isCommented =
         comments.length &&
         comments
-        .map(({ value }) => value)
-        .some(hasThrowsTag);
+          .map(({ value }) => value)
+          .some(hasThrowsTag);
 
       // TODO: Branching type checking or not
       if (isCommented) {
@@ -146,55 +134,49 @@ module.exports = createRule({
         return;
       }
 
+      if (warnedNodes.has(node.range[0])) return;
+      warnedNodes.add(node.range[0]);
+
       const calleeDeclaration = getCalleeDeclaration(services, node);
       if (!calleeDeclaration) return;
 
       const calleeTags = getJSDocThrowsTags(calleeDeclaration);
+
       const isCalleeThrows = calleeTags.length > 0;
-
       if (!isCalleeThrows) return;
-
-      const lines = sourceCode.getLines();
-
-      const currentLine = lines[node.loc.start.line - 1];
-      const prevLine = lines[node.loc.start.line - 2];
-
-      const indent = currentLine.match(/^\s*/)?.[0] ?? '';
-      const newIndent = indent + ' '.repeat(options.tabLength);
-
-      // TODO: Better way to handle this?
-      if (/^\s*try\s*\{/.test(prevLine)) return;
-
-      const nodeToWrap = findClosest(node, (n) =>
-        n.type === AST_NODE_TYPES.BlockStatement ||
-        n.type === AST_NODE_TYPES.ExpressionStatement ||
-        n.type === AST_NODE_TYPES.VariableDeclaration
-      );
-      if (!nodeToWrap) return;
+      
+      const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
 
       context.report({
         node,
         messageId: 'implicitPropagation',
         fix(fixer) {
-          return [
-            fixer.insertTextBefore(nodeToWrap, `try {\n${newIndent}`),
-            fixer.insertTextAfter(nodeToWrap, `\n${indent}} catch {}`),
-          ];
+          const lines = sourceCode.getLines();
+          const currentLine = lines[nodeToComment.loc.start.line - 1];
+          const indent = currentLine.match(/^\s*/)?.[0] ?? '';
+          return fixer
+            .insertTextBefore(
+              nodeToComment,
+              `/**\n` +
+              `${indent} * @throws {${typesToUnionString(checker, calleeThrowsTypes)}}\n` +
+              `${indent} */\n` +
+              `${indent}`
+            );
         },
       });
     };
 
     return {
-      'ArrowFunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpressionStatement,
-      'FunctionDeclaration :not(TryStatement[handler!=null]) ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpressionStatement,
-      'FunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpressionStatement,
-      'ArrowFunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement CallExpression[callee.type="Identifier"]': visitExpressionStatement,
-      'FunctionDeclaration :not(TryStatement[handler!=null]) ExpressionStatement CallExpression[callee.type="Identifier"]': visitExpressionStatement,
-      'FunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement CallExpression[callee.type="Identifier"]': visitExpressionStatement,
-      'ArrowFunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement:has(> AssignmentExpression[left.type="MemberExpression"])': visitExpressionStatement,
-      'FunctionDeclaration :not(TryStatement[handler!=null]) ExpressionStatement:has(> AssignmentExpression[left.type="MemberExpression"])': visitExpressionStatement,
-      'FunctionExpression :not(TryStatement[handler!=null]) ExpressionStatement:has(> AssignmentExpression[left.type="MemberExpression"])': visitExpressionStatement,
+      'ArrowFunctionExpression ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpressionStatement,
+      'FunctionDeclaration ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpressionStatement,
+      'FunctionExpression ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpressionStatement,
+      'ArrowFunctionExpression ExpressionStatement CallExpression[callee.type="Identifier"]': visitExpressionStatement,
+      'FunctionDeclaration ExpressionStatement CallExpression[callee.type="Identifier"]': visitExpressionStatement,
+      'FunctionExpression ExpressionStatement CallExpression[callee.type="Identifier"]': visitExpressionStatement,
+      'ArrowFunctionExpression ExpressionStatement AssignmentExpression[left.type="MemberExpression"]': visitExpressionStatement,
+      'FunctionDeclaration ExpressionStatement AssignmentExpression[left.type="MemberExpression"]': visitExpressionStatement,
+      'FunctionExpression ExpressionStatement AssignmentExpression[left.type="MemberExpression"]': visitExpressionStatement,
     };
   },
-  defaultOptions: [{ tabLength: 4 }],
+  defaultOptions: [],
 });

@@ -1,4 +1,5 @@
 const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
+const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 
 
@@ -10,6 +11,16 @@ const createRule = ESLintUtils.RuleCreator(
 const hasThrowsTag = comment =>
   comment.includes('@throws') ||
   comment.includes('@exception');
+
+/**
+ * Combine multiple types into union type string of given types.
+ *
+ * @param {import('typescript').TypeChecker} checker
+ * @param {import('typescript').Type[]} types
+ * @return {string}
+ */
+const typesToUnionString = (checker, types) =>
+  types.map(t => utils.getTypeName(checker, t)).join(' | ');
 
 /**
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
@@ -38,6 +49,27 @@ const findParent = (node, callback) => {
     }
   }
   return null;
+};
+
+/**
+ * Collects path from node to the root node until the predicate returns true.
+ * If the predicate is not provided, it collects the entire path to the root.
+ *
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @param {function(import('@typescript-eslint/utils').TSESTree.Node): boolean} [untilPredicate]
+ * @returns {import('@typescript-eslint/utils').TSESTree.Node[]}
+ */
+const collectPaths = (node, untilPredicate) => {
+  const path = [];
+  while (node) {
+    path.push(node);
+
+    if (untilPredicate && untilPredicate(node)) {
+      break;
+    }
+    node = node.parent;
+  }
+  return path.reverse();
 };
 
 /**
@@ -97,6 +129,13 @@ const getCalleeDeclaration = (services, node) => {
   }
 
   switch (node.type) {
+    case AST_NODE_TYPES.AssignmentExpression:
+      const setter = declarations
+        .find(declaration =>
+          services.tsNodeToESTreeNodeMap
+            .get(declaration).kind === 'set'
+        );
+      return setter ?? declarations[0];
     case AST_NODE_TYPES.MemberExpression:
       const getter = declarations
         .find(declaration =>
@@ -108,13 +147,6 @@ const getCalleeDeclaration = (services, node) => {
       }
     case AST_NODE_TYPES.CallExpression:
       return declarations[0];
-    case AST_NODE_TYPES.AssignmentExpression:
-      const setter = declarations
-        .find(declaration =>
-          services.tsNodeToESTreeNodeMap
-            .get(declaration).kind === 'set'
-        );
-      return setter ?? declarations[0];
   }
   return null;
 };
@@ -257,10 +289,37 @@ const findNodeToComment = (node) => {
   return null;
 };
 
+/**
+ * Check if node is in try-catch block where exception is handled
+ *
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @returns {boolean}
+ */
+const isInHandledContext = (node) => {
+  while (node) {
+    const paths = collectPaths(node, (n) =>
+      n.type === AST_NODE_TYPES.TryStatement &&
+      n.handler !== null
+    );
+    if (paths.length < 2) return false;
+
+    /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement} */
+    const tryNode = paths[0];
+
+    if (
+      tryNode.block &&
+      tryNode.block.range[0] === paths[1].range[0]
+    ) return true;
+
+    node = node.parent;
+  }
+  return false;
+};
 
 module.exports = {
   createRule,
   hasThrowsTag,
+  typesToUnionString,
   findClosest,
   findParent,
   getOptionsFromContext,
@@ -272,4 +331,5 @@ module.exports = {
   isTypesAssignableTo,
   findClosestFunctionNode,
   findNodeToComment,
+  isInHandledContext,
 };

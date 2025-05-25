@@ -7,12 +7,8 @@ This rule reports any function that calls a function documented with `@throws` (
 
 ## Fixer
 
-Wraps the code that throws into `try…catch` block.
+Inserts a `@throws` JSDoc tag (matching the delegated thrown type) immediately above the function declaration.
 
 ## Options
 
-### `tabLength`
-
-Default: `4`
-
-Controls the number of spaces used for indentation in the automatically inserted `try…catch` block.
+(TODO)
