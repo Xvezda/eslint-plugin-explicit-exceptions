@@ -311,7 +311,7 @@ const findIdentifierDeclaration = (sourceCode, node) => {
     scope = scope.upper;
   } while (scope);
 
-  if (!defs.length) return;
+  if (!defs.length) return null;
 
   const definition = defs
     .map(def => {
@@ -324,7 +324,7 @@ const findIdentifierDeclaration = (sourceCode, node) => {
           case AST_NODE_TYPES.FunctionExpression:
             return def.node.init;
           default:
-            return;
+            return null;
         }
       } else if (def.node.type === AST_NODE_TYPES.FunctionDeclaration) {
         return def.node;
@@ -333,7 +333,7 @@ const findIdentifierDeclaration = (sourceCode, node) => {
     })
     .filter(def => !!def);
 
-  if (!definition.length) return;
+  if (!definition.length) return null;
 
   return definition[0];
 };
