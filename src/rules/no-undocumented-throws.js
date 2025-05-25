@@ -113,7 +113,7 @@ module.exports = createRule({
           .map(t => node.async ? checker.getAwaitedType(t) : t)
           .filter(t => !!t);
 
-        if (isTypesAssignableTo(checker, throwTypes, throwsTagTypes)) return;
+        if (isTypesAssignableTo(services.program, throwTypes, throwsTagTypes)) return;
 
         const lastTagtypeNode = getLast(throwsTagTypeNodes);
         if (!lastTagtypeNode) return;

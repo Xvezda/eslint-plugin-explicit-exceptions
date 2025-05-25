@@ -161,10 +161,10 @@ module.exports = createRule({
       const calleeDeclaration = getCalleeDeclaration(services, node);
       if (!calleeDeclaration) return;
 
-      if (hasJSDocThrowsTag(sourceCode, nodeToComment)) {
-        const calleeThrowsTypes = toFlattenedTypeArray(getJSDocThrowsTagTypes(checker, calleeDeclaration));
-        if (!calleeThrowsTypes.length) return;
+      const calleeThrowsTypes = toFlattenedTypeArray(getJSDocThrowsTagTypes(checker, calleeDeclaration));
+      if (!calleeThrowsTypes.length) return;
 
+      if (hasJSDocThrowsTag(sourceCode, nodeToComment)) {
         const callerDeclarationTSNode =
           getDeclarationTSNodeOfESTreeNode(services, callerDeclaration);
 
@@ -176,10 +176,10 @@ module.exports = createRule({
             .map(tag => tag.typeExpression?.type)
             .filter(tag => !!tag);
 
-        const callerThrowsTypes = getJSDocThrowsTagTypes(checker, callerDeclarationTSNode);
+        const callerThrowsTypes = toFlattenedTypeArray(getJSDocThrowsTagTypes(checker, callerDeclarationTSNode));
 
         if (
-          isTypesAssignableTo(checker, calleeThrowsTypes, callerThrowsTypes)
+          isTypesAssignableTo(services.program, calleeThrowsTypes, callerThrowsTypes)
         ) {
           return;
         }
@@ -189,7 +189,10 @@ module.exports = createRule({
 
         const notAssignableThrows = calleeThrowsTypes
           .filter((t) => !callerThrowsTypes
-            .some((n) => checker.isTypeAssignableTo(t, n)));
+            .some((n) =>
+              utils.isErrorLike(services.program, n) && utils.isErrorLike(services.program, t)
+                ? t.symbol?.name === n.symbol?.name
+                : checker.isTypeAssignableTo(t, n)));
 
         if (!notAssignableThrows.length) return;
 
@@ -228,8 +231,7 @@ module.exports = createRule({
             // If there is only one throws tag, make it as a union type
             return fixer.replaceTextRange(
               [lastThrowsTypeNode.pos, lastThrowsTypeNode.end],
-              calleeThrowsTypes
-                .map(t => utils.getTypeName(checker, t)).join(' | '),
+              typesToUnionString(checker, [...callerThrowsTypes, ...calleeThrowsTypes])
             );
           },
         });
@@ -237,12 +239,6 @@ module.exports = createRule({
         return;
       }
 
-      const calleeTags = getJSDocThrowsTags(calleeDeclaration);
-
-      const isCalleeThrows = calleeTags.length > 0;
-      if (!isCalleeThrows) return;
-      
-      const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
       context.report({
         node,
         messageId: 'implicitPropagation',

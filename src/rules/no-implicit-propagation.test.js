@@ -900,6 +900,122 @@ ruleTester.run(
           { messageId: 'implicitPropagation' },
         ],
       },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function foo() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function baz() {
+            if (Math.random() > 0.5) {
+              foo();
+            } else {
+              bar();
+            }
+          }
+          baz();
+        `,
+        output: `
+          /**
+           * @throws {TypeError}
+           */
+          function foo() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          /**
+           * @throws {TypeError | RangeError}
+           */
+          function baz() {
+            if (Math.random() > 0.5) {
+              foo();
+            } else {
+              bar();
+            }
+          }
+          baz();
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function foo() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          function baz() {
+            if (Math.random() > 0.5) {
+              foo();
+            } else {
+              bar();
+            }
+          }
+          baz();
+        `,
+        output: `
+          /**
+           * @throws {TypeError}
+           */
+          function foo() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          /**
+           * @throws {TypeError | RangeError}
+           */
+          function baz() {
+            if (Math.random() > 0.5) {
+              foo();
+            } else {
+              bar();
+            }
+          }
+          baz();
+        `,
+        errors: [
+          { messageId: 'implicitPropagation' },
+          { messageId: 'implicitPropagation' },
+        ],
+      },
     ],
   },
 );
