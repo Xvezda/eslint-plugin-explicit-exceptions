@@ -57,3 +57,13 @@ function factory() {
   }
 }
 factory();
+
+/**
+ * @throws {Promise<Error>}
+ */
+function promised() {
+  return new Promise((_, reject) => {
+    reject(new Error());
+  });
+}
+await promised();
