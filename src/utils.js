@@ -239,7 +239,17 @@ const findNodeToComment = (node) => {
          * const target = () => { ... };
          * ```
          */
-        findParent(node, (n) => n.type === AST_NODE_TYPES.VariableDeclaration)
+        findParent(node, (n) => n.type === AST_NODE_TYPES.VariableDeclaration) ??
+        /**
+         * @example
+         * ```
+         * function factory() {
+         *   // here
+         *   return function target() { ... };
+         * }
+         * ```
+         */
+        findParent(node, (n) => n.type === AST_NODE_TYPES.ReturnStatement)
       );
     default:
       break;

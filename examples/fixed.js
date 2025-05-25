@@ -47,3 +47,13 @@ const lol = () => {
   } catch {}
 };
 lol();
+
+function factory() {
+  /**
+   * @throws {Error}
+   */
+  return function () {
+    throw new Error();
+  }
+}
+factory();
