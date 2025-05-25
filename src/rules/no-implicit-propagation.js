@@ -1,21 +1,123 @@
 // @ts-check
-const { ESLintUtils } = require('@typescript-eslint/utils');
+const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const {
   createRule,
   isInHandledContext,
   typesToUnionString,
   hasJSDocThrowsTag,
-  getCalleeDeclaration,
-  getDeclarationTSNodeOfESTreeNode,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
+  getDeclarationTSNodeOfESTreeNode,
   toFlattenedTypeArray,
   isTypesAssignableTo,
   findClosestFunctionNode,
   findNodeToComment,
   createInsertJSDocBeforeFixer,
 } = require('../utils');
+
+/**
+ * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @return {import('typescript').Declaration[] | undefined}
+ */
+const getDeclarationsByNode = (services, node) => {
+  return services
+    .getSymbolAtLocation(node)
+    ?.declarations;
+};
+
+/**
+ * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
+ * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
+ * @return {import('typescript').Node | null}
+ */
+const getCalleeDeclaration = (services, node) => {
+  /** @type {import('@typescript-eslint/utils').TSESTree.Node | null} */
+  let calleeNode = null;
+  switch (node.type) {
+    case AST_NODE_TYPES.MemberExpression:
+      calleeNode = node.property;
+      break;
+    case AST_NODE_TYPES.CallExpression:
+      calleeNode = node.callee;
+      break;
+    case AST_NODE_TYPES.AssignmentExpression:
+      calleeNode = node.left;
+      break;
+    default:
+      break;
+  }
+  if (!calleeNode) return null;
+
+  const declarations = getDeclarationsByNode(services, calleeNode);
+  if (!declarations || !declarations.length) {
+    return null;
+  }
+
+  switch (node.type) {
+    /**
+     * Return type of setter when assigning
+     *
+     * @example
+     * ```
+     * foo.bar = 'baz';
+     * //  ^ This can be a setter
+     * ```
+     */
+    case AST_NODE_TYPES.AssignmentExpression: {
+      const setter = declarations
+        .find(declaration => {
+          const declarationNode =
+            services.tsNodeToESTreeNodeMap.get(declaration);
+
+          if (
+            declarationNode?.type === AST_NODE_TYPES.MethodDefinition ||
+            declarationNode?.type === AST_NODE_TYPES.Property
+          ) {
+            return declarationNode.value.type === AST_NODE_TYPES.ArrowFunctionExpression ||
+              declarationNode.value.type === AST_NODE_TYPES.FunctionExpression &&
+              declarationNode.kind === 'set';
+          }
+          return false;
+        });
+      return setter ?? declarations[0];
+    }
+    /**
+     * Return type of getter when accessing
+     *
+     * @example
+     * ```
+     * const baz = foo.bar;
+     * //              ^ This can be a getter
+     * ```
+     */
+    case AST_NODE_TYPES.MemberExpression: {
+      const getter = declarations
+        .find(declaration => {
+          const declarationNode =
+            services.tsNodeToESTreeNodeMap.get(declaration);
+
+          if (
+            declarationNode?.type === AST_NODE_TYPES.MethodDefinition ||
+            declarationNode?.type === AST_NODE_TYPES.Property
+          ) {
+            return declarationNode.value.type === AST_NODE_TYPES.ArrowFunctionExpression ||
+              declarationNode.value.type === AST_NODE_TYPES.FunctionExpression &&
+              declarationNode.kind === 'get';
+          }
+          return false;
+        });
+
+      if (getter) {
+        return getter;
+      }
+    }
+    case AST_NODE_TYPES.CallExpression:
+      return declarations[0];
+  }
+  return null;
+};
 
 
 module.exports = createRule({
