@@ -28,7 +28,7 @@ const hasJSDocThrowsTag = (sourceCode, node) => {
       .map(({ value }) => value)
       .some(hasThrowsTag);
 
-  return isCommented;
+  return Boolean(isCommented);
 };
 
 /**
@@ -42,11 +42,13 @@ const typesToUnionString = (checker, types) =>
   types.map(t => utils.getTypeName(checker, t)).join(' | ');
 
 /**
- * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node
  * @param {function(import('@typescript-eslint/utils').TSESTree.Node): boolean} callback
  * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
  */
 const findClosest = (node, callback) => {
+  if (!node) return null;
+
   do {
     if (callback(node)) {
       return node;
@@ -74,7 +76,7 @@ const findParent = (node, callback) => {
  * Collects path from node to the root node until the predicate returns true.
  * If the predicate is not provided, it collects the entire path to the root.
  *
- * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node
  * @param {function(import('@typescript-eslint/utils').TSESTree.Node): boolean} [untilPredicate]
  * @returns {import('@typescript-eslint/utils').TSESTree.Node[]}
  */
@@ -135,12 +137,13 @@ const getCalleeFromExpression = (node) => {
 };
 
 /**
- * @param {import('@typescript-eslint/utils').ParserServices} services
- * @param {import('@typescript-eslint/utils').TSESTree.ExpressionStatement} node
+ * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
+ * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
  * @return {import('typescript').Node | null}
  */
 const getCalleeDeclaration = (services, node) => {
   const calleeNode = getCalleeFromExpression(node);
+  if (!calleeNode) return null;
   const declarations = getDeclarationsByNode(services, calleeNode);
 
   if (!declarations || !declarations.length) {
@@ -157,13 +160,24 @@ const getCalleeDeclaration = (services, node) => {
      * //  ^ This can be a setter
      * ```
      */
-    case AST_NODE_TYPES.AssignmentExpression:
+    case AST_NODE_TYPES.AssignmentExpression: {
       const setter = declarations
-        .find(declaration =>
-          services.tsNodeToESTreeNodeMap
-            .get(declaration).kind === 'set'
-        );
+        .find(declaration => {
+          const declarationNode =
+            services.tsNodeToESTreeNodeMap.get(declaration);
+
+          if (
+            declarationNode?.type === AST_NODE_TYPES.MethodDefinition ||
+            declarationNode?.type === AST_NODE_TYPES.Property
+          ) {
+            return declarationNode.value.type === AST_NODE_TYPES.ArrowFunctionExpression ||
+              declarationNode.value.type === AST_NODE_TYPES.FunctionExpression &&
+              declarationNode.kind === 'set';
+          }
+          return false;
+        });
       return setter ?? declarations[0];
+    }
     /**
      * Return type of getter when accessing
      *
@@ -173,15 +187,27 @@ const getCalleeDeclaration = (services, node) => {
      * //              ^ This can be a getter
      * ```
      */
-    case AST_NODE_TYPES.MemberExpression:
+    case AST_NODE_TYPES.MemberExpression: {
       const getter = declarations
-        .find(declaration =>
-          services.tsNodeToESTreeNodeMap
-            .get(declaration)?.kind === 'get'
-        );
+        .find(declaration => {
+          const declarationNode =
+            services.tsNodeToESTreeNodeMap.get(declaration);
+
+          if (
+            declarationNode?.type === AST_NODE_TYPES.MethodDefinition ||
+            declarationNode?.type === AST_NODE_TYPES.Property
+          ) {
+            return declarationNode.value.type === AST_NODE_TYPES.ArrowFunctionExpression ||
+              declarationNode.value.type === AST_NODE_TYPES.FunctionExpression &&
+              declarationNode.kind === 'get';
+          }
+          return false;
+        });
+
       if (getter) {
         return getter;
       }
+    }
     case AST_NODE_TYPES.CallExpression:
       return declarations[0];
   }
@@ -337,7 +363,7 @@ const findNodeToComment = (node) => {
  * Find declaration node of identifier node
  *
  * @param {Readonly<import('@typescript-eslint/utils').TSESLint.SourceCode>} sourceCode
- * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @param {import('@typescript-eslint/utils').TSESTree.Identifier} node
  * @return {import('@typescript-eslint/utils').TSESTree.Node | null}
  */
 const findIdentifierDeclaration = (sourceCode, node) => {
@@ -387,7 +413,7 @@ const findIdentifierDeclaration = (sourceCode, node) => {
 /**
  * Check if node is in try-catch block where exception is handled
  *
- * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node
  * @returns {boolean}
  */
 const isInHandledContext = (node) => {
@@ -399,7 +425,9 @@ const isInHandledContext = (node) => {
     if (paths.length < 2) return false;
 
     /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement} */
-    const tryNode = paths[0];
+    const tryNode = 
+      /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement} */
+      (paths[0]);
 
     if (
       tryNode.block &&
