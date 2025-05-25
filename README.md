@@ -42,14 +42,3 @@ export default tseslint.config(
   },
 );
 ```
-
-## Rules
- - [`no-implicit-propagation`](docs/rules/no-implicit-propagation.md)
- - [`no-undocumented-throws`](docs/rules/no-undocumented-throws.md)
-
-## TODO
-- [x] Report undocumented throws
-- [x] Report unhandled throwable function calls
-- [ ] Report builtin exceptions (e.g. `null.foo` throws `TypeError`)
-- [ ] Non type checked preset
-- [x] Support async/await
