@@ -42,7 +42,7 @@ module.exports = createRule({
     const visitedNodes = new Set();
 
     /** @param {import('@typescript-eslint/utils').TSESTree.ExpressionStatement} node */
-    const visitExpressionStatement = (node) => {
+    const visitExpression = (node) => {
       if (visitedNodes.has(node.range[0])) return;
       visitedNodes.add(node.range[0]);
 
@@ -61,7 +61,6 @@ module.exports = createRule({
           .map(({ value }) => value)
           .some(hasThrowsTag);
 
-      // TODO: Branching type checking or not
       if (isCommented) {
         const calleeDeclaration = getCalleeDeclaration(services, node);
         if (!calleeDeclaration) return;
@@ -167,15 +166,15 @@ module.exports = createRule({
     };
 
     return {
-      'ArrowFunctionExpression ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpressionStatement,
-      'FunctionDeclaration ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpressionStatement,
-      'FunctionExpression ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpressionStatement,
-      'ArrowFunctionExpression ExpressionStatement CallExpression[callee.type="Identifier"]': visitExpressionStatement,
-      'FunctionDeclaration ExpressionStatement CallExpression[callee.type="Identifier"]': visitExpressionStatement,
-      'FunctionExpression ExpressionStatement CallExpression[callee.type="Identifier"]': visitExpressionStatement,
-      'ArrowFunctionExpression ExpressionStatement AssignmentExpression[left.type="MemberExpression"]': visitExpressionStatement,
-      'FunctionDeclaration ExpressionStatement AssignmentExpression[left.type="MemberExpression"]': visitExpressionStatement,
-      'FunctionExpression ExpressionStatement AssignmentExpression[left.type="MemberExpression"]': visitExpressionStatement,
+      'ArrowFunctionExpression ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpression,
+      'FunctionDeclaration ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpression,
+      'FunctionExpression ExpressionStatement MemberExpression[property.type="Identifier"]': visitExpression,
+      'ArrowFunctionExpression ExpressionStatement CallExpression[callee.type="Identifier"]': visitExpression,
+      'FunctionDeclaration ExpressionStatement CallExpression[callee.type="Identifier"]': visitExpression,
+      'FunctionExpression ExpressionStatement CallExpression[callee.type="Identifier"]': visitExpression,
+      'ArrowFunctionExpression ExpressionStatement AssignmentExpression[left.type="MemberExpression"]': visitExpression,
+      'FunctionDeclaration ExpressionStatement AssignmentExpression[left.type="MemberExpression"]': visitExpression,
+      'FunctionExpression ExpressionStatement AssignmentExpression[left.type="MemberExpression"]': visitExpression,
     };
   },
   defaultOptions: [],
