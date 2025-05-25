@@ -1,3 +1,4 @@
+// @ts-check
 const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
@@ -410,6 +411,30 @@ const isInHandledContext = (node) => {
   return false;
 };
 
+/**
+ * Create fixer to insert JSDoc comment before node
+ * @param {Readonly<import('@typescript-eslint/utils').TSESLint.SourceCode>} sourceCode
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @param {string} typeString
+ */
+const createInsertJSDocBeforeFixer = (sourceCode, node, typeString) => {
+  /** @param {import('@typescript-eslint/utils').TSESLint.RuleFixer} fixer */
+  return (fixer) => {
+    const lines = sourceCode.getLines();
+    const currentLine = lines[node.loc.start.line - 1];
+    const indent = currentLine.match(/^\s*/)?.[0] ?? '';
+
+    return fixer
+      .insertTextBefore(
+        node,
+        `/**\n` +
+        `${indent} * @throws {${typeString}}\n` +
+        `${indent} */\n` +
+        `${indent}`
+      );
+  };
+}
+
 module.exports = {
   createRule,
   hasThrowsTag,
@@ -428,4 +453,5 @@ module.exports = {
   findNodeToComment,
   findIdentifierDeclaration,
   isInHandledContext,
+  createInsertJSDocBeforeFixer,
 };

@@ -5,7 +5,6 @@ const {
   createRule,
   isInHandledContext,
   typesToUnionString,
-  hasThrowsTag,
   hasJSDocThrowsTag,
   getCalleeDeclaration,
   getDeclarationTSNodeOfESTreeNode,
@@ -15,6 +14,7 @@ const {
   isTypesAssignableTo,
   findClosestFunctionNode,
   findNodeToComment,
+  createInsertJSDocBeforeFixer,
 } = require('../utils');
 
 
@@ -139,23 +139,14 @@ module.exports = createRule({
       if (!isCalleeThrows) return;
       
       const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
-
       context.report({
         node,
         messageId: 'implicitPropagation',
-        fix(fixer) {
-          const lines = sourceCode.getLines();
-          const currentLine = lines[nodeToComment.loc.start.line - 1];
-          const indent = currentLine.match(/^\s*/)?.[0] ?? '';
-          return fixer
-            .insertTextBefore(
-              nodeToComment,
-              `/**\n` +
-              `${indent} * @throws {${typesToUnionString(checker, calleeThrowsTypes)}}\n` +
-              `${indent} */\n` +
-              `${indent}`
-            );
-        },
+        fix: createInsertJSDocBeforeFixer(
+          sourceCode,
+          nodeToComment,
+          typesToUnionString(checker, calleeThrowsTypes)
+        ),
       });
     };
 
