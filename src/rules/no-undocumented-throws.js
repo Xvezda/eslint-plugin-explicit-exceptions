@@ -183,7 +183,10 @@ module.exports = createRule({
       'MethodDefinition > FunctionExpression:exit': visitOnExit,
       'ReturnStatement > FunctionExpression:exit': visitOnExit,
 
-      /** @param {import('@typescript-eslint/utils').TSESTree.NewExpression} node */
+      /**
+       * Visitor for checking `new Promise()` calls
+       * @param {import('@typescript-eslint/utils').TSESTree.NewExpression} node
+       */
       'NewExpression[callee.type="Identifier"][callee.name="Promise"]'(node) {
         const functionDeclaration = findClosestFunctionNode(node);
         if (!functionDeclaration) return;
