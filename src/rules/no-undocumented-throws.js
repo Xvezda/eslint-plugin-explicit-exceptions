@@ -104,8 +104,7 @@ module.exports = createRule({
         if (!throwsTagTypeNodes.length) return;
 
         const throwsTagTypes = getJSDocThrowsTagTypes(checker, functionDeclarationTSNode)
-          .map(t => checker.getAwaitedType(t) ?? t)
-          .filter(t => !!t);
+          .map(t => checker.getAwaitedType(t) ?? t);
 
         const typeGroups = groupTypesByCompatibility(
           services.program,
