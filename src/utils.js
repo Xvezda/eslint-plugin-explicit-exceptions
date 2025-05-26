@@ -226,13 +226,15 @@ const groupTypesByCompatibility = (program, source, target) => {
  * Find closest function where exception is thrown
  *
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
- * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
+ * @returns {import('@typescript-eslint/utils').TSESTree.FunctionLike | null}
  */
 const findClosestFunctionNode = (node) => {
-  return findParent(node, (n) =>
-    n.type === AST_NODE_TYPES.FunctionDeclaration ||
-    n.type === AST_NODE_TYPES.FunctionExpression ||
-    n.type === AST_NODE_TYPES.ArrowFunctionExpression
+  return /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */(
+    findParent(node, (n) =>
+      n.type === AST_NODE_TYPES.FunctionDeclaration ||
+      n.type === AST_NODE_TYPES.FunctionExpression ||
+      n.type === AST_NODE_TYPES.ArrowFunctionExpression
+    )
   );
 };
 

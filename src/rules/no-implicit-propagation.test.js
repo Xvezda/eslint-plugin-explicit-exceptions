@@ -988,6 +988,65 @@ ruleTester.run(
           { messageId: 'throwTypeMismatch' },
         ],
       },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function foo() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          async function baz() {
+            if (Math.random() > 0.5) {
+              foo();
+            } else {
+              bar();
+            }
+          }
+          baz();
+        `,
+        output: `
+          /**
+           * @throws {TypeError}
+           */
+          function foo() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          /**
+           * @throws {Promise<TypeError | RangeError>}
+           */
+          async function baz() {
+            if (Math.random() > 0.5) {
+              foo();
+            } else {
+              bar();
+            }
+          }
+          baz();
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
     ],
   },
 );
