@@ -14,7 +14,7 @@ module.exports = tseslint.config(
       ecmaVersion: "latest",
       parserOptions: {
         projectService: true,
-        tsconfigRootDir: path.resolve(__dirname, '..'),
+        tsconfigRootDir: __dirname,
       },
     },
     rules: {

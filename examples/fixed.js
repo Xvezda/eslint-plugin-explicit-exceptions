@@ -73,4 +73,7 @@ function promised() {
     reject(new Error());
   });
 }
-await promised();
+promised().catch(() => {});
+
+
+export {};
