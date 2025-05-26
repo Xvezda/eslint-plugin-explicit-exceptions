@@ -237,6 +237,7 @@ module.exports = createRule({
           ]
         );
 
+        // All thrown types must be promise if it's called in async function
         if (
           node.async &&
           !getJSDocThrowsTagTypes(checker, callerDeclarationTSNode)
