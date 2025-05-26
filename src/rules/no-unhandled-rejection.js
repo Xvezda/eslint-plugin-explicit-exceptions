@@ -1,11 +1,15 @@
 // @ts-check
 const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
+const utils = require('@typescript-eslint/type-utils');
 const {
   createRule,
-  hasJSDocThrowsTag,
-  findIdentifierDeclaration,
+  getNodeID,
+  getCalleeDeclaration,
   isInAsyncHandledContext,
+  getJSDocThrowsTagTypes,
+  findClosest,
 } = require('../utils');
+
 
 module.exports = createRule({
   name: 'no-unhandled-rejection',
@@ -15,7 +19,8 @@ module.exports = createRule({
       description: 'Disallow unhandled promise rejections',
     },
     messages: {
-      unhandledRejection: 'Unhandled promise rejection detected. Use `.catch()` or `async/await` to handle it.',
+      unhandledRejection:
+        'Unhandled promise rejection detected. Use `.catch()` or `async/await` to handle it.',
     },
     schema: [],
   },
@@ -26,37 +31,48 @@ module.exports = createRule({
     const services = ESLintUtils.getParserServices(context);
     const checker = services.program.getTypeChecker();
 
-    return {
-      /** @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node */
-      'CallExpression[callee.type="Identifier"]'(node) {
-        if (node.callee.type !== AST_NODE_TYPES.Identifier) return;
+    /** @type {Set<string>} */
+    const visitedNodes = new Set();
 
-        const calleeDeclaration = findIdentifierDeclaration(
-          sourceCode,
-          node.callee,
-        );
+    return {
+      Identifier(node) {
+        const expression =
+          /** @type {import('@typescript-eslint/utils').TSESTree.Expression} */
+          (findClosest(node, (n) =>
+            n.type === AST_NODE_TYPES.CallExpression ||
+            n.type === AST_NODE_TYPES.MemberExpression
+          ));
+
+        if (!expression) return;
+
+        if (visitedNodes.has(getNodeID(expression))) return;
+        visitedNodes.add(getNodeID(expression));
+
+        const calleeDeclaration = getCalleeDeclaration(services, expression);
         if (!calleeDeclaration) return;
 
-        if (!hasJSDocThrowsTag(sourceCode, calleeDeclaration)) return;
+        const jsDocThrowsTagTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
+        if (!jsDocThrowsTagTypes.length) return;
 
-        /** @type {ReturnType<typeof sourceCode.getScope> | null} */
-        let scope = sourceCode.getScope(node.callee);
-        do {
-          if (scope.set.has(node.callee.name)) break;
-          scope = scope.upper;
-        } while (scope);
+        const maybeReject = jsDocThrowsTagTypes
+          .some(type => utils.isPromiseLike(services.program, type));
 
-        if (!scope) return;
+        if (!maybeReject) return;
 
-        const references = scope.set.get(node.callee.name)?.references;
-        references?.forEach(reference => {
-          if (!isInAsyncHandledContext(sourceCode, reference.identifier)) {
+        switch (expression.type) {
+          case AST_NODE_TYPES.CallExpression:
+            if (isInAsyncHandledContext(sourceCode, node)) return;
+            // fallthrough
+          case AST_NODE_TYPES.MemberExpression:
+            if (isInAsyncHandledContext(sourceCode, expression)) return;
             context.report({
-              node: reference.identifier,
+              node: expression,
               messageId: 'unhandledRejection',
             });
-          }
-        });
+            break;
+          default:
+            break;
+        }
       },
     };
   },

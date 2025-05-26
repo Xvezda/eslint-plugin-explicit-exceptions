@@ -205,6 +205,21 @@ ruleTester.run(
         `,
         errors: [{ messageId: 'unhandledRejection' }],
       },
+      {
+        code: `
+          const foo = {
+            /**
+             * @throws {Promise<Error>}
+             */
+            get bar() {
+              return Promise.reject(new Error());
+            }
+          };
+
+          foo.bar;
+        `,
+        errors: [{ messageId: 'unhandledRejection' }],
+      },
     ],
   },
 );
