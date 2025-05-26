@@ -1047,6 +1047,124 @@ ruleTester.run(
           { messageId: 'throwTypeMismatch' },
         ],
       },
+      {
+        code: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function foo() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          async function baz() {
+            if (Math.random() > 0.5) {
+              await foo();
+            } else {
+              bar();
+            }
+          }
+          baz();
+        `,
+        output: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function foo() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          /**
+           * @throws {Promise<TypeError | RangeError>}
+           */
+          async function baz() {
+            if (Math.random() > 0.5) {
+              await foo();
+            } else {
+              bar();
+            }
+          }
+          baz();
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function foo() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function baz() {
+            if (Math.random() > 0.5) {
+              await foo();
+            } else {
+              bar();
+            }
+          }
+          baz();
+        `,
+        output: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function foo() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          /**
+           * @throws {Promise<TypeError | RangeError>}
+           */
+          async function baz() {
+            if (Math.random() > 0.5) {
+              await foo();
+            } else {
+              bar();
+            }
+          }
+          baz();
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
     ],
   },
 );
