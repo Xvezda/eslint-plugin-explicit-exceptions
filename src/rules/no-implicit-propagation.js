@@ -226,12 +226,41 @@ module.exports = createRule({
           callerThrowsTypes,
         );
 
-        if (!typeGroups.source.incompatible) {
+        const lastThrowsTypeNode = getLast(callerThrowsTypeNodes);
+        if (!lastThrowsTypeNode) return;
+
+        const callerFixedType = typesToUnionString(
+          checker,
+          [
+            ...typeGroups.target.compatible ?? [],
+            ...typeGroups.source.incompatible ?? [],
+          ]
+        );
+
+        if (
+          node.async &&
+          !getJSDocThrowsTagTypes(checker, callerDeclarationTSNode)
+            .every(t =>
+              utils.isPromiseLike(services.program, t) &&
+              t.symbol.getName() === 'Promise'
+            )
+        ) {
+          context.report({
+            node,
+            messageId: 'throwTypeMismatch',
+            fix(fixer) {
+              return fixer.replaceTextRange(
+                [lastThrowsTypeNode.pos, lastThrowsTypeNode.end],
+                `Promise<${callerFixedType}>`,
+              );
+            },
+          });
           return;
         }
 
-        const lastThrowsTypeNode = getLast(callerThrowsTypeNodes);
-        if (!lastThrowsTypeNode) return;
+        if (!typeGroups.source.incompatible) {
+          return;
+        }
 
         const lastThrowsTag = getLast(callerThrowsTags);
         if (!lastThrowsTag) return;
@@ -273,13 +302,6 @@ module.exports = createRule({
           return;
         }
 
-        const callerFixedType = typesToUnionString(
-          checker,
-          [
-            ...typeGroups.target.compatible ?? [],
-            ...typeGroups.source.incompatible ?? [],
-          ]
-        );
         context.report({
           node,
           messageId: 'throwTypeMismatch',

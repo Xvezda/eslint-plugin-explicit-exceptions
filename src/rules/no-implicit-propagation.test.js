@@ -1224,6 +1224,87 @@ ruleTester.run(
           { messageId: 'throwTypeMismatch' },
         ],
       },
+      {
+        code: `
+          /**
+           * @throws {SyntaxError}
+           */
+          function foo() {
+            throw new SyntaxError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          function baz() {
+            return new Promise((resolve, reject) => {
+              reject(new TypeError());
+            });
+          }
+
+          /**
+           * @throws {SyntaxError | RangeError | TypeError}
+           */
+          async function qux() {
+            if (Math.random() > 0.6) {
+              foo();
+            } else if (Math.random() > 0.3) {
+              bar();
+            } else {
+              await baz();
+            }
+          }
+          qux().catch(() => {});
+        `,
+        output: `
+          /**
+           * @throws {SyntaxError}
+           */
+          function foo() {
+            throw new SyntaxError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          function baz() {
+            return new Promise((resolve, reject) => {
+              reject(new TypeError());
+            });
+          }
+
+          /**
+           * @throws {Promise<SyntaxError | RangeError | TypeError>}
+           */
+          async function qux() {
+            if (Math.random() > 0.6) {
+              foo();
+            } else if (Math.random() > 0.3) {
+              bar();
+            } else {
+              await baz();
+            }
+          }
+          qux().catch(() => {});
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
     ],
   },
 );
