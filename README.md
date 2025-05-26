@@ -8,7 +8,7 @@ https://github.com/user-attachments/assets/bfc5db59-053d-40ab-be91-4533939ccc31
 
 Just as [Java’s throws keyword](https://dev.java/learn/exceptions/throwing/) does, enforcing the use of [JSDoc’s `@throws` tag](https://jsdoc.app/tags-throws) to explicitly specify which exceptions a function can throw to solve unpredictable propagation of exceptions happening which also known as a [JavaScript's "hidden exceptions"](https://www.youtube.com/watch?v=3iWoNJbGO2U).
 
-See [examples](./examples) for more.
+See [examples](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/examples/README.md) for more.
 
 ## Features
 - Reports and provides fixes for throwable functions that are not annotated with `@throws`.
@@ -53,4 +53,4 @@ export default tseslint.config(
 ```
 
 ## License
-[MIT License](./LICENSE)
+[MIT License](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/LICENSE)
