@@ -252,6 +252,39 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          /**
+           * @throws {Promise<TypeError | RangeError>}
+           */
+          function foo() {
+            return new Promise((resolve, reject) => {
+              if (Math.random() > 0.5) {
+                reject(new TypeError());
+              } else {
+                reject(new RangeError());
+              }
+            });
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<TypeError>}
+           * @throws {Promise<RangeError>}
+           */
+          function foo() {
+            return new Promise((resolve, reject) => {
+              if (Math.random() > 0.5) {
+                reject(new TypeError());
+              } else {
+                reject(new RangeError());
+              }
+            });
+          }
+        `,
+      },
     ],
     invalid: [
       {
@@ -987,6 +1020,64 @@ ruleTester.run(
         errors: [
           { messageId: 'missingThrowsTag' },
           { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          function foo() {
+            return new Promise((resolve, reject) => {
+              if (Math.random() > 0.5) {
+                reject(new TypeError());
+              } else {
+                reject(new RangeError());
+              }
+            });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<TypeError | RangeError>}
+           */
+          function foo() {
+            return new Promise((resolve, reject) => {
+              if (Math.random() > 0.5) {
+                reject(new TypeError());
+              } else {
+                reject(new RangeError());
+              }
+            });
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
         ],
       },
     ],
