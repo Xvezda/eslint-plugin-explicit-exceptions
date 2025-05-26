@@ -32,9 +32,6 @@ const egg = {
   }
 };
 
-/**
- * @throws {Error}
- */
 const lol = () => {
   console.log(egg.ham.spam);
 };
