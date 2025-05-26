@@ -188,12 +188,7 @@ module.exports = createRule({
         if (!utils.isPromiseConstructorLike(services.program, calleeType)) {
           return;
         }
-
-        const nodeToComment = findNodeToComment(functionDeclaration);
-        if (!nodeToComment) return;
         
-        if (hasJSDocThrowsTag(sourceCode, nodeToComment)) return;
-
         if (!node.arguments.length) return;
 
         const firstArg = getFirst(node.arguments);
@@ -224,7 +219,7 @@ module.exports = createRule({
         if (!callbackNode) return;
 
         /** @type {import('typescript').Type[]} */
-        const rejectTypes = [];
+        let rejectTypes = [];
 
         const isRejectCallbackNameDeclared =
           callbackNode.params.length >= 2;
@@ -236,7 +231,9 @@ module.exports = createRule({
           const callbackScope = sourceCode.getScope(callbackNode)
           if (!callbackScope) return;
 
-          const rejectCallbackRefs = callbackScope.set.get(rejectCallbackNode.name)?.references;
+          const rejectCallbackRefs =
+            callbackScope.set.get(rejectCallbackNode.name)?.references;
+
           if (!rejectCallbackRefs) return;
 
           const callRefs = rejectCallbackRefs
@@ -266,13 +263,13 @@ module.exports = createRule({
           }
         }
 
-        const throwsTagTypes = getJSDocThrowsTagTypes(
+        const callbackThrowsTagTypes = getJSDocThrowsTagTypes(
           checker,
           services.esTreeNodeToTSNodeMap.get(callbackNode)
         );
 
-        if (throwsTagTypes.length) {
-          rejectTypes.push(...throwsTagTypes);
+        if (callbackThrowsTagTypes.length) {
+          rejectTypes.push(...callbackThrowsTagTypes);
         }
 
         if (!rejectTypes.length) return;
@@ -291,6 +288,52 @@ module.exports = createRule({
 
         if (isRejectHandled) return;
 
+        const nodeToComment = findNodeToComment(functionDeclaration);
+        if (!nodeToComment) return;
+
+        if (hasJSDocThrowsTag(sourceCode, nodeToComment)) {
+          if (!services.esTreeNodeToTSNodeMap.has(nodeToComment)) return;
+
+          const functionDeclarationTSNode = services.esTreeNodeToTSNodeMap.get(functionDeclaration);
+
+          const throwsTags = getJSDocThrowsTags(functionDeclarationTSNode);
+          const throwsTagTypeNodes = throwsTags
+            .map(tag => tag.typeExpression?.type)
+            .filter(tag => !!tag);
+
+          if (!throwsTagTypeNodes.length) return;
+
+          // Throws tag with `Promise<...>` considered as a reject tag
+          const rejectTagTypes = getJSDocThrowsTagTypes(checker, functionDeclarationTSNode)
+            .filter(t =>
+              utils.isPromiseLike(services.program, t) &&
+              t.symbol.getName() === 'Promise'
+            )
+            .map(t => checker.getAwaitedType(t) ?? t)
+            .flatMap(t => t.isUnion() ? t.types : t);
+
+          const typeGroups = groupTypesByCompatibility(
+            services.program,
+            rejectTypes,
+            rejectTagTypes,
+          );
+          if (!typeGroups.incompatible) return;
+
+          const lastTagtypeNode = getLast(throwsTagTypeNodes);
+          if (!lastTagtypeNode) return;
+
+          context.report({
+            node,
+            messageId: 'throwTypeMismatch',
+            fix(fixer) {
+              return fixer.replaceTextRange(
+                [lastTagtypeNode.pos, lastTagtypeNode.end],
+                `Promise<${typesToUnionString(checker, rejectTypes)}>`,
+              );
+            },
+          });
+          return;
+        }
         context.report({
           node,
           messageId: 'missingThrowsTag',
