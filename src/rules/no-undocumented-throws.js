@@ -87,9 +87,13 @@ module.exports = createRule({
               const type = services.getTypeAtLocation(n.argument);
               const tsNode = services.esTreeNodeToTSNodeMap.get(n.argument);
 
-              return options.useBaseTypeOfLiteral && ts.isLiteralTypeLiteral(tsNode)
-                ? checker.getBaseTypeOfLiteralType(type)
-                : type;
+              if (
+                options.useBaseTypeOfLiteral &&
+                ts.isLiteralTypeLiteral(tsNode)
+              ) {
+                return checker.getBaseTypeOfLiteralType(type);
+              }
+              return type;
             })
         )
         .map(t => checker.getAwaitedType(t) ?? t);
@@ -135,7 +139,6 @@ module.exports = createRule({
       const throwsTypeString = node.async
         ? `Promise<${typesToUnionString(checker, throwTypes)}>`
         : typesToUnionString(checker, throwTypes);
-
 
       context.report({
         node,
@@ -194,6 +197,8 @@ module.exports = createRule({
         
         if (!node.arguments.length) return;
 
+        // `new Klass(firstArg ...)`
+        //            ^ here
         const firstArg = getFirst(node.arguments);
         if (!firstArg) return;
 
@@ -276,7 +281,7 @@ module.exports = createRule({
         const references = sourceCode.getScope(node).references;
         if (!references.length) return;
 
-        const isRejectHandled = references
+        const isRejectionHandled = references
           .some(ref =>
             findParent(ref.identifier, (node) =>
               node.type === AST_NODE_TYPES.MemberExpression &&
@@ -285,7 +290,7 @@ module.exports = createRule({
             )
           );
 
-        if (isRejectHandled) return;
+        if (isRejectionHandled) return;
 
         const nodeToComment = findNodeToComment(functionDeclaration);
         if (!nodeToComment) return;
