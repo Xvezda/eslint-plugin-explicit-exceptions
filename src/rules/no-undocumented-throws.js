@@ -88,7 +88,8 @@ module.exports = createRule({
             ? checker.getBaseTypeOfLiteralType(type)
             : type;
         })
-        .flatMap(t => t.isUnion() ? t.types : t);
+        .flatMap(t => t.isUnion() ? t.types : t)
+        .map(t => checker.getAwaitedType(t) ?? t);
 
       if (hasJSDocThrowsTag(sourceCode, nodeToComment)) {
         if (!services.esTreeNodeToTSNodeMap.has(nodeToComment)) return;
@@ -103,7 +104,7 @@ module.exports = createRule({
         if (!throwsTagTypeNodes.length) return;
 
         const throwsTagTypes = getJSDocThrowsTagTypes(checker, functionDeclarationTSNode)
-          .map(t => checker.getAwaitedType(t))
+          .map(t => checker.getAwaitedType(t) ?? t)
           .filter(t => !!t);
 
         const typeGroups = groupTypesByCompatibility(
