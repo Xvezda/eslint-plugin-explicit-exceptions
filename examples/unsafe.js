@@ -32,6 +32,9 @@ const egg = {
   }
 };
 
+/**
+ * @throws {Error}
+ */
 const lol = () => {
   console.log(egg.ham.spam);
 };
@@ -49,4 +52,7 @@ function promised() {
     reject(new Error());
   });
 }
-await promised();
+promised().catch(() => {});
+
+
+export {};

@@ -198,15 +198,16 @@ const toFlattenedTypeArray = (types) =>
   types.flatMap(type => type.isUnion() ? type.types : type);
 
 /**
+ * @typedef {{ compatible?: import('typescript').Type[]; incompatible?: import('typescript').Type[] }} G
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation['program']} program
  * @param {import('typescript').Type[]} source
  * @param {import('typescript').Type[]} target
- * @returns {{ compatible?: import('typescript').Type[]; incompatible?: import('typescript').Type[] }}
+ * @returns {{ source: G; target: G }}
  */
 const groupTypesByCompatibility = (program, source, target) => {
   const checker = program.getTypeChecker();
 
-  return groupBy(source, sourceType => {
+  const sourceGroup = groupBy(source, sourceType => {
     const isCompatible = target.some(targetType => {
       if (
         utils.isErrorLike(program, sourceType) &&
@@ -219,8 +220,40 @@ const groupTypesByCompatibility = (program, source, target) => {
     return /** @type {'compatible'|'incompatible'} */(
       isCompatible ? 'compatible' : 'incompatible'
     );
-  })
+  });
+
+  const targetGroup = groupBy(target, targetType => {
+    const isCompatible = source.some(sourceType => {
+      if (
+        utils.isErrorLike(program, sourceType) &&
+        utils.isErrorLike(program, targetType)
+      ) {
+        return utils.typeIsOrHasBaseType(sourceType, targetType);
+      }
+      return checker.isTypeAssignableTo(sourceType, targetType);
+    });
+    return /** @type {'compatible'|'incompatible'} */(
+      isCompatible ? 'compatible' : 'incompatible'
+    );
+  });
+
+  return {
+    source: sourceGroup,
+    target: targetGroup,
+  };
 }
+
+/**
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @returns {node is import('@typescript-eslint/utils').TSESTree.FunctionDeclaration | import('@typescript-eslint/utils').TSESTree.FunctionExpression | import('@typescript-eslint/utils').TSESTree.FunctionLike}
+ */
+const isFunctionNode = (node) => {
+  return (
+    node.type === AST_NODE_TYPES.FunctionDeclaration ||
+    node.type === AST_NODE_TYPES.FunctionExpression ||
+    node.type === AST_NODE_TYPES.ArrowFunctionExpression
+  );
+};
 
 /**
  * Find closest function where exception is thrown
@@ -229,12 +262,11 @@ const groupTypesByCompatibility = (program, source, target) => {
  * @returns {import('@typescript-eslint/utils').TSESTree.FunctionLike | null}
  */
 const findClosestFunctionNode = (node) => {
+  if (isFunctionNode(node)) {
+    return /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike} */(node);
+  }
   return /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */(
-    findParent(node, (n) =>
-      n.type === AST_NODE_TYPES.FunctionDeclaration ||
-      n.type === AST_NODE_TYPES.FunctionExpression ||
-      n.type === AST_NODE_TYPES.ArrowFunctionExpression
-    )
+    findParent(node, isFunctionNode)
   );
 };
 
@@ -385,7 +417,7 @@ const isInHandledContext = (node) => {
 
     if (
       tryNode.block &&
-      tryNode.block.range[0] === paths[1].range[0]
+      getNodeID(tryNode.block) === getNodeID(paths[1])
     ) return true;
 
     node = node.parent;

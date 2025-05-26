@@ -114,7 +114,7 @@ module.exports = createRule({
           throwTypes,
           throwsTagTypes,
         );
-        if (!typeGroups.incompatible) return;
+        if (!typeGroups.source.incompatible) return;
 
         const lastTagtypeNode = getLast(throwsTagTypeNodes);
         if (!lastTagtypeNode) return;
@@ -317,7 +317,7 @@ module.exports = createRule({
             rejectTypes,
             rejectTagTypes,
           );
-          if (!typeGroups.incompatible) return;
+          if (!typeGroups.source.incompatible) return;
 
           const lastTagtypeNode = getLast(throwsTagTypeNodes);
           if (!lastTagtypeNode) return;
