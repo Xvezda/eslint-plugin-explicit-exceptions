@@ -1305,6 +1305,92 @@ ruleTester.run(
           { messageId: 'throwTypeMismatch' },
         ],
       },
+      {
+        code: `
+          /**
+           * @throws {SyntaxError}
+           */
+          function foo() {
+            throw new SyntaxError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          /**
+           * @throws {Promise<RangeError | TypeError>}
+           */
+          function baz() {
+            return new Promise((resolve, reject) => {
+              if (Math.random() > 0.5) {
+                resolve(bar());
+              } else {
+                reject(new TypeError());
+              }
+            });
+          }
+
+          async function qux() {
+            if (Math.random() > 0.6) {
+              foo();
+            } else if (Math.random() > 0.3) {
+              bar();
+            } else {
+              await baz();
+            }
+          }
+          qux();
+        `,
+        output: `
+          /**
+           * @throws {SyntaxError}
+           */
+          function foo() {
+            throw new SyntaxError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          /**
+           * @throws {Promise<RangeError | TypeError>}
+           */
+          function baz() {
+            return new Promise((resolve, reject) => {
+              if (Math.random() > 0.5) {
+                resolve(bar());
+              } else {
+                reject(new TypeError());
+              }
+            });
+          }
+
+          /**
+           * @throws {Promise<SyntaxError | RangeError | TypeError>}
+           */
+          async function qux() {
+            if (Math.random() > 0.6) {
+              foo();
+            } else if (Math.random() > 0.3) {
+              bar();
+            } else {
+              await baz();
+            }
+          }
+          qux();
+        `,
+        errors: [
+          { messageId: 'implicitPropagation' },
+        ],
+      },
     ],
   },
 );
