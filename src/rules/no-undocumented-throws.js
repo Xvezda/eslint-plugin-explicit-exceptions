@@ -19,6 +19,7 @@ const {
   findNodeToComment,
   findIdentifierDeclaration,
   createInsertJSDocBeforeFixer,
+  toFlattenedTypeArray,
 } = require('../utils');
 
 
@@ -79,16 +80,18 @@ module.exports = createRule({
       if (!throwStatementNodes) return;
 
       /** @type {import('typescript').Type[]} */
-      const throwTypes = throwStatementNodes
-        .map(n => {
-          const type = services.getTypeAtLocation(n.argument);
-          const tsNode = services.esTreeNodeToTSNodeMap.get(n.argument);
+      const throwTypes =
+        toFlattenedTypeArray(
+          throwStatementNodes
+            .map(n => {
+              const type = services.getTypeAtLocation(n.argument);
+              const tsNode = services.esTreeNodeToTSNodeMap.get(n.argument);
 
-          return options.useBaseTypeOfLiteral && ts.isLiteralTypeLiteral(tsNode)
-            ? checker.getBaseTypeOfLiteralType(type)
-            : type;
-        })
-        .flatMap(t => t.isUnion() ? t.types : t)
+              return options.useBaseTypeOfLiteral && ts.isLiteralTypeLiteral(tsNode)
+                ? checker.getBaseTypeOfLiteralType(type)
+                : type;
+            })
+        )
         .map(t => checker.getAwaitedType(t) ?? t);
 
       if (hasJSDocThrowsTag(sourceCode, nodeToComment)) {
@@ -219,7 +222,7 @@ module.exports = createRule({
         if (!callbackNode) return;
 
         /** @type {import('typescript').Type[]} */
-        let rejectTypes = [];
+        const rejectTypes = [];
 
         const isRejectCallbackNameDeclared =
           callbackNode.params.length >= 2;
@@ -247,9 +250,7 @@ module.exports = createRule({
           const argumentTypes = callRefs
             .map(ref => services.getTypeAtLocation(ref.arguments[0]));
 
-          rejectTypes.push(
-            ...argumentTypes.flatMap(t => t.isUnion() ? t.types : t)
-          );
+          rejectTypes.push(...toFlattenedTypeArray(argumentTypes));
         }
 
         if (throwStatements.has(getNodeID(callbackNode))) {
@@ -257,9 +258,7 @@ module.exports = createRule({
             ?.map(n => services.getTypeAtLocation(n.argument));
 
           if (throwStatementTypes) {
-            rejectTypes.push(
-              ...throwStatementTypes.flatMap(t => t.isUnion() ? t.types : t)
-            );
+            rejectTypes.push(...toFlattenedTypeArray(throwStatementTypes));
           }
         }
 
@@ -304,13 +303,14 @@ module.exports = createRule({
           if (!throwsTagTypeNodes.length) return;
 
           // Throws tag with `Promise<...>` considered as a reject tag
-          const rejectTagTypes = getJSDocThrowsTagTypes(checker, functionDeclarationTSNode)
-            .filter(t =>
-              utils.isPromiseLike(services.program, t) &&
-              t.symbol.getName() === 'Promise'
-            )
-            .map(t => checker.getAwaitedType(t) ?? t)
-            .flatMap(t => t.isUnion() ? t.types : t);
+          const rejectTagTypes = toFlattenedTypeArray(
+            getJSDocThrowsTagTypes(checker, functionDeclarationTSNode)
+              .filter(t =>
+                utils.isPromiseLike(services.program, t) &&
+                t.symbol.getName() === 'Promise'
+              )
+              .map(t => checker.getAwaitedType(t) ?? t)
+          );
 
           const typeGroups = groupTypesByCompatibility(
             services.program,
