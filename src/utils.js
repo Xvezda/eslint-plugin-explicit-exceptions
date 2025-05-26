@@ -457,20 +457,53 @@ const isInHandledContext = (node) => {
  * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node
  * @returns {boolean}
  */
-const isInAsyncHandledContext = (sourceCode, node) => {
-  if (!node) return false;
+const isInAsyncHandledContext = (sourceCode, node, visited = new Set()) => {
+  if (!node || visited.has(getNodeID(node))) return false;
+  visited.add(getNodeID(node));
 
   if (node.type === AST_NODE_TYPES.Identifier) {
     const scope = sourceCode.getScope(node);
     const references = scope?.references;
+
     for (const reference of references ?? []) {
+      const parentNode = reference.identifier.parent;
+
+      // `node().catch(...)`
       if (
-        reference.identifier.parent.type === AST_NODE_TYPES.CallExpression &&
-        reference.identifier.parent.parent.type === AST_NODE_TYPES.MemberExpression &&
-        reference.identifier.parent.parent.property.type === AST_NODE_TYPES.Identifier &&
-        reference.identifier.parent.parent.property.name === 'catch'
+        parentNode.type === AST_NODE_TYPES.CallExpression &&
+        parentNode.parent.type === AST_NODE_TYPES.MemberExpression &&
+        parentNode.parent.property.type === AST_NODE_TYPES.Identifier &&
+        parentNode.parent.property.name === 'catch'
       ) {
         return true;
+      }
+
+      // `node.catch(...)`
+      if (
+        parentNode.type === AST_NODE_TYPES.MemberExpression &&
+        parentNode.property.type === AST_NODE_TYPES.Identifier &&
+        parentNode.property.name === 'catch' &&
+        parentNode.parent.type === AST_NODE_TYPES.CallExpression
+      ) {
+        return true;
+      }
+
+      if (
+        parentNode.parent &&
+        parentNode.parent.type === AST_NODE_TYPES.VariableDeclarator &&
+        parentNode.parent.id.type === AST_NODE_TYPES.Identifier &&
+        parentNode.parent.init
+      ) {
+        const idDeclaration =
+          findIdentifierDeclaration(sourceCode, parentNode.parent.id);
+
+        if (idDeclaration) {
+          return isInAsyncHandledContext(
+            sourceCode,
+            idDeclaration,
+            visited
+          );
+        }
       }
     }
   }

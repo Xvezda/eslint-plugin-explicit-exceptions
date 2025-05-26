@@ -27,6 +27,33 @@ ruleTester.run(
             return Promise.reject(new Error());
           }
 
+          foo().catch(() => {});
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.reject(new Error());
+          }
+
+          const promise = foo();
+          console.log('do something catch later');
+
+          promise.catch(() => {});
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.reject(new Error());
+          }
+
           function bar() {
             foo().catch(() => {});
           }
@@ -51,6 +78,19 @@ ruleTester.run(
       },
     ],
     invalid: [
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.reject(new Error());
+          }
+
+          foo();
+        `,
+        errors: [{ messageId: 'unhandledRejection' }],
+      },
       {
         code: `
           /**
