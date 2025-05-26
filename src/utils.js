@@ -288,7 +288,22 @@ const findNodeToComment = (node) => {
     case AST_NODE_TYPES.FunctionDeclaration:
       return node;
     case AST_NODE_TYPES.FunctionExpression:
-    case AST_NODE_TYPES.ArrowFunctionExpression:
+    case AST_NODE_TYPES.ArrowFunctionExpression: {
+      // If the current function is inlined in Promise constructor,
+      // it makes sense to comment where promise is referenced to.
+      // Not the inline function itself.
+      if (
+        node.parent?.type === AST_NODE_TYPES.NewExpression &&
+        node.parent.callee.type === AST_NODE_TYPES.Identifier &&
+        node.parent.callee.name === 'Promise'
+      ) {
+        const functionDeclaration = findClosestFunctionNode(node.parent);
+        if (functionDeclaration) {
+          return findNodeToComment(functionDeclaration);
+        }
+        // TODO: Fallback?
+        return null;
+      }
       return (
         /**
          * @example
@@ -339,6 +354,7 @@ const findNodeToComment = (node) => {
          */
         findParent(node, (n) => n.type === AST_NODE_TYPES.ReturnStatement)
       );
+    }
     default:
       break;
   }
