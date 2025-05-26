@@ -162,7 +162,9 @@ module.exports = createRule({
       const calleeDeclaration = getCalleeDeclaration(services, node);
       if (!calleeDeclaration) return;
 
-      const calleeThrowsTypes = toFlattenedTypeArray(getJSDocThrowsTagTypes(checker, calleeDeclaration));
+      const calleeThrowsTypes = toFlattenedTypeArray(getJSDocThrowsTagTypes(checker, calleeDeclaration))
+        .map(t => checker.getAwaitedType(t) ?? t);
+
       if (!calleeThrowsTypes.length) return;
 
       if (hasJSDocThrowsTag(sourceCode, nodeToComment)) {
@@ -177,7 +179,11 @@ module.exports = createRule({
             .map(tag => tag.typeExpression?.type)
             .filter(tag => !!tag);
 
-        const callerThrowsTypes = toFlattenedTypeArray(getJSDocThrowsTagTypes(checker, callerDeclarationTSNode));
+        const callerThrowsTypes =
+          toFlattenedTypeArray(
+            getJSDocThrowsTagTypes(checker, callerDeclarationTSNode)
+              .map(t => checker.getAwaitedType(t) ?? t)
+          );
 
         const typeGroups = groupTypesByCompatibility(services.program, calleeThrowsTypes, callerThrowsTypes);
         if (!typeGroups.incompatible) {
@@ -222,10 +228,17 @@ module.exports = createRule({
               );
             }
 
+            const callerFixedType = typesToUnionString(
+              checker,
+              [...callerThrowsTypes, ...calleeThrowsTypes]
+            );
+
             // If there is only one throws tag, make it as a union type
             return fixer.replaceTextRange(
               [lastThrowsTypeNode.pos, lastThrowsTypeNode.end],
-              typesToUnionString(checker, [...callerThrowsTypes, ...calleeThrowsTypes])
+              callerDeclaration.async
+                ? `Promise<${callerFixedType}>`
+                : callerFixedType
             );
           },
         });
@@ -239,7 +252,9 @@ module.exports = createRule({
         fix: createInsertJSDocBeforeFixer(
           sourceCode,
           nodeToComment,
-          typesToUnionString(checker, calleeThrowsTypes)
+          callerDeclaration.async
+            ? `Promise<${typesToUnionString(checker, calleeThrowsTypes)}>`
+            : typesToUnionString(checker, calleeThrowsTypes)
         ),
       });
     };
