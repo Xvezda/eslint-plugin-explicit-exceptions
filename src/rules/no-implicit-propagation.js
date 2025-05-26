@@ -162,9 +162,6 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
-      const nodeToComment = findNodeToComment(callerDeclaration);
-      if (!nodeToComment) return;
-
       const calleeDeclaration = getCalleeDeclaration(services, node);
       if (!calleeDeclaration) return;
 
@@ -237,6 +234,7 @@ module.exports = createRule({
           ]
         );
 
+        // All thrown types must be promise if it's called in async function
         if (
           node.async &&
           !getJSDocThrowsTagTypes(checker, callerDeclarationTSNode)
@@ -258,9 +256,9 @@ module.exports = createRule({
           return;
         }
 
-        if (!typeGroups.source.incompatible) {
-          return;
-        }
+        // If all callee thrown types are compatible with caller's throws tags,
+        // we don't need to report anything
+        if (!typeGroups.source.incompatible) return;
 
         const lastThrowsTag = getLast(callerThrowsTags);
         if (!lastThrowsTag) return;
@@ -281,10 +279,8 @@ module.exports = createRule({
               jsdocString
             );
 
-          const unmatchedCalleeThrowsTypes = typeGroups.source.incompatible;
-          if (!unmatchedCalleeThrowsTypes) {
-            return;
-          }
+          const mismatchedCalleeThrowsTypes = typeGroups.source.incompatible;
+          if (!mismatchedCalleeThrowsTypes) return;
 
           context.report({
             node,
@@ -294,7 +290,7 @@ module.exports = createRule({
                 [callerJSDocTSNode.getStart(), callerJSDocTSNode.getEnd()],
                 appendThrowsTags(
                   callerJSDocTSNode.getFullText(),
-                  unmatchedCalleeThrowsTypes,
+                  mismatchedCalleeThrowsTypes,
                 )
               );
             },
