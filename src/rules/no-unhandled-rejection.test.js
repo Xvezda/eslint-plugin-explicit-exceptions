@@ -76,6 +76,40 @@ ruleTester.run(
           await bar();
         `,
       },
+      {
+        code: `
+          const foo = {
+            /**
+             * @throws {Promise<Error>}
+             */
+            get bar() {
+              return Promise.reject(new Error());
+            }
+          };
+
+          async function baz() {
+            try {
+              await foo.bar;
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          const foo = {
+            /**
+             * @throws {Promise<Error>}
+             */
+            get bar() {
+              return Promise.reject(new Error());
+            }
+          };
+
+          function baz() {
+            foo.bar.catch(() => {});
+          }
+        `,
+      },
     ],
     invalid: [
       {

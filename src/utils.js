@@ -177,26 +177,33 @@ const getDeclarationsByNode = (services, node) => {
 };
 
 /**
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @return {import('@typescript-eslint/utils').TSESTree.Node | null}
+ */
+const getCallee = (node) => {
+  switch (node.type) {
+    case AST_NODE_TYPES.AssignmentExpression:
+      return node.left;
+    case AST_NODE_TYPES.CallExpression:
+      return node.callee;
+    case AST_NODE_TYPES.MemberExpression:
+      return node.property;
+    case AST_NODE_TYPES.Identifier:
+      return getCallee(node.parent);
+    default:
+      break;
+  }
+  return null;
+};
+
+/**
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
  * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
  * @return {import('typescript').Node | null}
  */
 const getCalleeDeclaration = (services, node) => {
   /** @type {import('@typescript-eslint/utils').TSESTree.Node | null} */
-  let calleeNode = null;
-  switch (node.type) {
-    case AST_NODE_TYPES.MemberExpression:
-      calleeNode = node.property;
-      break;
-    case AST_NODE_TYPES.CallExpression:
-      calleeNode = node.callee;
-      break;
-    case AST_NODE_TYPES.AssignmentExpression:
-      calleeNode = node.left;
-      break;
-    default:
-      break;
-  }
+  const calleeNode = getCallee(node);
   if (!calleeNode) return null;
 
   const declarations = getDeclarationsByNode(services, calleeNode);
@@ -522,8 +529,11 @@ const findIdentifierDeclaration = (sourceCode, node) => {
  * @returns {boolean}
  */
 const isParentOrAncestor = (node, other) => {
+  if (!node || !other) return false;
+
   const paths = collectPaths(node);
-  return paths.some(n => getNodeID(n) === getNodeID(other));
+  return paths
+    .some(n => getNodeID(n) === getNodeID(other));
 };
 
 /**
@@ -565,84 +575,41 @@ const isInAsyncHandledContext = (sourceCode, node, visited = new Set()) => {
   if (!node || visited.has(getNodeID(node))) return false;
   visited.add(getNodeID(node));
 
-  if (node.type === AST_NODE_TYPES.Identifier) {
-    const scope = sourceCode.getScope(node);
-    const references = scope?.references;
+  const rejectionHandled =
+    sourceCode.getScope(node)
+      ?.references
+      .some(ref => {
+        return findClosest(ref.identifier, (n) =>
+          n.parent?.type === AST_NODE_TYPES.MemberExpression &&
+          n.parent.property.type === AST_NODE_TYPES.Identifier &&
+          n.parent.property.name === 'catch'
+        )
+      }) ||
+      findClosest(node, (n) =>
+        n.parent?.type === AST_NODE_TYPES.MemberExpression &&
+        n.parent.property.type === AST_NODE_TYPES.Identifier &&
+        n.parent.property.name === 'catch'
+      ) ||
+    sourceCode.getScope(node)
+      ?.references
+      .some(ref => {
+        return findClosest(ref.identifier, (n) =>
+          n.type === AST_NODE_TYPES.AwaitExpression &&
+          isParentOrAncestor(
+            n, 
+            /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement} */
+            (findParent(n, (p) =>
+              p.type === AST_NODE_TYPES.TryStatement &&
+              p.handler !== null
+            ))?.block
+          )
+        )
+      });
 
-    for (const reference of references ?? []) {
-      const parentNode = reference.identifier.parent;
-
-      // `node().catch(...)`
-      if (
-        parentNode.type === AST_NODE_TYPES.CallExpression &&
-        parentNode.parent.type === AST_NODE_TYPES.MemberExpression &&
-        parentNode.parent.property.type === AST_NODE_TYPES.Identifier &&
-        parentNode.parent.property.name === 'catch'
-      ) {
-        return true;
-      }
-
-      // `node.catch(...)`
-      if (
-        parentNode.type === AST_NODE_TYPES.MemberExpression &&
-        parentNode.property.type === AST_NODE_TYPES.Identifier &&
-        parentNode.property.name === 'catch' &&
-        parentNode.parent.type === AST_NODE_TYPES.CallExpression
-      ) {
-        return true;
-      }
-
-      if (
-        parentNode.parent &&
-        parentNode.parent.type === AST_NODE_TYPES.VariableDeclarator &&
-        parentNode.parent.id.type === AST_NODE_TYPES.Identifier &&
-        parentNode.parent.init
-      ) {
-        const idDeclaration =
-          findIdentifierDeclaration(sourceCode, parentNode.parent.id);
-
-        if (idDeclaration) {
-          return isInAsyncHandledContext(
-            sourceCode,
-            idDeclaration,
-            visited
-          );
-        }
-      }
-    }
+  if (rejectionHandled) {
+    return true;
   }
 
-  const awaitNode = findClosest(node, (n) =>
-    n.type === AST_NODE_TYPES.AwaitExpression
-  );
-  if (awaitNode) {
-    let node =
-      /** @type {import('@typescript-eslint/utils').TSESTree.Node | undefined} */
-      (awaitNode);
-
-    for (; node; node = node?.parent) {
-      const paths = collectPaths(node, (n) =>
-        n.type === AST_NODE_TYPES.TryStatement &&
-        n.handler !== null
-      );
-
-      if (paths.length < 2) continue;
-
-      const scopeFunction = findClosestFunctionNode(paths[0]);
-      if (!scopeFunction) continue;
-
-      /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement} */
-      const tryNode = 
-        /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement} */
-        (paths[0]);
-
-      if (
-        tryNode.block &&
-        isParentOrAncestor(paths[1], tryNode.block) &&
-        scopeFunction.async
-      ) return true;
-    }
-  }
   return false;
 };
 
@@ -683,6 +650,7 @@ module.exports = {
   getOptionsFromContext,
   getDeclarationTSNodeOfESTreeNode,
   getDeclarationsByNode,
+  getCallee,
   getCalleeDeclaration,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
