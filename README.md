@@ -1,7 +1,6 @@
 # eslint-plugin-explicit-exceptions
 
-https://github.com/user-attachments/assets/9de648f2-6de9-43a8-9aae-69b088d6ffca
-
+https://github.com/user-attachments/assets/4a833442-b8a5-462f-abeb-a28bd0e5863f
 
 Just as [Java’s throws keyword](https://dev.java/learn/exceptions/throwing/) does, enforcing the use of [JSDoc’s `@throws` tag](https://jsdoc.app/tags-throws) to explicitly specify which exceptions a function can throw to solve unpredictable propagation of exceptions happening which also known as a [JavaScript's "hidden exceptions"](https://www.youtube.com/watch?v=3iWoNJbGO2U).
 
