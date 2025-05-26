@@ -32,6 +32,23 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.reject(new Error());
+          }
+
+          async function bar() {
+            try {
+              await foo()
+            } catch {}
+          }
+          await bar();
+        `,
+      },
     ],
     invalid: [
       {
@@ -46,6 +63,105 @@ ruleTester.run(
           function bar() {
             foo();
           }
+        `,
+        errors: [{ messageId: 'unhandledRejection' }],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.reject(new Error());
+          }
+
+          async function bar() {
+            try {
+              foo()
+            } catch {}
+          }
+          await bar();
+        `,
+        errors: [{ messageId: 'unhandledRejection' }],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.reject(new Error());
+          }
+
+          async function bar() {
+            try {
+            } catch {
+              await foo()
+            }
+          }
+          await bar();
+        `,
+        errors: [{ messageId: 'unhandledRejection' }],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.reject(new Error());
+          }
+
+          async function bar() {
+            try {
+            } finally {
+              await foo()
+            }
+          }
+          await bar();
+        `,
+        errors: [{ messageId: 'unhandledRejection' }],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.reject(new Error());
+          }
+
+          async function bar() {
+            try {
+            } catch (e) {
+              console.error(e);
+            } finally {
+              await foo()
+            }
+          }
+          await bar();
+        `,
+        errors: [{ messageId: 'unhandledRejection' }],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.reject(new Error());
+          }
+
+          async function bar() {
+            try {
+            } catch {
+              try {
+              } catch {
+                await foo()
+              }
+            }
+          }
+          await bar();
         `,
         errors: [{ messageId: 'unhandledRejection' }],
       },
