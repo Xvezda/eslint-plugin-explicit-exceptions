@@ -413,18 +413,28 @@ const findIdentifierDeclaration = (sourceCode, node) => {
 };
 
 /**
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} other
+ * @returns {boolean}
+ */
+const isParentOrAncestor = (node, other) => {
+  const paths = collectPaths(node);
+  return paths.some(n => getNodeID(n) === getNodeID(other));
+};
+
+/**
  * Check if node is in try-catch block where exception is handled
  *
  * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node
  * @returns {boolean}
  */
 const isInHandledContext = (node) => {
-  while (node) {
+  for (; node; node = node?.parent) {
     const paths = collectPaths(node, (n) =>
       n.type === AST_NODE_TYPES.TryStatement &&
       n.handler !== null
     );
-    if (paths.length < 2) return false;
+    if (paths.length < 2) continue;
 
     /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement} */
     const tryNode = 
@@ -433,10 +443,68 @@ const isInHandledContext = (node) => {
 
     if (
       tryNode.block &&
-      getNodeID(tryNode.block) === getNodeID(paths[1])
+      isParentOrAncestor(paths[1], tryNode.block)
     ) return true;
+  }
+  return false;
+};
 
-    node = node.parent;
+/**
+ * Check if node promise rejection handled.
+ * Such as `try .. await node .. catch` or `node.catch(...)`
+ *
+ * @param {Readonly<import('@typescript-eslint/utils').TSESLint.SourceCode>} sourceCode
+ * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node
+ * @returns {boolean}
+ */
+const isInAsyncHandledContext = (sourceCode, node) => {
+  if (!node) return false;
+
+  if (node.type === AST_NODE_TYPES.Identifier) {
+    const scope = sourceCode.getScope(node);
+    const references = scope?.references;
+    for (const reference of references ?? []) {
+      if (
+        reference.identifier.parent.type === AST_NODE_TYPES.CallExpression &&
+        reference.identifier.parent.parent.type === AST_NODE_TYPES.MemberExpression &&
+        reference.identifier.parent.parent.property.type === AST_NODE_TYPES.Identifier &&
+        reference.identifier.parent.parent.property.name === 'catch'
+      ) {
+        return true;
+      }
+    }
+  }
+
+  const awaitNode = findClosest(node, (n) =>
+    n.type === AST_NODE_TYPES.AwaitExpression
+  );
+  if (awaitNode) {
+    let node =
+      /** @type {import('@typescript-eslint/utils').TSESTree.Node | undefined} */
+      (awaitNode);
+
+    for (; node; node = node?.parent) {
+      const paths = collectPaths(node, (n) =>
+        n.type === AST_NODE_TYPES.TryStatement &&
+        n.handler !== null
+      );
+
+      if (paths.length < 2) continue;
+
+      const scopeFunction = findClosestFunctionNode(paths[0]);
+      if (!scopeFunction) continue;
+
+      /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement} */
+      const tryNode = 
+        /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement} */
+        (paths[0]);
+
+      if (
+        tryNode.block &&
+        isParentOrAncestor(paths[1], tryNode.block) &&
+        scopeFunction.async
+      ) return true;
+    }
   }
   return false;
 };
@@ -485,5 +553,6 @@ module.exports = {
   findNodeToComment,
   findIdentifierDeclaration,
   isInHandledContext,
+  isInAsyncHandledContext,
   createInsertJSDocBeforeFixer,
 };
