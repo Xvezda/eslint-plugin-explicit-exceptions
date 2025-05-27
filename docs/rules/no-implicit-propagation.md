@@ -11,4 +11,3 @@ Inserts a `@throws` JSDoc tag (matching the delegated thrown type) immediately a
 
 ## Options
 
-(TODO)
