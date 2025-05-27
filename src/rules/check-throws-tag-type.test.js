@@ -65,6 +65,38 @@ ruleTester.run(
           /**
            * foo bar baz
            *
+           * @throws {null}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+        `,
+        output: `
+          /**
+           * foo bar baz
+           *
+           * @throws {string | number}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+        `,
+        errors: [{ messageId: 'throwTypeMismatch' }],
+        options: [{ useBaseTypeOfLiteral: true }],
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           *
            * @throws {string}
            */
           function foo() {
