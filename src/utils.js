@@ -352,6 +352,18 @@ const isFunctionNode = (node) => {
 };
 
 /**
+ * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
+ * @param {import('typescript').Type} type
+ * @returns {boolean}
+ */
+const isPromise = (services, type) => {
+  return (
+    utils.isPromiseLike(services.program, type) &&
+    type.symbol.getName() === 'Promise'
+  );
+};
+
+/**
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @returns {node is import('@typescript-eslint/utils').TSESTree.MethodDefinition | import('@typescript-eslint/utils').TSESTree.Property}
  */
@@ -639,7 +651,7 @@ const createInsertJSDocBeforeFixer = (sourceCode, node, typeString) => {
         `${indent}`
       );
   };
-}
+};
 
 module.exports = {
   getFirst,
@@ -667,5 +679,6 @@ module.exports = {
   isAwaitCatchPattern,
   isInHandledContext,
   isInAsyncHandledContext,
+  isPromise,
   createInsertJSDocBeforeFixer,
 };

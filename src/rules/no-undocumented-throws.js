@@ -11,6 +11,7 @@ const {
   typesToUnionString,
   isInHandledContext,
   isInAsyncHandledContext,
+  isPromise,
   getOptionsFromContext,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
@@ -305,11 +306,8 @@ module.exports = createRule({
           // Throws tag with `Promise<...>` considered as a reject tag
           const rejectTagTypes = toFlattenedTypeArray(
             getJSDocThrowsTagTypes(checker, functionDeclarationTSNode)
-              .filter(t =>
-                utils.isPromiseLike(services.program, t) &&
-                t.symbol.getName() === 'Promise'
-              )
-              .map(t => checker.getAwaitedType(t) ?? t)
+              .filter(type => isPromise(services, type))
+              .map(type => checker.getAwaitedType(type) ?? type)
           );
 
           const typeGroups = groupTypesByCompatibility(
