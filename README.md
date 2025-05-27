@@ -12,6 +12,11 @@ See [examples](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/
 - Reports and provides fixes for async functions and Promise rejections.
 - Verifies that the exception types match the documented types.
 
+## Rules
+ - [`no-implicit-propagation`](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/no-implicit-propagation.md)
+ - [`no-undocumented-throws`](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/no-undocumented-throws.md)
+ - [`no-unhandled-rejection`](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/no-unhandled-rejection.md)
+
 ## Usage
 
 Install dependencies
