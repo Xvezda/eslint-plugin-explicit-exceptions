@@ -1,10 +1,10 @@
 // @ts-check
 const { ESLintUtils } = require('@typescript-eslint/utils');
-const utils = require('@typescript-eslint/type-utils');
 const {
   createRule,
   getCalleeDeclaration,
   isInAsyncHandledContext,
+  isPromiseType,
   getJSDocThrowsTagTypes,
 } = require('../utils');
 
@@ -38,10 +38,7 @@ module.exports = createRule({
       if (!jsDocThrowsTagTypes.length) return;
 
       const maybeReject = jsDocThrowsTagTypes
-        .some(type =>
-          utils.isPromiseLike(services.program, type) &&
-          type.symbol.getName() === 'Promise'
-        );
+        .some(type => isPromiseType(services, type));
 
       if (!maybeReject) return;
 

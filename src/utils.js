@@ -3,7 +3,10 @@ const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 
-// Object.groupBy clone
+const createRule = ESLintUtils.RuleCreator(
+  name => `https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/${name}.md`,
+);
+
 /**
  * Groups an array of objects by a specified key or function.
  * @template T
@@ -42,10 +45,6 @@ const getLast = (arr) =>
   arr && arr.length
     ? arr[arr.length - 1]
     : null;
-
-const createRule = ESLintUtils.RuleCreator(
-  name => `https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/${name}.md`,
-);
 
 /** @param {string} comment */
 const hasThrowsTag = comment =>
@@ -353,6 +352,18 @@ const isFunctionNode = (node) => {
 };
 
 /**
+ * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
+ * @param {import('typescript').Type} type
+ * @returns {boolean}
+ */
+const isPromiseType = (services, type) => {
+  return (
+    utils.isPromiseLike(services.program, type) &&
+    type.symbol.getName() === 'Promise'
+  );
+};
+
+/**
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @returns {node is import('@typescript-eslint/utils').TSESTree.MethodDefinition | import('@typescript-eslint/utils').TSESTree.Property}
  */
@@ -640,7 +651,7 @@ const createInsertJSDocBeforeFixer = (sourceCode, node, typeString) => {
         `${indent}`
       );
   };
-}
+};
 
 module.exports = {
   getFirst,
@@ -668,5 +679,6 @@ module.exports = {
   isAwaitCatchPattern,
   isInHandledContext,
   isInAsyncHandledContext,
+  isPromiseType,
   createInsertJSDocBeforeFixer,
 };

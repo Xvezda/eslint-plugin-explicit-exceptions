@@ -4,17 +4,13 @@ const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 const {
   getFirst,
-  getLast,
   getNodeID,
   createRule,
   hasJSDocThrowsTag,
   typesToUnionString,
   isInHandledContext,
   isInAsyncHandledContext,
-  getOptionsFromContext,
-  getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
-  groupTypesByCompatibility,
   findClosestFunctionNode,
   findNodeToComment,
   findIdentifierDeclaration,
@@ -34,8 +30,6 @@ module.exports = createRule({
     fixable: 'code',
     messages: {
       missingThrowsTag: 'Missing @throws (or @exception) tag in JSDoc comment.',
-      throwTypeMismatch:
-        'The type of the exception thrown does not match the type specified in the @throws (or @exception) tag.',
     },
     schema: [
       {
@@ -57,8 +51,10 @@ module.exports = createRule({
     const sourceCode = context.sourceCode;
     const services = ESLintUtils.getParserServices(context);
     const checker = services.program.getTypeChecker();
-    
-    const options = getOptionsFromContext(context);
+
+    const {
+      useBaseTypeOfLiteral = false,
+    } = context.options[0] ?? {};
 
     /** @type {Set<string>} */
     const visitedFunctionNodes = new Set();
@@ -89,7 +85,7 @@ module.exports = createRule({
               const tsNode = services.esTreeNodeToTSNodeMap.get(n.argument);
 
               if (
-                options.useBaseTypeOfLiteral &&
+                useBaseTypeOfLiteral &&
                 ts.isLiteralTypeLiteral(tsNode)
               ) {
                 return checker.getBaseTypeOfLiteralType(type);
@@ -99,45 +95,7 @@ module.exports = createRule({
         )
         .map(t => checker.getAwaitedType(t) ?? t);
 
-      if (hasJSDocThrowsTag(sourceCode, nodeToComment)) {
-        if (!services.esTreeNodeToTSNodeMap.has(nodeToComment)) return;
-
-        const functionDeclarationTSNode =
-          services.esTreeNodeToTSNodeMap.get(node);
-
-        const throwsTags = getJSDocThrowsTags(functionDeclarationTSNode);
-        const throwsTagTypeNodes = throwsTags
-          .map(tag => tag.typeExpression?.type)
-          .filter(tag => !!tag);
-
-        if (!throwsTagTypeNodes.length) return;
-
-        const throwsTagTypes =
-          getJSDocThrowsTagTypes(checker, functionDeclarationTSNode)
-            .map(t => checker.getAwaitedType(t) ?? t);
-
-        const typeGroups = groupTypesByCompatibility(
-          services.program,
-          throwTypes,
-          throwsTagTypes,
-        );
-        if (!typeGroups.source.incompatible) return;
-
-        const lastTagtypeNode = getLast(throwsTagTypeNodes);
-        if (!lastTagtypeNode) return;
-
-        context.report({
-          node,
-          messageId: 'throwTypeMismatch',
-          fix(fixer) {
-            return fixer.replaceTextRange(
-              [lastTagtypeNode.pos, lastTagtypeNode.end],
-              typesToUnionString(checker, throwTypes)
-            );
-          },
-        });
-        return;
-      }
+      if (hasJSDocThrowsTag(sourceCode, nodeToComment)) return;
 
       const throwsTypeString = node.async
         ? `Promise<${typesToUnionString(checker, throwTypes)}>`
@@ -290,50 +248,8 @@ module.exports = createRule({
         const nodeToComment = findNodeToComment(functionDeclaration);
         if (!nodeToComment) return;
 
-        if (hasJSDocThrowsTag(sourceCode, nodeToComment)) {
-          if (!services.esTreeNodeToTSNodeMap.has(nodeToComment)) return;
+        if (hasJSDocThrowsTag(sourceCode, nodeToComment)) return;
 
-          const functionDeclarationTSNode = services.esTreeNodeToTSNodeMap.get(functionDeclaration);
-
-          const throwsTags = getJSDocThrowsTags(functionDeclarationTSNode);
-          const throwsTagTypeNodes = throwsTags
-            .map(tag => tag.typeExpression?.type)
-            .filter(tag => !!tag);
-
-          if (!throwsTagTypeNodes.length) return;
-
-          // Throws tag with `Promise<...>` considered as a reject tag
-          const rejectTagTypes = toFlattenedTypeArray(
-            getJSDocThrowsTagTypes(checker, functionDeclarationTSNode)
-              .filter(t =>
-                utils.isPromiseLike(services.program, t) &&
-                t.symbol.getName() === 'Promise'
-              )
-              .map(t => checker.getAwaitedType(t) ?? t)
-          );
-
-          const typeGroups = groupTypesByCompatibility(
-            services.program,
-            rejectTypes,
-            rejectTagTypes,
-          );
-          if (!typeGroups.source.incompatible) return;
-
-          const lastTagtypeNode = getLast(throwsTagTypeNodes);
-          if (!lastTagtypeNode) return;
-
-          context.report({
-            node,
-            messageId: 'throwTypeMismatch',
-            fix(fixer) {
-              return fixer.replaceTextRange(
-                [lastTagtypeNode.pos, lastTagtypeNode.end],
-                `Promise<${typesToUnionString(checker, rejectTypes)}>`,
-              );
-            },
-          });
-          return;
-        }
         context.report({
           node,
           messageId: 'missingThrowsTag',

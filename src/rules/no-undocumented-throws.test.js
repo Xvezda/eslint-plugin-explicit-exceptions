@@ -557,65 +557,6 @@ ruleTester.run(
       },
       {
         code: `
-          /**
-           * foo bar baz
-           *
-           * @throws {number}
-           */
-          function foo() {
-            throw "lol";
-          }
-        `,
-        output: `
-          /**
-           * foo bar baz
-           *
-           * @throws {string}
-           */
-          function foo() {
-            throw "lol";
-          }
-        `,
-        errors: [{ messageId: 'throwTypeMismatch' }],
-      },
-      {
-        code: `
-          /**
-           * foo bar baz
-           *
-           * @throws {string}
-           */
-          function foo() {
-            if (Math.random() > 0.5) {
-              throw "lol";
-            } else {
-              throw 42;
-            }
-          }
-        `,
-        output: `
-          /**
-           * foo bar baz
-           *
-           * @throws {string | number}
-           */
-          function foo() {
-            if (Math.random() > 0.5) {
-              throw "lol";
-            } else {
-              throw 42;
-            }
-          }
-        `,
-        errors: [{ messageId: 'throwTypeMismatch' }],
-        options: [
-          {
-            useBaseTypeOfLiteral: true,
-          },
-        ],
-      },
-      {
-        code: `
           const foo = {
             get bar() {
               throw new Error('baz');
@@ -1020,64 +961,6 @@ ruleTester.run(
         errors: [
           { messageId: 'missingThrowsTag' },
           { messageId: 'missingThrowsTag' },
-        ],
-      },
-      {
-        code: `
-          /**
-           * @throws {Error}
-           */
-          function foo() {
-            return new Promise((resolve, reject) => {
-              reject(new Error());
-            });
-          }
-        `,
-        output: `
-          /**
-           * @throws {Promise<Error>}
-           */
-          function foo() {
-            return new Promise((resolve, reject) => {
-              reject(new Error());
-            });
-          }
-        `,
-        errors: [
-          { messageId: 'throwTypeMismatch' },
-        ],
-      },
-      {
-        code: `
-          /**
-           * @throws {Promise<TypeError>}
-           */
-          function foo() {
-            return new Promise((resolve, reject) => {
-              if (Math.random() > 0.5) {
-                reject(new TypeError());
-              } else {
-                reject(new RangeError());
-              }
-            });
-          }
-        `,
-        output: `
-          /**
-           * @throws {Promise<TypeError | RangeError>}
-           */
-          function foo() {
-            return new Promise((resolve, reject) => {
-              if (Math.random() > 0.5) {
-                reject(new TypeError());
-              } else {
-                reject(new RangeError());
-              }
-            });
-          }
-        `,
-        errors: [
-          { messageId: 'throwTypeMismatch' },
         ],
       },
     ],
