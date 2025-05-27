@@ -573,38 +573,47 @@ const isInHandledContext = (node) => {
 const isInAsyncHandledContext = (sourceCode, node) => {
   if (!node) return false;
 
+  /** @param {import('@typescript-eslint/utils').TSESTree.Node} node */
+  const isCatchMethodCalled = (node) => {
+    return (
+      node.parent?.parent?.type === AST_NODE_TYPES.CallExpression &&
+      node.parent?.type === AST_NODE_TYPES.MemberExpression &&
+      node.parent.property.type === AST_NODE_TYPES.Identifier &&
+      node.parent.property.name === 'catch'
+    );
+  };
+
+  /** @param {import('@typescript-eslint/utils').TSESTree.Node} node */
+  const isAwaitCatchPattern = (node) => {
+    return (
+      node.type === AST_NODE_TYPES.AwaitExpression &&
+      isParentOrAncestor(
+        node, 
+        /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement} */
+        (findParent(node, (parent) =>
+          parent.type === AST_NODE_TYPES.TryStatement &&
+          parent.handler !== null
+        ))?.block
+      )
+    );
+  };
+
   const rejectionHandled =
+    !!findClosest(node, isCatchMethodCalled) ||
     sourceCode.getScope(node)
       ?.references
-      .some(ref => {
-        return findClosest(ref.identifier, (n) =>
-          n.parent?.parent?.type === AST_NODE_TYPES.CallExpression &&
-          n.parent?.type === AST_NODE_TYPES.MemberExpression &&
-          n.parent.property.type === AST_NODE_TYPES.Identifier &&
-          n.parent.property.name === 'catch'
-        )
-      }) ||
-      !!findClosest(node, (n) =>
-        n.parent?.parent?.type === AST_NODE_TYPES.CallExpression &&
-        n.parent?.type === AST_NODE_TYPES.MemberExpression &&
-        n.parent.property.type === AST_NODE_TYPES.Identifier &&
-        n.parent.property.name === 'catch'
+      .some(ref =>
+        findClosest(ref.identifier, isCatchMethodCalled) ||
+        ref.resolved?.references
+          .some(r => findClosest(r.identifier, isCatchMethodCalled))
       ) ||
     sourceCode.getScope(node)
       ?.references
-      .some(ref => {
-        return findClosest(ref.identifier, (n) =>
-          n.type === AST_NODE_TYPES.AwaitExpression &&
-          isParentOrAncestor(
-            n, 
-            /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement} */
-            (findParent(n, (p) =>
-              p.type === AST_NODE_TYPES.TryStatement &&
-              p.handler !== null
-            ))?.block
-          )
-        )
-      });
+      .some(ref =>
+        findClosest(ref.identifier, isAwaitCatchPattern) ||
+        ref.resolved?.references
+          .some(r => findClosest(r.identifier, isAwaitCatchPattern))
+      );
 
   return rejectionHandled;
 };

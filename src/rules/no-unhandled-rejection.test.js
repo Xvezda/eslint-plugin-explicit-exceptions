@@ -78,6 +78,24 @@ ruleTester.run(
       },
       {
         code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.reject(new Error());
+          }
+
+          async function bar() {
+            const promise = foo();
+            try {
+              await promise;
+            } catch {}
+          }
+          await bar();
+        `,
+      },
+      {
+        code: `
           const foo = {
             /**
              * @throws {Promise<Error>}
