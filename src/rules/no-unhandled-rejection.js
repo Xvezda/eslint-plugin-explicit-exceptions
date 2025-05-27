@@ -4,7 +4,7 @@ const {
   createRule,
   getCalleeDeclaration,
   isInAsyncHandledContext,
-  isPromise,
+  isPromiseType,
   getJSDocThrowsTagTypes,
 } = require('../utils');
 
@@ -38,7 +38,7 @@ module.exports = createRule({
       if (!jsDocThrowsTagTypes.length) return;
 
       const maybeReject = jsDocThrowsTagTypes
-        .some(type => isPromise(services, type));
+        .some(type => isPromiseType(services, type));
 
       if (!maybeReject) return;
 

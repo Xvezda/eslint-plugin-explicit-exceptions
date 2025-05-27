@@ -356,7 +356,7 @@ const isFunctionNode = (node) => {
  * @param {import('typescript').Type} type
  * @returns {boolean}
  */
-const isPromise = (services, type) => {
+const isPromiseType = (services, type) => {
   return (
     utils.isPromiseLike(services.program, type) &&
     type.symbol.getName() === 'Promise'
@@ -679,6 +679,6 @@ module.exports = {
   isAwaitCatchPattern,
   isInHandledContext,
   isInAsyncHandledContext,
-  isPromise,
+  isPromiseType,
   createInsertJSDocBeforeFixer,
 };

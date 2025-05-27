@@ -6,7 +6,7 @@ const {
   getNodeID,
   createRule,
   isInHandledContext,
-  isPromise,
+  isPromiseType,
   typesToUnionString,
   hasJSDocThrowsTag,
   getJSDocThrowsTags,
@@ -138,7 +138,7 @@ module.exports = createRule({
         if (
           node.async &&
           !getJSDocThrowsTagTypes(checker, callerDeclarationTSNode)
-            .every(type => isPromise(services, type))
+            .every(type => isPromiseType(services, type))
         ) {
           context.report({
             node,
