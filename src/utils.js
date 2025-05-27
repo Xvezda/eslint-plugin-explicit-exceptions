@@ -227,15 +227,8 @@ const getCalleeDeclaration = (services, node) => {
           const declarationNode =
             services.tsNodeToESTreeNodeMap.get(declaration);
 
-          if (
-            declarationNode?.type === AST_NODE_TYPES.MethodDefinition ||
-            declarationNode?.type === AST_NODE_TYPES.Property
-          ) {
-            return declarationNode.value.type === AST_NODE_TYPES.ArrowFunctionExpression ||
-              declarationNode.value.type === AST_NODE_TYPES.FunctionExpression &&
-              declarationNode.kind === 'set';
-          }
-          return false;
+          return isAccessorNode(declarationNode) &&
+            declarationNode.kind === 'set';
         });
       return setter ?? declarations[0];
     }
@@ -254,15 +247,8 @@ const getCalleeDeclaration = (services, node) => {
           const declarationNode =
             services.tsNodeToESTreeNodeMap.get(declaration);
 
-          if (
-            declarationNode?.type === AST_NODE_TYPES.MethodDefinition ||
-            declarationNode?.type === AST_NODE_TYPES.Property
-          ) {
-            return declarationNode.value.type === AST_NODE_TYPES.ArrowFunctionExpression ||
-              declarationNode.value.type === AST_NODE_TYPES.FunctionExpression &&
-              declarationNode.kind === 'get';
-          }
-          return false;
+          return isAccessorNode(declarationNode) &&
+            declarationNode.kind === 'get';
         });
 
       if (getter) {
@@ -363,6 +349,19 @@ const isFunctionNode = (node) => {
     node.type === AST_NODE_TYPES.FunctionDeclaration ||
     node.type === AST_NODE_TYPES.FunctionExpression ||
     node.type === AST_NODE_TYPES.ArrowFunctionExpression
+  );
+};
+
+/**
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @returns {node is import('@typescript-eslint/utils').TSESTree.MethodDefinition | import('@typescript-eslint/utils').TSESTree.Property}
+ */
+const isAccessorNode = (node) => {
+  return (
+    (node?.type === AST_NODE_TYPES.MethodDefinition ||
+     node?.type === AST_NODE_TYPES.Property) &&
+    (node.value.type === AST_NODE_TYPES.ArrowFunctionExpression ||
+     node.value.type === AST_NODE_TYPES.FunctionExpression)
   );
 };
 
