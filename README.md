@@ -1,10 +1,11 @@
 # eslint-plugin-explicit-exceptions
 
+[![NPM Version](https://img.shields.io/npm/v/eslint-plugin-explicit-exceptions)](https://www.npmjs.com/package/eslint-plugin-explicit-exceptions)
+[![Test](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/actions/workflows/test.yml/badge.svg)](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/actions/workflows/test.yml)
+
 https://github.com/user-attachments/assets/4a833442-b8a5-462f-abeb-a28bd0e5863f
 
 Just as [Java’s throws keyword](https://dev.java/learn/exceptions/throwing/) does, enforcing the use of [JSDoc’s `@throws` tag](https://jsdoc.app/tags-throws) to explicitly specify which exceptions a function can throw to solve unpredictable propagation of exceptions happening which also known as a [JavaScript's "hidden exceptions"](https://www.youtube.com/watch?v=3iWoNJbGO2U).
-
-See [examples](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/examples/README.md) for more.
 
 ## Features
 - Reports and provides fixes for throwable functions that are not annotated with `@throws`.
