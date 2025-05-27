@@ -1,13 +1,11 @@
 // @ts-check
-const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
+const { ESLintUtils } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const {
   createRule,
-  getNodeID,
   getCalleeDeclaration,
   isInAsyncHandledContext,
   getJSDocThrowsTagTypes,
-  findClosest,
 } = require('../utils');
 
 
@@ -31,44 +29,33 @@ module.exports = createRule({
     const checker = services.program.getTypeChecker();
     const sourceCode = context.sourceCode;
 
-    /** @type {Set<string>} */
-    const visitedNodes = new Set();
+    /** @param {import('@typescript-eslint/utils').TSESTree.Expression} node */
+    const visit = (node) => {
+      const calleeDeclaration = getCalleeDeclaration(services, node);
+      if (!calleeDeclaration) return;
+
+      const jsDocThrowsTagTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
+      if (!jsDocThrowsTagTypes.length) return;
+
+      const maybeReject = jsDocThrowsTagTypes
+        .some(type =>
+          utils.isPromiseLike(services.program, type) &&
+          type.symbol.getName() === 'Promise'
+        );
+
+      if (!maybeReject) return;
+
+      if (isInAsyncHandledContext(sourceCode, node)) return;
+
+      context.report({
+        node: node,
+        messageId: 'unhandledRejection',
+      });
+    }; 
 
     return {
-      Identifier(node) {
-        const expression =
-          /** @type {import('@typescript-eslint/utils').TSESTree.Expression} */
-          (findClosest(node, (n) =>
-            n.type === AST_NODE_TYPES.MemberExpression ||
-            n.type === AST_NODE_TYPES.CallExpression
-          ));
-
-        if (!expression) return;
-
-        if (visitedNodes.has(getNodeID(expression))) return;
-        visitedNodes.add(getNodeID(expression));
-
-        const calleeDeclaration = getCalleeDeclaration(services, expression);
-        if (!calleeDeclaration) return;
-
-        const jsDocThrowsTagTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
-        if (!jsDocThrowsTagTypes.length) return;
-
-        const maybeReject = jsDocThrowsTagTypes
-          .some(type =>
-            utils.isPromiseLike(services.program, type) &&
-            type.symbol.getName() === 'Promise'
-          );
-
-        if (!maybeReject) return;
-
-        if (isInAsyncHandledContext(sourceCode, expression)) return;
-
-        context.report({
-          node: expression,
-          messageId: 'unhandledRejection',
-        });
-      },
+      CallExpression: visit,
+      MemberExpression: visit,
     };
   },
 });
