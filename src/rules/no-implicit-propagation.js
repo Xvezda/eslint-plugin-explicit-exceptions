@@ -242,6 +242,11 @@ module.exports = createRule({
       'ArrowFunctionExpression:exit': exitFunction,
       'FunctionDeclaration:exit': exitFunction,
       'FunctionExpression:exit': exitFunction,
+
+      onCodePathEnd() {
+        visitedExpressionNodes.clear();
+        calleeThrowsTypesGroup.clear();
+      },
     };
   },
   defaultOptions: [],

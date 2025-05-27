@@ -344,6 +344,10 @@ module.exports = createRule({
           )
         });
       },
+
+      onCodePathEnd() {
+        visitedFunctionNodes.clear();
+      }
     };
   },
 });
