@@ -30,7 +30,7 @@ module.exports = createRule({
     const sourceCode = context.sourceCode;
 
     /** @param {import('@typescript-eslint/utils').TSESTree.Expression} node */
-    const visit = (node) => {
+    const visitExpression = (node) => {
       const calleeDeclaration = getCalleeDeclaration(services, node);
       if (!calleeDeclaration) return;
 
@@ -48,14 +48,14 @@ module.exports = createRule({
       if (isInAsyncHandledContext(sourceCode, node)) return;
 
       context.report({
-        node: node,
+        node,
         messageId: 'unhandledRejection',
       });
     }; 
 
     return {
-      CallExpression: visit,
-      MemberExpression: visit,
+      CallExpression: visitExpression,
+      MemberExpression: visitExpression,
     };
   },
 });

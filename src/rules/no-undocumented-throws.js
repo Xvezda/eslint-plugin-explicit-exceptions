@@ -7,10 +7,10 @@ const {
   getLast,
   getNodeID,
   createRule,
-  findParent,
   hasJSDocThrowsTag,
   typesToUnionString,
   isInHandledContext,
+  isInAsyncHandledContext,
   getOptionsFromContext,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
@@ -60,7 +60,8 @@ module.exports = createRule({
     
     const options = getOptionsFromContext(context);
 
-    const visitedNodes = new Set();
+    /** @type {Set<string>} */
+    const visitedFunctionNodes = new Set();
 
     /**
      * Group throw statements in functions
@@ -70,8 +71,8 @@ module.exports = createRule({
 
     /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */
     const visitOnExit = (node) => {
-      if (visitedNodes.has(getNodeID(node))) return;
-      visitedNodes.add(getNodeID(node));
+      if (visitedFunctionNodes.has(getNodeID(node))) return;
+      visitedFunctionNodes.add(getNodeID(node));
 
       const nodeToComment = findNodeToComment(node);
       if (!nodeToComment) return;
@@ -101,7 +102,8 @@ module.exports = createRule({
       if (hasJSDocThrowsTag(sourceCode, nodeToComment)) {
         if (!services.esTreeNodeToTSNodeMap.has(nodeToComment)) return;
 
-        const functionDeclarationTSNode = services.esTreeNodeToTSNodeMap.get(node);
+        const functionDeclarationTSNode =
+          services.esTreeNodeToTSNodeMap.get(node);
 
         const throwsTags = getJSDocThrowsTags(functionDeclarationTSNode);
         const throwsTagTypeNodes = throwsTags
@@ -110,8 +112,9 @@ module.exports = createRule({
 
         if (!throwsTagTypeNodes.length) return;
 
-        const throwsTagTypes = getJSDocThrowsTagTypes(checker, functionDeclarationTSNode)
-          .map(t => checker.getAwaitedType(t) ?? t);
+        const throwsTagTypes =
+          getJSDocThrowsTagTypes(checker, functionDeclarationTSNode)
+            .map(t => checker.getAwaitedType(t) ?? t);
 
         const typeGroups = groupTypesByCompatibility(
           services.program,
@@ -226,7 +229,10 @@ module.exports = createRule({
         }
         if (!callbackNode) return;
 
-        /** @type {import('typescript').Type[]} */
+        /**
+         * Types which thrown or rejected and should be wrapped into `Promise<...>` later
+         * @type {import('typescript').Type[]}
+         */
         const rejectTypes = [];
 
         const isRejectCallbackNameDeclared =
@@ -259,7 +265,8 @@ module.exports = createRule({
         }
 
         if (throwStatements.has(getNodeID(callbackNode))) {
-          const throwStatementTypes = throwStatements.get(getNodeID(callbackNode))
+          const throwStatementTypes = throwStatements
+            .get(getNodeID(callbackNode))
             ?.map(n => services.getTypeAtLocation(n.argument));
 
           if (throwStatementTypes) {
@@ -278,19 +285,7 @@ module.exports = createRule({
 
         if (!rejectTypes.length) return;
 
-        const references = sourceCode.getScope(node).references;
-        if (!references.length) return;
-
-        const isRejectionHandled = references
-          .some(ref =>
-            findParent(ref.identifier, (node) =>
-              node.type === AST_NODE_TYPES.MemberExpression &&
-              node.property.type === AST_NODE_TYPES.Identifier &&
-              node.property.name === 'catch'
-            )
-          );
-
-        if (isRejectionHandled) return;
+        if (isInAsyncHandledContext(sourceCode, node)) return;
 
         const nodeToComment = findNodeToComment(functionDeclaration);
         if (!nodeToComment) return;

@@ -1,5 +1,5 @@
 // @ts-check
-const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
+const { ESLintUtils } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const {
   getLast,
@@ -42,7 +42,8 @@ module.exports = createRule({
     const services = ESLintUtils.getParserServices(context);
     const checker = services.program.getTypeChecker();
 
-    const visitedNodes = new Set();
+    /** @type {Set<string>} */
+    const visitedExpressionNodes = new Set();
 
     /**
      * Group callee throws types by caller declaration.
@@ -52,8 +53,8 @@ module.exports = createRule({
 
     /** @param {import('@typescript-eslint/utils').TSESTree.Expression} node */
     const visitExpression = (node) => {
-      if (visitedNodes.has(getNodeID(node))) return;
-      visitedNodes.add(getNodeID(node));
+      if (visitedExpressionNodes.has(getNodeID(node))) return;
+      visitedExpressionNodes.add(getNodeID(node));
 
       if (isInHandledContext(node)) return;
 
@@ -132,7 +133,7 @@ module.exports = createRule({
           ]
         );
 
-        // All thrown types must be promise if it's called in async function
+        // All thrown types must be documented as promise if it's in called async function
         if (
           node.async &&
           !getJSDocThrowsTagTypes(checker, callerDeclarationTSNode)
@@ -212,6 +213,8 @@ module.exports = createRule({
         return;
       }
 
+      const throwTypeString = typesToUnionString(checker, calleeThrowsTypes);
+
       context.report({
         node,
         messageId: 'implicitPropagation',
@@ -219,8 +222,8 @@ module.exports = createRule({
           sourceCode,
           nodeToComment,
           node.async
-            ? `Promise<${typesToUnionString(checker, calleeThrowsTypes)}>`
-            : typesToUnionString(checker, calleeThrowsTypes)
+            ? `Promise<${throwTypeString}>`
+            : throwTypeString
         ),
       });
     };

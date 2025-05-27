@@ -562,6 +562,31 @@ const isInHandledContext = (node) => {
   return false;
 };
 
+/** @param {import('@typescript-eslint/utils').TSESTree.Node} node */
+const isCatchMethodCalled = (node) => {
+  return (
+    node.parent?.parent?.type === AST_NODE_TYPES.CallExpression &&
+    node.parent?.type === AST_NODE_TYPES.MemberExpression &&
+    node.parent.property.type === AST_NODE_TYPES.Identifier &&
+    node.parent.property.name === 'catch'
+  );
+};
+
+/** @param {import('@typescript-eslint/utils').TSESTree.Node} node */
+const isAwaitCatchPattern = (node) => {
+  return (
+    node.type === AST_NODE_TYPES.AwaitExpression &&
+    isParentOrAncestor(
+      node, 
+      /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement} */
+      (findParent(node, (parent) =>
+        parent.type === AST_NODE_TYPES.TryStatement &&
+        parent.handler !== null
+      ))?.block
+    )
+  );
+};
+
 /**
  * Check if node promise rejection handled.
  * Such as `try .. await node .. catch` or `node.catch(...)`
@@ -572,31 +597,6 @@ const isInHandledContext = (node) => {
  */
 const isInAsyncHandledContext = (sourceCode, node) => {
   if (!node) return false;
-
-  /** @param {import('@typescript-eslint/utils').TSESTree.Node} node */
-  const isCatchMethodCalled = (node) => {
-    return (
-      node.parent?.parent?.type === AST_NODE_TYPES.CallExpression &&
-      node.parent?.type === AST_NODE_TYPES.MemberExpression &&
-      node.parent.property.type === AST_NODE_TYPES.Identifier &&
-      node.parent.property.name === 'catch'
-    );
-  };
-
-  /** @param {import('@typescript-eslint/utils').TSESTree.Node} node */
-  const isAwaitCatchPattern = (node) => {
-    return (
-      node.type === AST_NODE_TYPES.AwaitExpression &&
-      isParentOrAncestor(
-        node, 
-        /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement} */
-        (findParent(node, (parent) =>
-          parent.type === AST_NODE_TYPES.TryStatement &&
-          parent.handler !== null
-        ))?.block
-      )
-    );
-  };
 
   const rejectionHandled =
     !!findClosest(node, isCatchMethodCalled) ||
@@ -664,6 +664,8 @@ module.exports = {
   findClosestFunctionNode,
   findNodeToComment,
   findIdentifierDeclaration,
+  isCatchMethodCalled,
+  isAwaitCatchPattern,
   isInHandledContext,
   isInAsyncHandledContext,
   createInsertJSDocBeforeFixer,
