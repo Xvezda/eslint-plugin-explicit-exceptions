@@ -54,6 +54,7 @@ export default tseslint.config(
   },
 );
 ```
+Check out [`typescript-eslint`](https://typescript-eslint.io/getting-started/) for more information if you having an issue with configuring.
 
 ## License
 [MIT License](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/LICENSE)
