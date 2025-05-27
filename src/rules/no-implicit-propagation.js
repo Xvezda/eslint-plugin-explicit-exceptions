@@ -1,20 +1,14 @@
 // @ts-check
 const { ESLintUtils } = require('@typescript-eslint/utils');
-const utils = require('@typescript-eslint/type-utils');
 const {
-  getLast,
   getNodeID,
   createRule,
   isInHandledContext,
-  isPromiseType,
   typesToUnionString,
   hasJSDocThrowsTag,
-  getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
-  getDeclarationTSNodeOfESTreeNode,
   getCalleeDeclaration,
   toFlattenedTypeArray,
-  groupTypesByCompatibility,
   findClosestFunctionNode,
   findNodeToComment,
   createInsertJSDocBeforeFixer,
@@ -33,8 +27,6 @@ module.exports = createRule({
     messages: {
       implicitPropagation:
         'Implicit propagation of exceptions is not allowed. Add JSDoc comment with @throws (or @exception) tag.',
-      throwTypeMismatch:
-        'The type of the exception thrown does not match the type specified in the @throws (or @exception) tag.',
     },
     schema: [],
   },
@@ -42,6 +34,12 @@ module.exports = createRule({
     const sourceCode = context.sourceCode;
     const services = ESLintUtils.getParserServices(context);
     const checker = services.program.getTypeChecker();
+
+    /**
+     * Group throw statements in functions
+     * @type {Map<string, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>}
+     */
+    const throwStatements = new Map();
 
     /** @type {Set<string>} */
     const visitedExpressionNodes = new Set();
@@ -97,119 +95,7 @@ module.exports = createRule({
 
       if (!calleeThrowsTypes) return;
 
-      if (hasJSDocThrowsTag(sourceCode, nodeToComment)) {
-        const callerDeclarationTSNode =
-          getDeclarationTSNodeOfESTreeNode(services, callerDeclaration);
-
-        if (!callerDeclarationTSNode) return;
-
-        const callerThrowsTags = getJSDocThrowsTags(callerDeclarationTSNode);
-        const callerThrowsTypeNodes =
-          callerThrowsTags
-            .map(tag => tag.typeExpression?.type)
-            .filter(tag => !!tag);
-
-        if (!callerThrowsTypeNodes.length) return;
-
-        const callerThrowsTypes =
-          toFlattenedTypeArray(
-            getJSDocThrowsTagTypes(checker, callerDeclarationTSNode)
-              .map(t => checker.getAwaitedType(t) ?? t)
-          );
-
-        const typeGroups = groupTypesByCompatibility(
-          services.program,
-          calleeThrowsTypes,
-          callerThrowsTypes,
-        );
-
-        const lastThrowsTypeNode = getLast(callerThrowsTypeNodes);
-        if (!lastThrowsTypeNode) return;
-
-        const callerFixedType = typesToUnionString(
-          checker,
-          [
-            ...typeGroups.target.compatible ?? [],
-            ...typeGroups.source.incompatible ?? [],
-          ]
-        );
-
-        // All thrown types must be documented as promise if it's in called async function
-        if (
-          node.async &&
-          !getJSDocThrowsTagTypes(checker, callerDeclarationTSNode)
-            .every(type => isPromiseType(services, type))
-        ) {
-          context.report({
-            node,
-            messageId: 'throwTypeMismatch',
-            fix(fixer) {
-              return fixer.replaceTextRange(
-                [lastThrowsTypeNode.pos, lastThrowsTypeNode.end],
-                `Promise<${callerFixedType}>`,
-              );
-            },
-          });
-          return;
-        }
-
-        // If all callee thrown types are compatible with caller's throws tags,
-        // we don't need to report anything
-        if (!typeGroups.source.incompatible) return;
-
-        const lastThrowsTag = getLast(callerThrowsTags);
-        if (!lastThrowsTag) return;
-
-        if (callerThrowsTags.length > 1) {
-          const callerJSDocTSNode = lastThrowsTag.parent;
-          /**
-           * @param {string} jsdocString
-           * @param {import('typescript').Type[]} types
-           * @returns {string}
-           */
-          const appendThrowsTags = (jsdocString, types) =>
-            types.reduce((acc, t) =>
-              acc.replace(
-                /([^*\n]+)(\*+[/])/,
-                `$1* @throws {${utils.getTypeName(checker, t)}}\n$1$2`
-              ),
-              jsdocString
-            );
-
-          const mismatchedCalleeThrowsTypes = typeGroups.source.incompatible;
-          if (!mismatchedCalleeThrowsTypes) return;
-
-          context.report({
-            node,
-            messageId: 'throwTypeMismatch',
-            fix(fixer) {
-              return fixer.replaceTextRange(
-                [callerJSDocTSNode.getStart(), callerJSDocTSNode.getEnd()],
-                appendThrowsTags(
-                  callerJSDocTSNode.getFullText(),
-                  mismatchedCalleeThrowsTypes,
-                )
-              );
-            },
-          });
-          return;
-        }
-
-        context.report({
-          node,
-          messageId: 'throwTypeMismatch',
-          fix(fixer) {
-            // If there is only one throws tag, make it as a union type
-            return fixer.replaceTextRange(
-              [lastThrowsTypeNode.pos, lastThrowsTypeNode.end],
-              node.async
-                ? `Promise<${callerFixedType}>`
-                : callerFixedType
-            );
-          },
-        });
-        return;
-      }
+      if (hasJSDocThrowsTag(sourceCode, nodeToComment)) return;
 
       const throwTypeString = typesToUnionString(checker, calleeThrowsTypes);
 
@@ -227,6 +113,24 @@ module.exports = createRule({
     };
 
     return {
+      /**
+       * Collect and group throw statements in functions
+       */
+      ThrowStatement(node) {
+        if (isInHandledContext(node)) return; 
+
+        const functionDeclaration = findClosestFunctionNode(node);
+        if (!functionDeclaration) return;
+
+        if (!throwStatements.has(getNodeID(functionDeclaration))) {
+          throwStatements.set(getNodeID(functionDeclaration), []);
+        }
+        const throwStatementNodes =
+          /** @type {import('@typescript-eslint/utils').TSESTree.ThrowStatement[]} */
+          (throwStatements.get(getNodeID(functionDeclaration)));
+
+        throwStatementNodes.push(node);
+      },
       'ArrowFunctionExpression MemberExpression[property.type="Identifier"]': visitExpression,
       'FunctionDeclaration MemberExpression[property.type="Identifier"]': visitExpression,
       'FunctionExpression MemberExpression[property.type="Identifier"]': visitExpression,
