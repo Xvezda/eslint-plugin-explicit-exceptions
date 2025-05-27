@@ -7,10 +7,10 @@ const {
   getLast,
   getNodeID,
   createRule,
-  findParent,
   hasJSDocThrowsTag,
   typesToUnionString,
   isInHandledContext,
+  isInAsyncHandledContext,
   getOptionsFromContext,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
@@ -278,19 +278,7 @@ module.exports = createRule({
 
         if (!rejectTypes.length) return;
 
-        const references = sourceCode.getScope(node).references;
-        if (!references.length) return;
-
-        const isRejectionHandled = references
-          .some(ref =>
-            findParent(ref.identifier, (node) =>
-              node.type === AST_NODE_TYPES.MemberExpression &&
-              node.property.type === AST_NODE_TYPES.Identifier &&
-              node.property.name === 'catch'
-            )
-          );
-
-        if (isRejectionHandled) return;
+        if (isInAsyncHandledContext(sourceCode, node)) return;
 
         const nodeToComment = findNodeToComment(functionDeclaration);
         if (!nodeToComment) return;
