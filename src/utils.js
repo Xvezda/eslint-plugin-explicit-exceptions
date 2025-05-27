@@ -571,9 +571,8 @@ const isInHandledContext = (node) => {
  * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node
  * @returns {boolean}
  */
-const isInAsyncHandledContext = (sourceCode, node, visited = new Set()) => {
-  if (!node || visited.has(getNodeID(node))) return false;
-  visited.add(getNodeID(node));
+const isInAsyncHandledContext = (sourceCode, node) => {
+  if (!node) return false;
 
   const rejectionHandled =
     sourceCode.getScope(node)
@@ -606,11 +605,7 @@ const isInAsyncHandledContext = (sourceCode, node, visited = new Set()) => {
         )
       });
 
-  if (rejectionHandled) {
-    return true;
-  }
-
-  return false;
+  return Boolean(rejectionHandled);
 };
 
 /**
