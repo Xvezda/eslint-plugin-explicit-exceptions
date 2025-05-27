@@ -3,7 +3,10 @@ const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 
-// Object.groupBy clone
+const createRule = ESLintUtils.RuleCreator(
+  name => `https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/${name}.md`,
+);
+
 /**
  * Groups an array of objects by a specified key or function.
  * @template T
@@ -42,10 +45,6 @@ const getLast = (arr) =>
   arr && arr.length
     ? arr[arr.length - 1]
     : null;
-
-const createRule = ESLintUtils.RuleCreator(
-  name => `https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/${name}.md`,
-);
 
 /** @param {string} comment */
 const hasThrowsTag = comment =>
