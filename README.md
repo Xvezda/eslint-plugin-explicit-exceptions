@@ -15,6 +15,7 @@ See [examples](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/
  - [`no-implicit-propagation`](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/no-implicit-propagation.md)
  - [`no-undocumented-throws`](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/no-undocumented-throws.md)
  - [`no-unhandled-rejection`](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/no-unhandled-rejection.md)
+ - [`check-throws-tag-type`](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/check-throws-tag-type.md)
 
 ## Usage
 
