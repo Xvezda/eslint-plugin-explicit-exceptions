@@ -579,12 +579,14 @@ const isInAsyncHandledContext = (sourceCode, node) => {
       ?.references
       .some(ref => {
         return findClosest(ref.identifier, (n) =>
+          n.parent?.parent?.type === AST_NODE_TYPES.CallExpression &&
           n.parent?.type === AST_NODE_TYPES.MemberExpression &&
           n.parent.property.type === AST_NODE_TYPES.Identifier &&
           n.parent.property.name === 'catch'
         )
       }) ||
-      findClosest(node, (n) =>
+      !!findClosest(node, (n) =>
+        n.parent?.parent?.type === AST_NODE_TYPES.CallExpression &&
         n.parent?.type === AST_NODE_TYPES.MemberExpression &&
         n.parent.property.type === AST_NODE_TYPES.Identifier &&
         n.parent.property.name === 'catch'
@@ -605,7 +607,7 @@ const isInAsyncHandledContext = (sourceCode, node) => {
         )
       });
 
-  return Boolean(rejectionHandled);
+  return rejectionHandled;
 };
 
 /**

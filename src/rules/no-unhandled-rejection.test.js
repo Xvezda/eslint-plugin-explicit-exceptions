@@ -121,6 +121,19 @@ ruleTester.run(
             return Promise.reject(new Error());
           }
 
+          foo().catch;
+        `,
+        errors: [{ messageId: 'unhandledRejection' }],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.reject(new Error());
+          }
+
           foo();
         `,
         errors: [{ messageId: 'unhandledRejection' }],
@@ -251,6 +264,21 @@ ruleTester.run(
           };
 
           foo.bar;
+        `,
+        errors: [{ messageId: 'unhandledRejection' }],
+      },
+      {
+        code: `
+          const foo = {
+            /**
+             * @throws {Promise<Error>}
+             */
+            get bar() {
+              return Promise.reject(new Error());
+            }
+          };
+
+          foo.bar.catch;
         `,
         errors: [{ messageId: 'unhandledRejection' }],
       },
