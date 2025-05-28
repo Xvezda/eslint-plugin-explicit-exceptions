@@ -366,9 +366,6 @@ module.exports = createRule({
       const nodeToComment = findNodeToComment(node);
       if (!nodeToComment) return;
 
-      const functionDeclaration = findClosestFunctionNode(nodeToComment);
-      if (!functionDeclaration) return;
-
       const isPromiseConstructorCallback =
         isPromiseConstructorCallbackNode(node) &&
         utils.isPromiseConstructorLike(
@@ -446,7 +443,7 @@ module.exports = createRule({
           .map(ref => services.getTypeAtLocation(ref.arguments[0]));
 
         rejectTypes.add(
-          functionDeclaration,
+          nodeToComment,
           toFlattenedTypeArray(argumentTypes)
         );
       }
@@ -458,7 +455,7 @@ module.exports = createRule({
 
         if (throwStatementTypes) {
           rejectTypes.add(
-            functionDeclaration,
+            nodeToComment,
             toFlattenedTypeArray(throwStatementTypes)
           );
         }
@@ -471,7 +468,7 @@ module.exports = createRule({
 
       if (callbackThrowsTagTypes.length) {
         rejectTypes.add(
-          functionDeclaration,
+          nodeToComment,
           toFlattenedTypeArray(callbackThrowsTagTypes)
         );
       }
@@ -481,15 +478,15 @@ module.exports = createRule({
       ThrowStatement(node) {
         if (isInHandledContext(node)) return; 
 
-        const functionDeclaration = findClosestFunctionNode(node);
-        if (!functionDeclaration) return;
+        const currentFunction = findClosestFunctionNode(node);
+        if (!currentFunction) return;
 
-        if (!throwStatements.has(getNodeID(functionDeclaration))) {
-          throwStatements.set(getNodeID(functionDeclaration), []);
+        if (!throwStatements.has(getNodeID(currentFunction))) {
+          throwStatements.set(getNodeID(currentFunction), []);
         }
         const throwStatementNodes =
           /** @type {import('@typescript-eslint/utils').TSESTree.ThrowStatement[]} */
-          (throwStatements.get(getNodeID(functionDeclaration)));
+          (throwStatements.get(getNodeID(currentFunction)));
 
         throwStatementNodes.push(node);
       },
