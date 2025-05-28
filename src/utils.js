@@ -69,12 +69,12 @@ const getNodeID = (node) => {
 const hasJSDocThrowsTag = (sourceCode, node) => {
   const comments = sourceCode.getCommentsBefore(node);
   const isCommented =
-    comments.length &&
+    !!comments.length &&
     comments
       .map(({ value }) => value)
       .some(hasThrowsTag);
 
-  return Boolean(isCommented);
+  return isCommented;
 };
 
 /**
@@ -127,30 +127,16 @@ const findParent = (node, callback) => {
  * @returns {import('@typescript-eslint/utils').TSESTree.Node[]}
  */
 const collectPaths = (node, untilPredicate) => {
-  const path = [];
+  const paths = [];
   while (node) {
-    path.push(node);
+    paths.push(node);
 
     if (untilPredicate && untilPredicate(node)) {
       break;
     }
     node = node.parent;
   }
-  return path.reverse();
-};
-
-/**
- * @template {string} T
- * @template {readonly unknown[]} U
- * @param {import('@typescript-eslint/utils').TSESLint.RuleContext<T, U>} context
- * @returns {{ [K in keyof U[number]]: U[number][K] }}
- */
-const getOptionsFromContext = (context) => {
-  const options =
-    /** @type {{ [K in keyof U[number]]: U[number][K] }} */
-    (Object.assign(Object.create(null), ...context.options));
-
-  return options;
+  return paths.reverse();
 };
 
 /**
@@ -383,11 +369,10 @@ const isAccessorNode = (node) => {
  * @returns {import('@typescript-eslint/utils').TSESTree.FunctionLike | null}
  */
 const findClosestFunctionNode = (node) => {
-  if (isFunctionNode(node)) {
-    return /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike} */(node);
-  }
   return /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */(
-    findParent(node, isFunctionNode)
+    isFunctionNode(node)
+      ? node
+      : findParent(node, isFunctionNode)
   );
 };
 
@@ -541,8 +526,7 @@ const findIdentifierDeclaration = (sourceCode, node) => {
 const isParentOrAncestor = (node, other) => {
   if (!node || !other) return false;
 
-  const paths = collectPaths(node);
-  return paths
+  return collectPaths(node)
     .some(n => getNodeID(n) === getNodeID(other));
 };
 
@@ -663,7 +647,6 @@ module.exports = {
   typesToUnionString,
   findClosest,
   findParent,
-  getOptionsFromContext,
   getDeclarationTSNodeOfESTreeNode,
   getDeclarationsByNode,
   getCallee,

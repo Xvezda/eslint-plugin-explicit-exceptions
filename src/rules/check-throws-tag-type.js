@@ -141,7 +141,7 @@ module.exports = createRule({
     };
 
     /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */
-    const visitOnExit = (node) => {
+    const visitFunctionOnExit = (node) => {
       const functionDeclaration = findClosestFunctionNode(node);
       if (!functionDeclaration) return;
 
@@ -352,17 +352,17 @@ module.exports = createRule({
 
         throwStatementNodes.push(node);
       },
-      'FunctionDeclaration:exit': visitOnExit,
-      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:exit': visitOnExit,
-      'Property > ArrowFunctionExpression:exit': visitOnExit,
-      'PropertyDefinition > ArrowFunctionExpression:exit': visitOnExit,
-      'ReturnStatement > ArrowFunctionExpression:exit': visitOnExit,
+      'FunctionDeclaration:exit': visitFunctionOnExit,
+      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:exit': visitFunctionOnExit,
+      'Property > ArrowFunctionExpression:exit': visitFunctionOnExit,
+      'PropertyDefinition > ArrowFunctionExpression:exit': visitFunctionOnExit,
+      'ReturnStatement > ArrowFunctionExpression:exit': visitFunctionOnExit,
 
-      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > FunctionExpression:exit': visitOnExit,
-      'Property > FunctionExpression:exit': visitOnExit,
-      'PropertyDefinition > FunctionExpression:exit': visitOnExit,
-      'MethodDefinition > FunctionExpression:exit': visitOnExit,
-      'ReturnStatement > FunctionExpression:exit': visitOnExit,
+      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > FunctionExpression:exit': visitFunctionOnExit,
+      'Property > FunctionExpression:exit': visitFunctionOnExit,
+      'PropertyDefinition > FunctionExpression:exit': visitFunctionOnExit,
+      'MethodDefinition > FunctionExpression:exit': visitFunctionOnExit,
+      'ReturnStatement > FunctionExpression:exit': visitFunctionOnExit,
 
       'ArrowFunctionExpression MemberExpression[property.type="Identifier"]': visitExpression,
       'FunctionDeclaration MemberExpression[property.type="Identifier"]': visitExpression,
@@ -392,8 +392,8 @@ module.exports = createRule({
         
         if (!node.arguments.length) return;
 
-        // `new Klass(firstArg ...)`
-        //            ^ here
+        // `new Promise(firstArg ...)`
+        //              ^ here
         const firstArg = getFirst(node.arguments);
         if (!firstArg) return;
 
