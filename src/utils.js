@@ -377,6 +377,29 @@ const findClosestFunctionNode = (node) => {
 };
 
 /**
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ */
+const isPromiseConstructorCallbackNode = (node) => {
+  return (
+    node.parent?.type === AST_NODE_TYPES.NewExpression &&
+    node.parent.callee.type === AST_NODE_TYPES.Identifier &&
+    node.parent.callee.name === 'Promise'
+  );
+};
+
+/**
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ */
+const isThenableCallbackNode = (node) => {
+  return (
+    node.parent?.type === AST_NODE_TYPES.CallExpression &&
+    node.parent.callee.type === AST_NODE_TYPES.MemberExpression &&
+    node.parent.callee.property.type === AST_NODE_TYPES.Identifier &&
+    /^(then|finally)$/.test(node.parent.callee.property.name)
+  );
+};
+
+/**
  * Find where JSDoc comment should be added
  *
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
@@ -395,13 +418,13 @@ const findNodeToComment = (node) => {
       return node;
     case AST_NODE_TYPES.FunctionExpression:
     case AST_NODE_TYPES.ArrowFunctionExpression: {
-      // If the current function is inlined in Promise constructor,
+      // If the current function is inlined in Promise constructor
+      // or argument of thenable method,
       // it makes sense to comment where promise is referenced to.
       // Not the inline function itself.
       if (
-        node.parent?.type === AST_NODE_TYPES.NewExpression &&
-        node.parent.callee.type === AST_NODE_TYPES.Identifier &&
-        node.parent.callee.name === 'Promise'
+        isPromiseConstructorCallbackNode(node) ||
+        isThenableCallbackNode(node)
       ) {
         const functionDeclaration = findClosestFunctionNode(node.parent);
         if (functionDeclaration) {
@@ -659,5 +682,7 @@ module.exports = {
   isInHandledContext,
   isInAsyncHandledContext,
   isPromiseType,
+  isPromiseConstructorCallbackNode,
+  isThenableCallbackNode,
   createInsertJSDocBeforeFixer,
 };

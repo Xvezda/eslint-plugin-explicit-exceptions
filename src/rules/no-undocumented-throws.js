@@ -9,6 +9,8 @@ const {
   typesToUnionString,
   isInHandledContext,
   isInAsyncHandledContext,
+  isPromiseConstructorCallbackNode,
+  isThenableCallbackNode,
   getJSDocThrowsTagTypes,
   findClosestFunctionNode,
   findNodeToComment,
@@ -120,24 +122,17 @@ module.exports = createRule({
       if (!functionDeclaration) return;
 
       const isPromiseConstructorCallback =
-        node.parent &&
-        node.parent.type === AST_NODE_TYPES.NewExpression &&
-        node.parent.callee.type === AST_NODE_TYPES.Identifier &&
-        node.parent.callee.name === 'Promise' &&
+        isPromiseConstructorCallbackNode(node) &&
         utils.isPromiseConstructorLike(
           services.program,
-          services.getTypeAtLocation(node.parent.callee)
+          services.getTypeAtLocation(node.parent?.callee)
         );
 
       const isThenableCallback =
-        node.parent &&
-        node.parent.type === AST_NODE_TYPES.CallExpression &&
-        node.parent.callee.type === AST_NODE_TYPES.MemberExpression &&
-        node.parent.callee.property.type === AST_NODE_TYPES.Identifier &&
-        /^(then|finally)$/.test(node.parent.callee.property.name) &&
+        isThenableCallbackNode(node) &&
         utils.isPromiseLike(
           services.program,
-          services.getTypeAtLocation(node.parent.callee.object)
+          services.getTypeAtLocation(node.parent?.callee?.object)
         );
 
       if (!isPromiseConstructorCallback && !isThenableCallback) return;
