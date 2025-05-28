@@ -720,6 +720,76 @@ ruleTester.run(
           { messageId: 'throwTypeMismatch' },
         ],
       },
+      {
+        code: `
+          /**
+           * @throws {Promise<RangeError>}
+           */
+          function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new RangeError());
+            })
+            .then(() => {
+              return new Promise((resolve, reject) => {
+                reject(new TypeError());
+              });
+            });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<RangeError | TypeError>}
+           */
+          function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new RangeError());
+            })
+            .then(() => {
+              return new Promise((resolve, reject) => {
+                reject(new TypeError());
+              });
+            });
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<SyntaxError>}
+           */
+          function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new RangeError());
+            })
+            .then(() => {
+              return new Promise((resolve, reject) => {
+                reject(new TypeError());
+              });
+            });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<RangeError | TypeError>}
+           */
+          function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new RangeError());
+            })
+            .then(() => {
+              return new Promise((resolve, reject) => {
+                reject(new TypeError());
+              });
+            });
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
     ],
   },
 );

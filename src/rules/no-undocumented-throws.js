@@ -125,14 +125,21 @@ module.exports = createRule({
         isPromiseConstructorCallbackNode(node) &&
         utils.isPromiseConstructorLike(
           services.program,
-          services.getTypeAtLocation(node.parent?.callee)
+          services.getTypeAtLocation(
+            /** @type {import('@typescript-eslint/utils').TSESTree.NewExpression} */
+            (node.parent).callee
+          )
         );
 
       const isThenableCallback =
         isThenableCallbackNode(node) &&
+        node.parent.type === AST_NODE_TYPES.CallExpression &&
         utils.isPromiseLike(
           services.program,
-          services.getTypeAtLocation(node.parent?.callee?.object)
+          services.getTypeAtLocation(
+            /** @type {import('@typescript-eslint/utils').TSESTree.MemberExpression} */
+            (node.parent.callee).object
+          )
         );
 
       if (!isPromiseConstructorCallback && !isThenableCallback) return;
