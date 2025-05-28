@@ -76,16 +76,24 @@ module.exports = createRule({
     const throwStatements = new Map();
 
     /**
-     * Group callee throws types by caller declaration.
+     * Group of throwable types in functions
      */
     const throwTypes = new TypeMap();
 
     /**
-     * Types which thrown or rejected and should be wrapped into `Promise<...>` later
+     * Group of promise rejectable types in functions
+     * Since `Promise<Error>` is own convention of this project,
+     * these types should be wrapped into `Promise<...>` later
      */
     const rejectTypes = new TypeMap();
 
-    /** @param {import('@typescript-eslint/utils').TSESTree.Expression} node */
+    /**
+     * Visit function call node and collect types.
+     * Since JavaScript has implicit function call via getters and setters,
+     * this function handles those cases too.
+     *
+     * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
+     */
     const visitExpression = (node) => {
       if (visitedExpressionNodes.has(getNodeID(node))) return;
       visitedExpressionNodes.add(getNodeID(node));
@@ -175,7 +183,7 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
-      const calleeThrowTypes =
+      const throwableTypes =
         toFlattenedTypeArray(
           /** @type {import('typescript').Type[]} */(
           throwTypes.get(callerDeclaration)
@@ -183,7 +191,7 @@ module.exports = createRule({
           )
         );
 
-      const calleeRejectTypes =
+      const rejectableTypes =
         toFlattenedTypeArray(
           /** @type {import('typescript').Type[]} */(
           rejectTypes.get(callerDeclaration)
@@ -191,7 +199,7 @@ module.exports = createRule({
           )
         );
 
-      if (!calleeThrowTypes && !calleeRejectTypes) return;
+      if (!throwableTypes && !rejectableTypes) return;
 
       const callerDeclarationTSNode =
         getDeclarationTSNodeOfESTreeNode(services, callerDeclaration);
@@ -222,13 +230,13 @@ module.exports = createRule({
 
       const throwTypeGroups = groupTypesByCompatibility(
         services.program,
-        calleeThrowTypes,
+        throwableTypes,
         callerThrowTypes,
       );
 
       const rejectTypeGroups = groupTypesByCompatibility(
         services.program,
-        calleeRejectTypes,
+        rejectableTypes,
         callerRejectTypes,
       );
 
@@ -285,7 +293,6 @@ module.exports = createRule({
           typeStrings.reduce((acc, typeString) =>
             acc.replace(
               /([^*\n]+)(\*+[/])/,
-              // `$1* @throws {${utils.getTypeName(checker, t)}}\n$1$2`
               `$1* @throws {${typeString}}\n$1$2`
             ),
             jsdocString
@@ -500,6 +507,7 @@ module.exports = createRule({
       'FunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitExpression,
 
       /**
+       * @example
        * ```
        * new Promise(...)
        * //          ^ here
@@ -512,6 +520,7 @@ module.exports = createRule({
       'NewExpression[callee.type="Identifier"][callee.name="Promise"] > Identifier:first-child':
         visitPromiseCallback,
       /**
+       * @example
        * ```
        * new Promise(...).then(...)
        * //                    ^ here
@@ -526,6 +535,9 @@ module.exports = createRule({
       'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > Identifier:first-child':
         visitPromiseCallback,
 
+      /**
+       * Process collected types when each function node exits
+       */
       'FunctionDeclaration:exit': visitFunctionOnExit,
       'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:exit': visitFunctionOnExit,
       'Property > ArrowFunctionExpression:exit': visitFunctionOnExit,
