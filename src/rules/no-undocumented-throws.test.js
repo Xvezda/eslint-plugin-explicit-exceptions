@@ -1186,6 +1186,38 @@ ruleTester.run(
           { messageId: 'missingThrowsTag' },
         ],
       },
+      {
+        code: `
+          function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new RangeError());
+            })
+            .then(() => {
+              return new Promise((resolve, reject) => {
+                reject(new TypeError());
+              });
+            });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<RangeError | TypeError>}
+           */
+          function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new RangeError());
+            })
+            .then(() => {
+              return new Promise((resolve, reject) => {
+                reject(new TypeError());
+              });
+            });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
     ],
   },
 );

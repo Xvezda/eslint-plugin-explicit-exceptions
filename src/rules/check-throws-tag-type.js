@@ -3,6 +3,7 @@ const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 const {
+  TypeMap,
   createRule,
   getNodeID,
   getLast,
@@ -24,41 +25,6 @@ const {
   groupTypesByCompatibility,
 } = require('../utils');
 
-
-class TypeMap {
-  constructor() {
-    /**
-     * @type {Map<string, import('typescript').Type[]>}
-     */
-    this.map = new Map();
-  }
-
-  /**
-   * @param {import('@typescript-eslint/utils').TSESTree.Node} node
-   * @param {import('typescript').Type[]} types
-   */
-  add(node, types) {
-    const key = getNodeID(node);
-    if (!this.map.has(key)) {
-      this.map.set(key, []);
-    }
-    return this.map.get(key)?.push(...types);
-  }
-
-  /**
-   * @param {import('@typescript-eslint/utils').TSESTree.Node} node
-   */
-  get(node) {
-    return this.map.get(getNodeID(node)) ?? [];
-  }
-
-  /**
-   * @param {import('@typescript-eslint/utils').TSESTree.Node} node
-   */
-  has(node) {
-    return this.map.has(getNodeID(node));
-  }
-}
 
 module.exports = createRule({
   name: 'check-throws-tag-type',

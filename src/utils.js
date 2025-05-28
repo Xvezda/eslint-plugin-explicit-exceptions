@@ -8,6 +8,44 @@ const createRule = ESLintUtils.RuleCreator(
 );
 
 /**
+ * Collects types for each node.
+ */
+class TypeMap {
+  constructor() {
+    /**
+     * @type {Map<string, import('typescript').Type[]>}
+     */
+    this.map = new Map();
+  }
+
+  /**
+   * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+   * @param {import('typescript').Type[]} types
+   */
+  add(node, types) {
+    const key = getNodeID(node);
+    if (!this.map.has(key)) {
+      this.map.set(key, []);
+    }
+    return this.map.get(key)?.push(...types);
+  }
+
+  /**
+   * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+   */
+  get(node) {
+    return this.map.get(getNodeID(node)) ?? [];
+  }
+
+  /**
+   * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+   */
+  has(node) {
+    return this.map.has(getNodeID(node));
+  }
+}
+
+/**
  * Groups an array of objects by a specified key or function.
  * @template T
  * @template {string} K
@@ -658,6 +696,7 @@ const createInsertJSDocBeforeFixer = (sourceCode, node, typeString) => {
 };
 
 module.exports = {
+  TypeMap,
   getFirst,
   getLast,
   getNodeID,
