@@ -385,6 +385,58 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          /**
+           * @throws {SyntaxErreor}
+           * @throws {Promise<TypeError | RangeError>}
+           */
+          function foo() {
+            const promise = Promise.resolve();
+
+            if (Math.random() > 0.6) {
+              promise.then(() => {
+                throw new TypeError();
+              });
+            } else if (Math.random() > 0.3) {
+              throw new SyntaxError();
+            } else {
+              promise.finally(() => {
+                throw new RangeError();
+              });
+            }
+            return promise;
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<RangeError>}
+           * @throws {SyntaxError}
+           */
+          function foo() {
+            const promise = Promise.resolve();
+
+            if (Math.random() > 0.5) {
+              try {
+                await promise.then(() => {
+                  throw new TypeError();
+                });
+              } catch {}
+            } else if (Math.random() > 0.3) {
+              try {
+                promise.finally(() => {
+                  throw new RangeError();
+                });
+              } catch {
+                throw new SyntaxError();
+              }
+            }
+            return promise;
+          }
+        `,
+      },
     ],
     invalid: [
       {
