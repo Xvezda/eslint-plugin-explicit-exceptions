@@ -4,7 +4,6 @@ const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 const {
   TypeMap,
-  getLast,
   getNodeID,
   createRule,
   hasJSDocThrowsTag,
@@ -13,16 +12,11 @@ const {
   isInAsyncHandledContext,
   isPromiseConstructorCallbackNode,
   isThenableCallbackNode,
-  isPromiseType,
   getCalleeDeclaration,
-  getDeclarationTSNodeOfESTreeNode,
-  getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
   findClosestFunctionNode,
   findNodeToComment,
   findIdentifierDeclaration,
-  groupTypesByCompatibility,
-  createInsertJSDocBeforeFixer,
   toFlattenedTypeArray,
 } = require('../utils');
 
@@ -166,199 +160,40 @@ module.exports = createRule({
         !calleeRejectTypes.length
       ) return;
 
-      if (!hasJSDocThrowsTag(sourceCode, nodeToComment)) {
-        context.report({
-          node: nodeToComment,
-          messageId: 'missingThrowsTag',
-          fix(fixer) {
-            const lines = sourceCode.getLines();
-            const currentLine = lines[node.loc.start.line - 1];
-            const indent = currentLine.match(/^\s*/)?.[0] ?? '';
-
-            const newType =
-              node.async
-                ? `Promise<${typesToUnionString(checker, [
-                  ...calleeThrowTypes,
-                  ...calleeRejectTypes,
-                ])}>`
-                : [
-                  ...calleeThrowTypes.length
-                    ? [typesToUnionString(checker, calleeThrowTypes)]
-                    : [],
-                  ...calleeRejectTypes.length
-                    ? [`Promise<${typesToUnionString(checker, calleeRejectTypes)}>`]
-                    : [],
-                ].join(' | ');
-
-            return fixer
-              .insertTextBefore(
-                nodeToComment,
-                `/**\n` +
-                `${indent} * @throws {${newType}}\n` +
-                `${indent} */\n` +
-                `${indent}`
-              );
-          }
-        });
-        return;
-      }
-
-      const callerDeclarationTSNode =
-        getDeclarationTSNodeOfESTreeNode(services, callerDeclaration);
-
-      if (!callerDeclarationTSNode) return;
-
-      const callerThrowsTags = getJSDocThrowsTags(callerDeclarationTSNode);
-      const callerThrowsTypeNodes =
-        callerThrowsTags
-          .map(tag => tag.typeExpression?.type)
-          .filter(tag => !!tag);
-
-      if (!callerThrowsTypeNodes.length) return;
-
-      const callerThrowTypes =
-        toFlattenedTypeArray(
-          getJSDocThrowsTagTypes(checker, callerDeclarationTSNode)
-            .filter(type => !isPromiseType(services, type))
-        );
-
-      const callerRejectTypes =
-        toFlattenedTypeArray(
-          getJSDocThrowsTagTypes(checker, callerDeclarationTSNode)
-            .filter(type => isPromiseType(services, type))
-            // Get awaited type for comparison
-            .map(t => checker.getAwaitedType(t) ?? t)
-        );
-
-      const throwTypeGroups = groupTypesByCompatibility(
-        services.program,
-        calleeThrowTypes,
-        callerThrowTypes,
-      );
-
-      const rejectTypeGroups = groupTypesByCompatibility(
-        services.program,
-        calleeRejectTypes,
-        callerRejectTypes,
-      );
-
-      const lastThrowsTypeNode = getLast(callerThrowsTypeNodes);
-      if (!lastThrowsTypeNode) return;
-
-      // All thrown types must be documented as promise if it's in called async function
-      if (
-        node.async &&
-        !getJSDocThrowsTagTypes(checker, callerDeclarationTSNode)
-          .every(type => isPromiseType(services, type))
-      ) {
-        context.report({
-          node,
-          messageId: 'missingThrowsTag',
-          fix(fixer) {
-            return fixer.replaceTextRange(
-              [lastThrowsTypeNode.pos, lastThrowsTypeNode.end],
-              `Promise<${
-                typesToUnionString(
-                  checker,
-                  [
-                    ...throwTypeGroups.target.compatible ?? [],
-                    ...throwTypeGroups.source.incompatible ?? [],
-                    ...rejectTypeGroups.target.compatible ?? [],
-                    ...rejectTypeGroups.source.incompatible ?? [],
-                  ]
-                )
-              }>`,
-            );
-          },
-        });
-        return;
-      }
-
-      // If all callee thrown types are compatible with caller's throws tags,
-      // we don't need to report anything
-      if (
-        !throwTypeGroups.source.incompatible &&
-        !rejectTypeGroups.source.incompatible
-      ) return;
-
-      const lastThrowsTag = getLast(callerThrowsTags);
-      if (!lastThrowsTag) return;
-
-      if (callerThrowsTags.length > 1) {
-        const callerJSDocTSNode = lastThrowsTag.parent;
-        /**
-         * @param {string} jsdocString
-         * @param {string[]} typeStrings
-         * @returns {string}
-         */
-        const appendThrowsTags = (jsdocString, typeStrings) =>
-          typeStrings.reduce((acc, typeString) =>
-            acc.replace(
-              /([^*\n]+)(\*+[/])/,
-              // `$1* @throws {${utils.getTypeName(checker, t)}}\n$1$2`
-              `$1* @throws {${typeString}}\n$1$2`
-            ),
-            jsdocString
-          );
-
-        context.report({
-          node,
-          messageId: 'missingThrowsTag',
-          fix(fixer) {
-            return fixer.replaceTextRange(
-              [callerJSDocTSNode.getStart(), callerJSDocTSNode.getEnd()],
-              appendThrowsTags(
-                appendThrowsTags(
-                  callerJSDocTSNode.getFullText(),
-                  [...throwTypeGroups.source.incompatible ?? []]
-                    .map(t => utils.getTypeName(checker, t))
-                ),
-                [...rejectTypeGroups.source.incompatible ?? []]
-                  .map(t => `Promise<${utils.getTypeName(checker, t)}>`)
-              )
-            );
-          },
-        });
-        return;
-      }
+      if (hasJSDocThrowsTag(sourceCode, nodeToComment)) return;
 
       context.report({
-        node,
+        node: nodeToComment,
         messageId: 'missingThrowsTag',
         fix(fixer) {
-          const throwTypes = [
-            ...throwTypeGroups.target.compatible ?? [],
-            ...throwTypeGroups.source.incompatible ?? [],
-          ];
+          const lines = sourceCode.getLines();
+          const currentLine = lines[node.loc.start.line - 1];
+          const indent = currentLine.match(/^\s*/)?.[0] ?? '';
 
-          const rejectTypes = [
-            ...rejectTypeGroups.target.compatible ?? [],
-            ...rejectTypeGroups.source.incompatible ?? [],
-          ];
-
-          // If there is only one throws tag, make it as a union type
-          return fixer.replaceTextRange(
-            [lastThrowsTypeNode.pos, lastThrowsTypeNode.end],
+          const newType =
             node.async
-              ? `Promise<${
-                typesToUnionString(checker, [...throwTypes, ...rejectTypes])
-              }>`
-              : [
-                throwTypes.length
-                  ? typesToUnionString(
-                    checker, throwTypes,
-                  )
-                  : '',
-                rejectTypes.length
-                  ? `Promise<${
-                    typesToUnionString(
-                      checker,
-                      rejectTypes,
-                    )}>`
-                  : '',
-              ].filter(t => !!t).join(' | ')
-          );
-        },
+            ? `Promise<${typesToUnionString(checker, [
+              ...calleeThrowTypes,
+              ...calleeRejectTypes,
+            ])}>`
+            : [
+              ...calleeThrowTypes.length
+              ? [typesToUnionString(checker, calleeThrowTypes)]
+              : [],
+              ...calleeRejectTypes.length
+              ? [`Promise<${typesToUnionString(checker, calleeRejectTypes)}>`]
+              : [],
+            ].join(' | ');
+
+          return fixer
+            .insertTextBefore(
+              nodeToComment,
+              `/**\n` +
+              `${indent} * @throws {${newType}}\n` +
+              `${indent} */\n` +
+              `${indent}`
+            );
+        }
       });
     };
 
@@ -366,7 +201,7 @@ module.exports = createRule({
      * @typedef {import('@typescript-eslint/utils').TSESTree.FunctionLike | import('@typescript-eslint/utils').TSESTree.Identifier} PromiseCallbackType
      * @param {PromiseCallbackType} node
      */
-    const visitPromiseCallback = (node) => {
+    const visitPromiseCallbackOnExit = (node) => {
       if (isInAsyncHandledContext(sourceCode, node.parent)) return;
 
       const nodeToComment = findNodeToComment(node);
@@ -513,11 +348,11 @@ module.exports = createRule({
        * ```
        */
       'NewExpression[callee.type="Identifier"][callee.name="Promise"] > ArrowFunctionExpression:first-child:exit':
-        visitPromiseCallback,
+        visitPromiseCallbackOnExit,
       'NewExpression[callee.type="Identifier"][callee.name="Promise"] > FunctionExpression:first-child:exit':
-        visitPromiseCallback,
+        visitPromiseCallbackOnExit,
       'NewExpression[callee.type="Identifier"][callee.name="Promise"] > Identifier:first-child:exit':
-        visitPromiseCallback,
+        visitPromiseCallbackOnExit,
       /**
        * ```
        * new Promise(...).then(...)
@@ -527,11 +362,11 @@ module.exports = createRule({
        * ```
        */
       'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > ArrowFunctionExpression:first-child:exit':
-        visitPromiseCallback,
+        visitPromiseCallbackOnExit,
       'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > FunctionExpression:first-child:exit':
-        visitPromiseCallback,
+        visitPromiseCallbackOnExit,
       'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > Identifier:first-child:exit':
-        visitPromiseCallback,
+        visitPromiseCallbackOnExit,
 
       'FunctionDeclaration:exit': visitFunctionOnExit,
       'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:exit': visitFunctionOnExit,
