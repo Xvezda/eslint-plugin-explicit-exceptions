@@ -597,11 +597,7 @@ const isInAsyncHandledContext = (sourceCode, node) => {
     !!findClosest(node, isCatchMethodCalled) ||
     sourceCode.getScope(node)
       ?.references
-      .some(ref =>
-        findClosest(ref.identifier, isCatchMethodCalled) ||
-        ref.resolved?.references
-          .some(r => findClosest(r.identifier, isCatchMethodCalled))
-      ) ||
+      .some(ref => isCatchMethodCalled(ref.identifier)) ||
     sourceCode.getScope(node)
       ?.references
       .some(ref =>
