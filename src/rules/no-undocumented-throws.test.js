@@ -1158,6 +1158,34 @@ ruleTester.run(
           { messageId: 'missingThrowsTag' },
         ],
       },
+      {
+        code: `
+          function foo() {
+            return Promise.resolve()
+              .then(() => {
+                return new Promise((resolve, reject) => {
+                  reject(new Error());
+                });
+              });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.resolve()
+              .then(() => {
+                return new Promise((resolve, reject) => {
+                  reject(new Error());
+                });
+              });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
     ],
   },
 );
