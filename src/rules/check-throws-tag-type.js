@@ -415,7 +415,10 @@ module.exports = createRule({
       const isRejectCallbackNameDeclared =
         callbackNode.params.length >= 2;
 
-      if (isRejectCallbackNameDeclared) {
+      if (
+        isPromiseConstructorCallback &&
+        isRejectCallbackNameDeclared
+      ) {
         const rejectCallbackNode = callbackNode.params[1];
         if (rejectCallbackNode.type !== AST_NODE_TYPES.Identifier) return;
 
