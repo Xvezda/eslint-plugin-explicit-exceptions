@@ -285,6 +285,28 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          function foo() {
+            return Promise.resolve()
+              .then(() => {
+                throw new Error();
+              })
+              .catch(console.error);
+          }
+        `,
+      },
+      {
+        code: `
+          function foo() {
+            return Promise.resolve()
+              .finally(() => {
+                throw new Error();
+              })
+              .catch(console.error);
+          }
+        `,
+      },
     ],
     invalid: [
       {
@@ -960,6 +982,54 @@ ruleTester.run(
         `,
         errors: [
           { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            return Promise.resolve()
+              .then(() => {
+                throw new Error();
+              });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.resolve()
+              .then(() => {
+                throw new Error();
+              });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            return Promise.resolve()
+              .finally(() => {
+                throw new Error();
+              });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.resolve()
+              .finally(() => {
+                throw new Error();
+              });
+          }
+        `,
+        errors: [
           { messageId: 'missingThrowsTag' },
         ],
       },

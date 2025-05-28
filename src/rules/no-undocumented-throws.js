@@ -3,7 +3,6 @@ const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 const {
-  getFirst,
   getNodeID,
   createRule,
   hasJSDocThrowsTag,
@@ -66,7 +65,7 @@ module.exports = createRule({
     const throwStatements = new Map();
 
     /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */
-    const visitOnExit = (node) => {
+    const visitFunctionOnExit = (node) => {
       if (visitedFunctionNodes.has(getNodeID(node))) return;
       visitedFunctionNodes.add(getNodeID(node));
 
@@ -112,6 +111,141 @@ module.exports = createRule({
       });
     };
 
+    /**
+     * @typedef {import('@typescript-eslint/utils').TSESTree.FunctionLike | import('@typescript-eslint/utils').TSESTree.Identifier} PromiseCallbackType
+     * @param {PromiseCallbackType} node
+     */
+    const visitPromiseCallbackOnExit = (node) => {
+      const functionDeclaration = findClosestFunctionNode(node.parent);
+      if (!functionDeclaration) return;
+
+      /**
+       * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+       */
+      const isPromiseCallbackNode = (node) => {
+        const isPromiseConstructorCallback =
+          node.parent &&
+          node.parent.type === AST_NODE_TYPES.NewExpression &&
+          node.parent.callee.type === AST_NODE_TYPES.Identifier &&
+          node.parent.callee.name === 'Promise' &&
+          utils.isPromiseConstructorLike(
+            services.program,
+            services.getTypeAtLocation(node.parent.callee)
+          );
+
+        const isThenableCallback =
+          node.parent &&
+          node.parent.type === AST_NODE_TYPES.CallExpression &&
+          node.parent.callee.type === AST_NODE_TYPES.MemberExpression &&
+          node.parent.callee.property.type === AST_NODE_TYPES.Identifier &&
+          /^(then|finally)$/.test(node.parent.callee.property.name) &&
+          utils.isPromiseLike(
+            services.program,
+            services.getTypeAtLocation(node.parent.callee.object)
+          );
+
+        return isPromiseConstructorCallback || isThenableCallback;
+      };
+      if (!isPromiseCallbackNode(node)) return;
+
+      /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */
+      let callbackNode = null;
+      switch (node.type) {
+          // Promise argument is inlined function
+        case AST_NODE_TYPES.ArrowFunctionExpression:
+        case AST_NODE_TYPES.FunctionExpression:
+          callbackNode = node;
+          break;
+          // Promise argument is not inlined function
+        case AST_NODE_TYPES.Identifier: {
+          const declaration =
+            findIdentifierDeclaration(sourceCode, node);
+
+          if (!declaration) return;
+
+          callbackNode =
+            /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */
+            (declaration);
+        }
+        default:
+          break;
+      }
+      if (!callbackNode) return;
+
+      /**
+       * Types which thrown or rejected and should be wrapped into `Promise<...>` later
+       * @type {import('typescript').Type[]}
+       */
+      const rejectTypes = [];
+
+      const isRejectCallbackNameDeclared =
+        callbackNode.params.length >= 2;
+
+      if (isRejectCallbackNameDeclared) {
+        const rejectCallbackNode = callbackNode.params[1];
+        if (rejectCallbackNode.type !== AST_NODE_TYPES.Identifier) return;
+
+        const callbackScope = sourceCode.getScope(callbackNode)
+        if (!callbackScope) return;
+
+        const rejectCallbackRefs =
+          callbackScope.set.get(rejectCallbackNode.name)?.references;
+
+        if (!rejectCallbackRefs) return;
+
+        const callRefs = rejectCallbackRefs
+          .filter(ref =>
+            ref.identifier.parent.type === AST_NODE_TYPES.CallExpression)
+            .map(ref =>
+              /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
+              (ref.identifier.parent)
+            );
+
+        const argumentTypes = callRefs
+          .map(ref => services.getTypeAtLocation(ref.arguments[0]));
+
+        rejectTypes.push(...toFlattenedTypeArray(argumentTypes));
+      }
+
+      if (throwStatements.has(getNodeID(callbackNode))) {
+        const throwStatementTypes = throwStatements
+          .get(getNodeID(callbackNode))
+          ?.map(n => services.getTypeAtLocation(n.argument));
+
+        if (throwStatementTypes) {
+          rejectTypes.push(...toFlattenedTypeArray(throwStatementTypes));
+        }
+      }
+
+      const callbackThrowsTagTypes = getJSDocThrowsTagTypes(
+        checker,
+        services.esTreeNodeToTSNodeMap.get(callbackNode)
+      );
+
+      if (callbackThrowsTagTypes.length) {
+        rejectTypes.push(...callbackThrowsTagTypes);
+      }
+
+      if (!rejectTypes.length) return;
+
+      if (isInAsyncHandledContext(sourceCode, node.parent)) return;
+
+      const nodeToComment = findNodeToComment(functionDeclaration);
+      if (!nodeToComment) return;
+
+      if (hasJSDocThrowsTag(sourceCode, nodeToComment)) return;
+
+      context.report({
+        node: node.parent,
+        messageId: 'missingThrowsTag',
+        fix: createInsertJSDocBeforeFixer(
+          sourceCode,
+          nodeToComment,
+          `Promise<${typesToUnionString(checker, rejectTypes)}>`
+        )
+      });
+    };
+
     return {
       /**
        * Collect and group throw statements in functions
@@ -131,135 +265,42 @@ module.exports = createRule({
 
         throwStatementNodes.push(node);
       },
-      'FunctionDeclaration:exit': visitOnExit,
-      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:exit': visitOnExit,
-      'Property > ArrowFunctionExpression:exit': visitOnExit,
-      'PropertyDefinition > ArrowFunctionExpression:exit': visitOnExit,
-      'ReturnStatement > ArrowFunctionExpression:exit': visitOnExit,
+      'FunctionDeclaration:exit': visitFunctionOnExit,
+      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:exit':
+        visitFunctionOnExit,
+      'Property > ArrowFunctionExpression:exit': visitFunctionOnExit,
+      'PropertyDefinition > ArrowFunctionExpression:exit': visitFunctionOnExit,
+      'ReturnStatement > ArrowFunctionExpression:exit': visitFunctionOnExit,
 
-      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > FunctionExpression:exit': visitOnExit,
-      'Property > FunctionExpression:exit': visitOnExit,
-      'PropertyDefinition > FunctionExpression:exit': visitOnExit,
-      'MethodDefinition > FunctionExpression:exit': visitOnExit,
-      'ReturnStatement > FunctionExpression:exit': visitOnExit,
+      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > FunctionExpression:exit':
+        visitFunctionOnExit,
+      'Property > FunctionExpression:exit': visitFunctionOnExit,
+      'PropertyDefinition > FunctionExpression:exit': visitFunctionOnExit,
+      'MethodDefinition > FunctionExpression:exit': visitFunctionOnExit,
+      'ReturnStatement > FunctionExpression:exit': visitFunctionOnExit,
 
       /**
-       * Visitor for checking `new Promise()` calls
-       * @param {import('@typescript-eslint/utils').TSESTree.NewExpression} node
+       * ```
+       * new Promise(...)
+       * //          ^ here
+       * ```
        */
-      'NewExpression[callee.type="Identifier"][callee.name="Promise"]:exit'(node) {
-        const functionDeclaration = findClosestFunctionNode(node);
-        if (!functionDeclaration) return;
-
-        const calleeType = services.getTypeAtLocation(node.callee);
-        if (!utils.isPromiseConstructorLike(services.program, calleeType)) {
-          return;
-        }
-        
-        if (!node.arguments.length) return;
-
-        // `new Klass(firstArg ...)`
-        //            ^ here
-        const firstArg = getFirst(node.arguments);
-        if (!firstArg) return;
-
-        /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */
-        let callbackNode = null;
-        switch (firstArg.type) {
-          // Promise argument is inlined function
-          case AST_NODE_TYPES.ArrowFunctionExpression:
-          case AST_NODE_TYPES.FunctionExpression:
-            callbackNode = firstArg;
-            break;
-          // Promise argument is not inlined function
-          case AST_NODE_TYPES.Identifier: {
-            const declaration =
-              findIdentifierDeclaration(sourceCode, firstArg);
-
-            if (!declaration) return;
-
-            callbackNode =
-              /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */
-              (declaration);
-          }
-          default:
-            break;
-        }
-        if (!callbackNode) return;
-
-        /**
-         * Types which thrown or rejected and should be wrapped into `Promise<...>` later
-         * @type {import('typescript').Type[]}
-         */
-        const rejectTypes = [];
-
-        const isRejectCallbackNameDeclared =
-          callbackNode.params.length >= 2;
-
-        if (isRejectCallbackNameDeclared) {
-          const rejectCallbackNode = callbackNode.params[1];
-          if (rejectCallbackNode.type !== AST_NODE_TYPES.Identifier) return;
-
-          const callbackScope = sourceCode.getScope(callbackNode)
-          if (!callbackScope) return;
-
-          const rejectCallbackRefs =
-            callbackScope.set.get(rejectCallbackNode.name)?.references;
-
-          if (!rejectCallbackRefs) return;
-
-          const callRefs = rejectCallbackRefs
-            .filter(ref =>
-              ref.identifier.parent.type === AST_NODE_TYPES.CallExpression)
-            .map(ref =>
-              /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
-              (ref.identifier.parent)
-            );
-
-          const argumentTypes = callRefs
-            .map(ref => services.getTypeAtLocation(ref.arguments[0]));
-
-          rejectTypes.push(...toFlattenedTypeArray(argumentTypes));
-        }
-
-        if (throwStatements.has(getNodeID(callbackNode))) {
-          const throwStatementTypes = throwStatements
-            .get(getNodeID(callbackNode))
-            ?.map(n => services.getTypeAtLocation(n.argument));
-
-          if (throwStatementTypes) {
-            rejectTypes.push(...toFlattenedTypeArray(throwStatementTypes));
-          }
-        }
-
-        const callbackThrowsTagTypes = getJSDocThrowsTagTypes(
-          checker,
-          services.esTreeNodeToTSNodeMap.get(callbackNode)
-        );
-
-        if (callbackThrowsTagTypes.length) {
-          rejectTypes.push(...callbackThrowsTagTypes);
-        }
-
-        if (!rejectTypes.length) return;
-
-        if (isInAsyncHandledContext(sourceCode, node)) return;
-
-        const nodeToComment = findNodeToComment(functionDeclaration);
-        if (!nodeToComment) return;
-
-        if (hasJSDocThrowsTag(sourceCode, nodeToComment)) return;
-
-        context.report({
-          node,
-          messageId: 'missingThrowsTag',
-          fix: createInsertJSDocBeforeFixer(
-            sourceCode,
-            nodeToComment,
-            `Promise<${typesToUnionString(checker, rejectTypes)}>`
-          )
-        });
-      },
+      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > ArrowFunctionExpression:first-child:exit':
+        visitPromiseCallbackOnExit,
+      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > FunctionExpression:first-child:exit':
+        visitPromiseCallbackOnExit,
+      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > Identifier:first-child:exit':
+        visitPromiseCallbackOnExit,
+      /**
+       * ```
+       * new Promise(...).then(...)
+       * //                    ^ here
+       * new Promise(...).finally(...)
+       * //                       ^ or here
+       * ```
+       */
+      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > ArrowFunctionExpression:first-child:exit':
+        visitPromiseCallbackOnExit,
     };
   },
 });
