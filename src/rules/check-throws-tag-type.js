@@ -209,13 +209,6 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
-      if (
-        throwTypes.has(callerDeclaration) &&
-        isInHandledContext(node) &&
-        rejectTypes.has(callerDeclaration) &&
-        isInAsyncHandledContext(sourceCode, node)
-      ) return;
-
       const calleeThrowTypes =
         toFlattenedTypeArray(
           /** @type {import('typescript').Type[]} */(
@@ -398,6 +391,8 @@ module.exports = createRule({
      * @param {PromiseCallbackType} node
      */
     const visitPromiseCallback = (node) => {
+      if (isInAsyncHandledContext(sourceCode, node)) return;
+
       const nodeToComment = findNodeToComment(node);
       if (!nodeToComment) return;
 

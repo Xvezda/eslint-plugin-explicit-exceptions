@@ -148,7 +148,7 @@ const getDeclarationTSNodeOfESTreeNode = (services, node) =>
   services
     .getTypeAtLocation(node)
     .symbol
-    .valueDeclaration;
+    ?.valueDeclaration;
 
 /**
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
@@ -416,6 +416,7 @@ const findNodeToComment = (node) => {
      */
     case AST_NODE_TYPES.FunctionDeclaration:
       return node;
+    case AST_NODE_TYPES.Identifier:
     case AST_NODE_TYPES.FunctionExpression:
     case AST_NODE_TYPES.ArrowFunctionExpression: {
       // If the current function is inlined in Promise constructor
