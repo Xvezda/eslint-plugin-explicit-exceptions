@@ -364,6 +364,27 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          const callback = (resolve, reject) => {
+            throw new TypeError();
+          };
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          function foo() {
+            const promise = Promise.resolve();
+
+            return promise
+              .then(callback)
+              .catch(console.error);
+          }
+        `,
+      },
     ],
     invalid: [
       {
@@ -1455,6 +1476,142 @@ ruleTester.run(
           }
         `,
         errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          const callback = (resolve, reject) => {
+            throw new TypeError();
+          };
+
+          function foo() {
+            const promise = Promise.resolve();
+
+            return promise.then(callback);
+          }
+        `,
+        output: `
+          /**
+           * @throws {TypeError}
+           */
+          const callback = (resolve, reject) => {
+            throw new TypeError();
+          };
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          function foo() {
+            const promise = Promise.resolve();
+
+            return promise.then(callback);
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          const foo = (resolve, reject) => {
+            throw new TypeError();
+          };
+
+          const bar = (resolve, reject) => {
+            throw new RangeError();
+          };
+
+          function baz() {
+            const promise = Promise.resolve();
+
+            return promise
+              .then(foo)
+              .then(bar)
+          }
+        `,
+        output: `
+          /**
+           * @throws {TypeError}
+           */
+          const foo = (resolve, reject) => {
+            throw new TypeError();
+          };
+
+          /**
+           * @throws {RangeError}
+           */
+          const bar = (resolve, reject) => {
+            throw new RangeError();
+          };
+
+          /**
+           * @throws {Promise<TypeError | RangeError>}
+           */
+          function baz() {
+            const promise = Promise.resolve();
+
+            return promise
+              .then(foo)
+              .then(bar)
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function baz() {
+            async function foo(resolve, reject) {
+              throw new TypeError();
+            }
+
+            const bar = async (resolve, reject) => {
+              throw new RangeError();
+            };
+
+            const promise = Promise.resolve();
+
+            return promise
+              .then(foo)
+              .catch(console.error)
+              .then(bar);
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<RangeError>}
+           */
+          function baz() {
+            /**
+             * @throws {Promise<TypeError>}
+             */
+            async function foo(resolve, reject) {
+              throw new TypeError();
+            }
+
+            /**
+             * @throws {Promise<RangeError>}
+             */
+            const bar = async (resolve, reject) => {
+              throw new RangeError();
+            };
+
+            const promise = Promise.resolve();
+
+            return promise
+              .then(foo)
+              .catch(console.error)
+              .then(bar);
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
           { messageId: 'missingThrowsTag' },
         ],
       },
