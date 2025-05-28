@@ -11,7 +11,6 @@ const {
   toFlattenedTypeArray,
   findClosestFunctionNode,
   findNodeToComment,
-  createInsertJSDocBeforeFixer,
 } = require('../utils');
 
 
@@ -102,13 +101,24 @@ module.exports = createRule({
       context.report({
         node,
         messageId: 'implicitPropagation',
-        fix: createInsertJSDocBeforeFixer(
-          sourceCode,
-          nodeToComment,
-          node.async
-            ? `Promise<${throwTypeString}>`
-            : throwTypeString
-        ),
+        fix(fixer) {
+          const lines = sourceCode.getLines();
+          const currentLine = lines[nodeToComment.loc.start.line - 1];
+          const indent = currentLine.match(/^\s*/)?.[0] ?? '';
+
+          return fixer
+            .insertTextBefore(
+              nodeToComment,
+              `/**\n` +
+              `${indent} * @throws {${
+                node.async
+                  ? `Promise<${throwTypeString}>`
+                  : throwTypeString
+              }}\n` +
+              `${indent} */\n` +
+              `${indent}`
+            );
+        }
       });
     };
 

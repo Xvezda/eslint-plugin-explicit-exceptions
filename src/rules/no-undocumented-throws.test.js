@@ -1186,6 +1186,278 @@ ruleTester.run(
           { messageId: 'missingThrowsTag' },
         ],
       },
+      {
+        code: `
+          function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new RangeError());
+            })
+            .then(() => {
+              return new Promise((resolve, reject) => {
+                reject(new TypeError());
+              });
+            });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<RangeError | TypeError>}
+           */
+          function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new RangeError());
+            })
+            .then(() => {
+              return new Promise((resolve, reject) => {
+                reject(new TypeError());
+              });
+            });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new RangeError());
+            })
+            .then(() => {
+              return new Promise((resolve, reject) => {
+                throw new TypeError();
+              });
+            });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<RangeError | TypeError>}
+           */
+          function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new RangeError());
+            })
+            .then(() => {
+              return new Promise((resolve, reject) => {
+                throw new TypeError();
+              });
+            });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            const promise = Promise.resolve()
+              .then(() => {
+                return new Promise((resolve, reject) => {
+                  reject(new Error());
+                });
+              });
+
+            return promise;
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            const promise = Promise.resolve()
+              .then(() => {
+                return new Promise((resolve, reject) => {
+                  reject(new Error());
+                });
+              });
+
+            return promise;
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            const promise = new Promise((resolve, reject) => {
+              reject(new RangeError());
+            })
+              .then(() => {
+                return new Promise((resolve, reject) => {
+                  reject(new TypeError());
+                });
+              });
+
+            return promise;
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<RangeError | TypeError>}
+           */
+          function foo() {
+            const promise = new Promise((resolve, reject) => {
+              reject(new RangeError());
+            })
+              .then(() => {
+                return new Promise((resolve, reject) => {
+                  reject(new TypeError());
+                });
+              });
+
+            return promise;
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            const promise = new Promise((resolve, reject) => {
+              reject(new RangeError());
+            })
+              .then(() => {
+                return new Promise((resolve, reject) => {
+                  throw new TypeError();
+                });
+              });
+
+            return promise;
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<RangeError | TypeError>}
+           */
+          function foo() {
+            const promise = new Promise((resolve, reject) => {
+              reject(new RangeError());
+            })
+              .then(() => {
+                return new Promise((resolve, reject) => {
+                  throw new TypeError();
+                });
+              });
+
+            return promise;
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            const promise = Promise.resolve();
+
+            return promise
+              .then(() => {
+                return new Promise((resolve, reject) => {
+                  reject(new Error());
+                });
+              });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            const promise = Promise.resolve();
+
+            return promise
+              .then(() => {
+                return new Promise((resolve, reject) => {
+                  reject(new Error());
+                });
+              });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            const promise = new Promise((resolve, reject) => {
+              reject(new RangeError());
+            });
+
+            return promise
+              .then(() => {
+                return new Promise((resolve, reject) => {
+                  reject(new TypeError());
+                });
+              });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<RangeError | TypeError>}
+           */
+          function foo() {
+            const promise = new Promise((resolve, reject) => {
+              reject(new RangeError());
+            });
+
+            return promise
+              .then(() => {
+                return new Promise((resolve, reject) => {
+                  reject(new TypeError());
+                });
+              });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            const promise = new Promise((resolve, reject) => {
+              reject(new RangeError());
+            });
+
+            return promise
+              .then(() => {
+                return new Promise((resolve, reject) => {
+                  throw new TypeError();
+                });
+              });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<RangeError | TypeError>}
+           */
+          function foo() {
+            const promise = new Promise((resolve, reject) => {
+              reject(new RangeError());
+            });
+
+            return promise
+              .then(() => {
+                return new Promise((resolve, reject) => {
+                  throw new TypeError();
+                });
+              });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
     ],
   },
 );
