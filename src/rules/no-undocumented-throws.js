@@ -119,34 +119,28 @@ module.exports = createRule({
       const functionDeclaration = findClosestFunctionNode(node.parent);
       if (!functionDeclaration) return;
 
-      /**
-       * @param {import('@typescript-eslint/utils').TSESTree.Node} node
-       */
-      const isPromiseCallbackNode = (node) => {
-        const isPromiseConstructorCallback =
-          node.parent &&
-          node.parent.type === AST_NODE_TYPES.NewExpression &&
-          node.parent.callee.type === AST_NODE_TYPES.Identifier &&
-          node.parent.callee.name === 'Promise' &&
-          utils.isPromiseConstructorLike(
-            services.program,
-            services.getTypeAtLocation(node.parent.callee)
-          );
+      const isPromiseConstructorCallback =
+        node.parent &&
+        node.parent.type === AST_NODE_TYPES.NewExpression &&
+        node.parent.callee.type === AST_NODE_TYPES.Identifier &&
+        node.parent.callee.name === 'Promise' &&
+        utils.isPromiseConstructorLike(
+          services.program,
+          services.getTypeAtLocation(node.parent.callee)
+        );
 
-        const isThenableCallback =
-          node.parent &&
-          node.parent.type === AST_NODE_TYPES.CallExpression &&
-          node.parent.callee.type === AST_NODE_TYPES.MemberExpression &&
-          node.parent.callee.property.type === AST_NODE_TYPES.Identifier &&
-          /^(then|finally)$/.test(node.parent.callee.property.name) &&
-          utils.isPromiseLike(
-            services.program,
-            services.getTypeAtLocation(node.parent.callee.object)
-          );
+      const isThenableCallback =
+        node.parent &&
+        node.parent.type === AST_NODE_TYPES.CallExpression &&
+        node.parent.callee.type === AST_NODE_TYPES.MemberExpression &&
+        node.parent.callee.property.type === AST_NODE_TYPES.Identifier &&
+        /^(then|finally)$/.test(node.parent.callee.property.name) &&
+        utils.isPromiseLike(
+          services.program,
+          services.getTypeAtLocation(node.parent.callee.object)
+        );
 
-        return isPromiseConstructorCallback || isThenableCallback;
-      };
-      if (!isPromiseCallbackNode(node)) return;
+      if (!isPromiseConstructorCallback && !isThenableCallback) return;
 
       /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */
       let callbackNode = null;
@@ -178,33 +172,35 @@ module.exports = createRule({
        */
       const rejectTypes = [];
 
-      const isRejectCallbackNameDeclared =
-        callbackNode.params.length >= 2;
+      if (isPromiseConstructorCallback) {
+        const isRejectCallbackNameDeclared =
+          callbackNode.params.length >= 2;
 
-      if (isRejectCallbackNameDeclared) {
-        const rejectCallbackNode = callbackNode.params[1];
-        if (rejectCallbackNode.type !== AST_NODE_TYPES.Identifier) return;
+        if (isRejectCallbackNameDeclared) {
+          const rejectCallbackNode = callbackNode.params[1];
+          if (rejectCallbackNode.type !== AST_NODE_TYPES.Identifier) return;
 
-        const callbackScope = sourceCode.getScope(callbackNode)
-        if (!callbackScope) return;
+          const callbackScope = sourceCode.getScope(callbackNode)
+          if (!callbackScope) return;
 
-        const rejectCallbackRefs =
-          callbackScope.set.get(rejectCallbackNode.name)?.references;
+          const rejectCallbackRefs =
+            callbackScope.set.get(rejectCallbackNode.name)?.references;
 
-        if (!rejectCallbackRefs) return;
+          if (!rejectCallbackRefs) return;
 
-        const callRefs = rejectCallbackRefs
-          .filter(ref =>
-            ref.identifier.parent.type === AST_NODE_TYPES.CallExpression)
-            .map(ref =>
-              /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
-              (ref.identifier.parent)
-            );
+          const callRefs = rejectCallbackRefs
+            .filter(ref =>
+              ref.identifier.parent.type === AST_NODE_TYPES.CallExpression)
+              .map(ref =>
+                /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
+                (ref.identifier.parent)
+              );
 
-        const argumentTypes = callRefs
-          .map(ref => services.getTypeAtLocation(ref.arguments[0]));
+          const argumentTypes = callRefs
+            .map(ref => services.getTypeAtLocation(ref.arguments[0]));
 
-        rejectTypes.push(...toFlattenedTypeArray(argumentTypes));
+          rejectTypes.push(...toFlattenedTypeArray(argumentTypes));
+        }
       }
 
       if (throwStatements.has(getNodeID(callbackNode))) {
@@ -300,6 +296,10 @@ module.exports = createRule({
        * ```
        */
       'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > ArrowFunctionExpression:first-child:exit':
+        visitPromiseCallbackOnExit,
+      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > FunctionExpression:first-child:exit':
+        visitPromiseCallbackOnExit,
+      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > Identifier:first-child:exit':
         visitPromiseCallbackOnExit,
     };
   },

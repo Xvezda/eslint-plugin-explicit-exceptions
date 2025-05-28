@@ -307,6 +307,63 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          function foo() {
+            const promise = Promise.resolve()
+              .then(() => {
+                throw new Error();
+              });
+
+            return promise
+              .catch(console.error);
+          }
+        `,
+      },
+      {
+        code: `
+          function foo() {
+            const promise = Promise.resolve()
+              .then(() => {
+                throw new Error();
+              })
+              .catch(console.error)
+              .then(() => {
+                throw new TypeError();
+              });
+
+            return promise
+              .catch(console.error);
+          }
+        `,
+      },
+      {
+        code: `
+          function foo() {
+            return Promise.resolve()
+              .then(() => {
+                throw new Error();
+              })
+              .then(() => {
+                throw new TypeError();
+              })
+              .catch(console.error)
+          }
+        `,
+      },
+      {
+        code: `
+          function foo() {
+            return Promise.resolve()
+              .then((resolve, reject) => {
+                return new Promise((resolve, reject) => {
+                  reject(new Error());
+                });
+              })
+              .catch(console.error)
+          }
+        `,
+      },
     ],
     invalid: [
       {
@@ -1026,6 +1083,74 @@ ruleTester.run(
             return Promise.resolve()
               .finally(() => {
                 throw new Error();
+              });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            return Promise.resolve()
+              .then(() => {
+                throw new Error();
+              })
+              .catch(console.error)
+              .then(() => {
+                throw new TypeError();
+              });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          function foo() {
+            return Promise.resolve()
+              .then(() => {
+                throw new Error();
+              })
+              .catch(console.error)
+              .then(() => {
+                throw new TypeError();
+              });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            const promise = Promise.resolve()
+              .then(() => {
+                throw new Error();
+              })
+              .catch(console.error);
+
+            return promise
+              .then(() => {
+                throw new TypeError();
+              });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          function foo() {
+            const promise = Promise.resolve()
+              .then(() => {
+                throw new Error();
+              })
+              .catch(console.error);
+
+            return promise
+              .then(() => {
+                throw new TypeError();
               });
           }
         `,
