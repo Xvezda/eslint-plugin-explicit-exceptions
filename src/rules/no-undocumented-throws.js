@@ -14,6 +14,7 @@ const {
   isThenableCallbackNode,
   getCalleeDeclaration,
   getJSDocThrowsTagTypes,
+  findParent,
   findClosestFunctionNode,
   findNodeToComment,
   findIdentifierDeclaration,
@@ -240,6 +241,32 @@ module.exports = createRule({
         );
 
       if (!isPromiseConstructorCallback && !isThenableCallback) return;
+
+      const isPromiseReturned =
+        // Return immediately
+        (isPromiseConstructorCallback &&
+          node.parent.type === AST_NODE_TYPES.NewExpression &&
+          (node.parent.parent.type === AST_NODE_TYPES.ReturnStatement ||
+            node.parent.parent.type === AST_NODE_TYPES.ArrowFunctionExpression)
+        ) ||
+        (isThenableCallback && findParent(node, n =>
+          n.type === AST_NODE_TYPES.CallExpression &&
+          (n.parent.type === AST_NODE_TYPES.ReturnStatement ||
+            n.parent.type === AST_NODE_TYPES.ArrowFunctionExpression
+          )
+        )) ||
+        // Promise is assigned and returned
+        sourceCode.getScope(node.parent)
+          ?.references
+          .map(ref => ref.identifier)
+          .some(n =>
+            findParent(n, p =>
+              p.type === AST_NODE_TYPES.ReturnStatement ||
+              p.type === AST_NODE_TYPES.ArrowFunctionExpression
+            )
+          );
+
+      if (!isPromiseReturned) return;
 
       /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */
       let callbackNode = null;

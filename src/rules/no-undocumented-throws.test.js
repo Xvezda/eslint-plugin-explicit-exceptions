@@ -421,7 +421,7 @@ ruleTester.run(
       {
         code: `
           function foo() {
-            new Promise((resolve, reject) => {
+            return new Promise((resolve, reject) => {
               reject(new Error());
             })
               .then(console.log)
@@ -436,7 +436,7 @@ ruleTester.run(
               reject(new Error());
             });
 
-            promise.catch(console.error);
+            return promise.catch(console.error);
           }
         `,
       },
@@ -674,6 +674,29 @@ ruleTester.run(
             }
             return promise;
           }
+        `,
+      },
+      {
+        code: `
+          function foo() {
+            // Not returned promise should be reported as unhandled rejection rule
+            new Promise((resolve, reject) => {
+              reject(new Error());
+            })
+              .then(console.log);
+          }
+        `,
+      },
+      {
+        code: `
+          const obj = {
+            foo: () => {
+              return new Promise((resolve, reject) => {
+                reject(new Error());
+              })
+                .then(console.log);
+            },
+          };
         `,
       },
     ],
