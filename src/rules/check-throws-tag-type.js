@@ -242,7 +242,7 @@ module.exports = createRule({
       const lastThrowsTypeNode = getLast(documentedThrowsTypeNodes);
       if (!lastThrowsTypeNode) return;
 
-      // All thrown types must be documented as promise if it's in called async function
+      // Thrown types inside async function should be wrapped into Promise
       if (
         node.async &&
         !getJSDocThrowsTagTypes(checker, callerDeclarationTSNode)
