@@ -464,6 +464,7 @@ const findNodeToComment = (node) => {
        * function example() {
        *   // not here
        *   return new Promise((resolve, reject) => { ... });
+       *   //                 ^ node
        * }
        * ```
        */
@@ -485,6 +486,7 @@ const findNodeToComment = (node) => {
          * class Klass {
          *   // here
          *   target() { ... }
+         *   //    ^ node
          * }
          * ```
          */
@@ -495,6 +497,7 @@ const findNodeToComment = (node) => {
          * class Klass {
          *   // here
          *   target = () => { ... }
+         *   //       ^ node
          * }
          * ```
          */
@@ -505,6 +508,7 @@ const findNodeToComment = (node) => {
          * const obj = {
          *   // here
          *   target: () => { ... },
+         *   //      ^ node
          * };
          * ```
          */
@@ -514,6 +518,7 @@ const findNodeToComment = (node) => {
          * ```
          * // here
          * const target = () => { ... };
+         * //             ^ node
          * ```
          */
         findParent(node, (n) => n.type === AST_NODE_TYPES.VariableDeclaration) ??
@@ -523,6 +528,7 @@ const findNodeToComment = (node) => {
          * function factory() {
          *   // here
          *   return function target() { ... };
+         *   //     ^ node
          * }
          * ```
          */
@@ -608,11 +614,16 @@ const isParentOrAncestor = (node, other) => {
  * @returns {boolean}
  */
 const isInHandledContext = (node) => {
-  for (; node; node = node?.parent) {
-    const paths = collectPaths(node, (n) =>
-      n.type === AST_NODE_TYPES.TryStatement &&
-      n.handler !== null
+  /** @param {import('@typescript-eslint/utils').TSESTree.Node} node */
+  const isTryStatementWithCatch = (node) => {
+    return (
+      node.type === AST_NODE_TYPES.TryStatement &&
+      node.handler !== null
     );
+  };
+
+  for (; node; node = node?.parent) {
+    const paths = collectPaths(node, isTryStatementWithCatch);
     if (paths.length < 2) continue;
 
     /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement} */
@@ -620,10 +631,11 @@ const isInHandledContext = (node) => {
       /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement} */
       (paths[0]);
 
-    if (
+    const isCurrentNodeInTryBlock =
       tryNode.block &&
-      isParentOrAncestor(paths[1], tryNode.block)
-    ) return true;
+      isParentOrAncestor(paths[1], tryNode.block);
+
+    if (isCurrentNodeInTryBlock) return true;
   }
   return false;
 };
