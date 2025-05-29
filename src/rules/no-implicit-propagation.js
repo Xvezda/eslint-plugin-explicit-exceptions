@@ -141,19 +141,11 @@ module.exports = createRule({
 
         throwStatementNodes.push(node);
       },
-      'ArrowFunctionExpression MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
-      'FunctionDeclaration MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
-      'FunctionExpression MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
-      'ArrowFunctionExpression CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
-      'FunctionDeclaration CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
-      'FunctionExpression CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
-      'ArrowFunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
-      'FunctionDeclaration AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
-      'FunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
+      ':function MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
+      ':function CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
+      ':function AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
 
-      'ArrowFunctionExpression:exit': visitFunctionOnExit,
-      'FunctionDeclaration:exit': visitFunctionOnExit,
-      'FunctionExpression:exit': visitFunctionOnExit,
+      ':function:exit': visitFunctionOnExit,
     };
   },
   defaultOptions: [],

@@ -23,6 +23,7 @@ const {
   toFlattenedTypeArray,
   typesToUnionString,
   groupTypesByCompatibility,
+  findFunctionCallNodes,
 } = require('../utils');
 
 
@@ -94,7 +95,7 @@ module.exports = createRule({
      *
      * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
      */
-    const visitExpression = (node) => {
+    const visitFunctionCallNode = (node) => {
       if (visitedExpressionNodes.has(getNodeID(node))) return;
       visitedExpressionNodes.add(getNodeID(node));
 
@@ -135,11 +136,12 @@ module.exports = createRule({
             throwStatementNodes
               .map(n => {
                 const type = services.getTypeAtLocation(n.argument);
-                const tsNode = services.esTreeNodeToTSNodeMap.get(n.argument);
 
                 if (
                   useBaseTypeOfLiteral &&
-                  ts.isLiteralTypeLiteral(tsNode)
+                  ts.isLiteralTypeLiteral(
+                    services.esTreeNodeToTSNodeMap.get(n.argument)
+                  )
                 ) {
                   return checker.getBaseTypeOfLiteralType(type);
                 }
@@ -240,7 +242,7 @@ module.exports = createRule({
       const lastThrowsTypeNode = getLast(documentedThrowsTypeNodes);
       if (!lastThrowsTypeNode) return;
 
-      // All thrown types must be documented as promise if it's in called async function
+      // Thrown types inside async function should be wrapped into Promise
       if (
         node.async &&
         !getJSDocThrowsTagTypes(checker, callerDeclarationTSNode)
@@ -423,24 +425,10 @@ module.exports = createRule({
         const rejectCallbackNode = callbackNode.params[1];
         if (rejectCallbackNode.type !== AST_NODE_TYPES.Identifier) return;
 
-        const callbackScope = sourceCode.getScope(callbackNode)
-        if (!callbackScope) return;
-
-        const rejectCallbackRefs =
-          callbackScope.set.get(rejectCallbackNode.name)?.references;
-
-        if (!rejectCallbackRefs) return;
-
-        const callRefs = rejectCallbackRefs
-          .filter(ref =>
-            ref.identifier.parent.type === AST_NODE_TYPES.CallExpression)
-          .map(ref =>
-            /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
-            (ref.identifier.parent)
-          );
-
-        const argumentTypes = callRefs
-          .map(ref => services.getTypeAtLocation(ref.arguments[0]));
+        const argumentTypes =
+          findFunctionCallNodes(sourceCode, rejectCallbackNode)
+            .filter(expr => expr.arguments.length > 0)
+            .map(expr => services.getTypeAtLocation(expr.arguments[0]));
 
         rejectTypes.add(
           nodeToComment,
@@ -490,15 +478,9 @@ module.exports = createRule({
 
         throwStatementNodes.push(node);
       },
-      'ArrowFunctionExpression MemberExpression[property.type="Identifier"]': visitExpression,
-      'FunctionDeclaration MemberExpression[property.type="Identifier"]': visitExpression,
-      'FunctionExpression MemberExpression[property.type="Identifier"]': visitExpression,
-      'ArrowFunctionExpression CallExpression[callee.type="Identifier"]': visitExpression,
-      'FunctionDeclaration CallExpression[callee.type="Identifier"]': visitExpression,
-      'FunctionExpression CallExpression[callee.type="Identifier"]': visitExpression,
-      'ArrowFunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitExpression,
-      'FunctionDeclaration AssignmentExpression[left.type="MemberExpression"]': visitExpression,
-      'FunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitExpression,
+      ':function MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
+      ':function CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
+      ':function AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
 
       /**
        * @example
@@ -507,9 +489,7 @@ module.exports = createRule({
        * //          ^ here
        * ```
        */
-      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > ArrowFunctionExpression:first-child':
-        visitPromiseCallback,
-      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > FunctionExpression:first-child':
+      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > :function:first-child':
         visitPromiseCallback,
       'NewExpression[callee.type="Identifier"][callee.name="Promise"] > Identifier:first-child':
         visitPromiseCallback,
@@ -522,9 +502,7 @@ module.exports = createRule({
        * //                       ^ or here
        * ```
        */
-      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > ArrowFunctionExpression:first-child':
-        visitPromiseCallback,
-      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > FunctionExpression:first-child':
+      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > :function:first-child':
         visitPromiseCallback,
       'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > Identifier:first-child':
         visitPromiseCallback,
@@ -533,16 +511,11 @@ module.exports = createRule({
        * Process collected types when each function node exits
        */
       'FunctionDeclaration:exit': visitFunctionOnExit,
-      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:exit': visitFunctionOnExit,
-      'Property > ArrowFunctionExpression:exit': visitFunctionOnExit,
-      'PropertyDefinition > ArrowFunctionExpression:exit': visitFunctionOnExit,
-      'ReturnStatement > ArrowFunctionExpression:exit': visitFunctionOnExit,
-
-      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > FunctionExpression:exit': visitFunctionOnExit,
-      'Property > FunctionExpression:exit': visitFunctionOnExit,
-      'PropertyDefinition > FunctionExpression:exit': visitFunctionOnExit,
-      'MethodDefinition > FunctionExpression:exit': visitFunctionOnExit,
-      'ReturnStatement > FunctionExpression:exit': visitFunctionOnExit,
+      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > :function:exit': visitFunctionOnExit,
+      'Property > :function:exit': visitFunctionOnExit,
+      'PropertyDefinition > :function:exit': visitFunctionOnExit,
+      'ReturnStatement > :function:exit': visitFunctionOnExit,
+      'MethodDefinition > :function:exit': visitFunctionOnExit,
     };
   },
 });
