@@ -233,6 +233,7 @@ module.exports = createRule({
         const throwsTags = getJSDocThrowsTags(functionDeclarationTSNode);
         const throwsTagTypeNodes = throwsTags
           .map(tag => tag.typeExpression?.type)
+          // Only keep throws tag with type defined
           .filter(tag => !!tag);
 
         if (!throwsTagTypeNodes.length) return;
@@ -273,7 +274,10 @@ module.exports = createRule({
           )
         );
 
-      if (!throwableTypes && !rejectableTypes) return;
+      if (
+        !throwableTypes.length &&
+        !rejectableTypes.length
+      ) return;
 
       const callerDeclarationTSNode =
         getDeclarationTSNodeOfESTreeNode(services, callerDeclaration);
@@ -452,7 +456,10 @@ module.exports = createRule({
           )
         );
 
-      if (!isPromiseConstructorCallback && !isThenableCallback) return;
+      if (
+        !isPromiseConstructorCallback &&
+        !isThenableCallback
+      ) return;
 
       /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */
       let callbackNode = null;

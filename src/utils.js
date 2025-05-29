@@ -37,13 +37,6 @@ class TypeMap {
   get(node) {
     return this.map.get(getNodeID(node)) ?? [];
   }
-
-  /**
-   * @param {import('@typescript-eslint/utils').TSESTree.Node} node
-   */
-  has(node) {
-    return this.map.has(getNodeID(node));
-  }
 }
 
 /**
