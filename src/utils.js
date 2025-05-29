@@ -373,7 +373,7 @@ const isPromiseType = (services, type) => {
 };
 
 /**
- * @private
+ * @public
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @returns {node is import('@typescript-eslint/utils').TSESTree.MethodDefinition | import('@typescript-eslint/utils').TSESTree.Property}
  */
@@ -702,5 +702,6 @@ module.exports = {
   isInAsyncHandledContext,
   isPromiseType,
   isPromiseConstructorCallbackNode,
+  isAccessorNode,
   isThenableCallbackNode,
 };

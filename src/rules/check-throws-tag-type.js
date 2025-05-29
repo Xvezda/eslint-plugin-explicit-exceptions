@@ -6,12 +6,14 @@ const {
   TypeMap,
   createRule,
   getNodeID,
+  getFirst,
   getLast,
   isInHandledContext,
   isInAsyncHandledContext,
   isPromiseType,
   isPromiseConstructorCallbackNode,
   isThenableCallbackNode,
+  isAccessorNode,
   hasJSDocThrowsTag,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
@@ -426,7 +428,7 @@ module.exports = createRule({
     };
 
     /**
-     * @typedef {import('@typescript-eslint/utils').TSESTree.FunctionLike | import('@typescript-eslint/utils').TSESTree.Identifier} PromiseCallbackType
+     * @typedef {import('@typescript-eslint/utils').TSESTree.FunctionLike | import('@typescript-eslint/utils').TSESTree.Identifier | import('@typescript-eslint/utils').TSESTree.MemberExpression} PromiseCallbackType
      * @param {PromiseCallbackType} node
      */
     const visitPromiseCallback = (node) => {
@@ -470,6 +472,25 @@ module.exports = createRule({
           callbackNode = node;
           break;
         // Promise argument is not inlined function
+        case AST_NODE_TYPES.MemberExpression: {
+          // Use type information to find function declaration
+          const propertySymbol = services.getSymbolAtLocation(node.property);
+          const declarationNode = getFirst(
+            propertySymbol
+              ?.declarations
+              ?.filter(decl => services.tsNodeToESTreeNodeMap.has(decl))
+              .map(decl => services.tsNodeToESTreeNodeMap.get(decl)) ?? []
+          );
+          if (!declarationNode) return;
+
+          callbackNode =
+            /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | import('@typescript-eslint/utils').TSESTree.FunctionLike} */
+            (isAccessorNode(declarationNode)
+              ? declarationNode.value
+              : declarationNode);
+
+          break;
+        }
         case AST_NODE_TYPES.Identifier: {
           const declaration =
             findIdentifierDeclaration(sourceCode, node);
@@ -563,6 +584,8 @@ module.exports = createRule({
         visitPromiseCallback,
       'NewExpression[callee.type="Identifier"][callee.name="Promise"] > Identifier:first-child':
         visitPromiseCallback,
+      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > MemberExpression:first-child':
+        visitPromiseCallback,
       /**
        * @example
        * ```
@@ -575,6 +598,8 @@ module.exports = createRule({
       'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > :function:first-child':
         visitPromiseCallback,
       'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > Identifier:first-child':
+        visitPromiseCallback,
+      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > MemberExpression:first-child':
         visitPromiseCallback,
 
       /**
