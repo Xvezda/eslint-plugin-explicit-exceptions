@@ -369,7 +369,7 @@ const groupTypesByCompatibility = (program, source, target) => {
  * @param {import('@typescript-eslint/utils').TSESTree.Identifier} node
  * @return {import('@typescript-eslint/utils').TSESTree.CallExpression[]}
  */
-const collectFunctionCallNodes = (sourceCode, node) => {
+const findFunctionCallNodes = (sourceCode, node) => {
   const scope = sourceCode.getScope(node)
   if (!scope) return [];
 
@@ -714,7 +714,7 @@ module.exports = {
   getJSDocThrowsTagTypes,
   toFlattenedTypeArray,
   groupTypesByCompatibility,
-  collectFunctionCallNodes,
+  findFunctionCallNodes,
   findClosestFunctionNode,
   findNodeToComment,
   findIdentifierDeclaration,

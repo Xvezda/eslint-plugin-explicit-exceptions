@@ -18,7 +18,7 @@ const {
   findNodeToComment,
   findIdentifierDeclaration,
   toFlattenedTypeArray,
-  collectFunctionCallNodes,
+  findFunctionCallNodes,
 } = require('../utils');
 
 
@@ -132,11 +132,12 @@ module.exports = createRule({
             throwStatementNodes
               .map(n => {
                 const type = services.getTypeAtLocation(n.argument);
-                const tsNode = services.esTreeNodeToTSNodeMap.get(n.argument);
 
                 if (
                   useBaseTypeOfLiteral &&
-                  ts.isLiteralTypeLiteral(tsNode)
+                  ts.isLiteralTypeLiteral(
+                    services.esTreeNodeToTSNodeMap.get(n.argument)
+                  )
                 ) {
                   return checker.getBaseTypeOfLiteralType(type);
                 }
@@ -274,9 +275,9 @@ module.exports = createRule({
         if (rejectCallbackNode.type !== AST_NODE_TYPES.Identifier) return;
 
         const argumentTypes =
-          collectFunctionCallNodes(sourceCode, rejectCallbackNode)
-            .filter(callNode => callNode.arguments.length > 0)
-            .map(callNode => services.getTypeAtLocation(callNode.arguments[0]));
+          findFunctionCallNodes(sourceCode, rejectCallbackNode)
+            .filter(expr => expr.arguments.length > 0)
+            .map(expr => services.getTypeAtLocation(expr.arguments[0]));
 
         rejectTypes.add(
           nodeToComment,
