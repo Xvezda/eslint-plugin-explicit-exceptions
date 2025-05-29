@@ -364,7 +364,7 @@ const groupTypesByCompatibility = (program, source, target) => {
 };
 
 /**
- * @Collect function call arguments
+ * Collect function call arguments
  * @param {Readonly<import('@typescript-eslint/utils').TSESLint.SourceCode>} sourceCode
  * @param {import('@typescript-eslint/utils').TSESTree.Identifier} node
  * @return {import('@typescript-eslint/utils').TSESTree.CallExpression[]}
