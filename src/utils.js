@@ -361,7 +361,31 @@ const groupTypesByCompatibility = (program, source, target) => {
     source: sourceGroup,
     target: targetGroup,
   };
-}
+};
+
+/**
+ * @Collect function call arguments
+ * @param {Readonly<import('@typescript-eslint/utils').TSESLint.SourceCode>} sourceCode
+ * @param {import('@typescript-eslint/utils').TSESTree.Identifier} node
+ * @return {import('@typescript-eslint/utils').TSESTree.CallExpression[]}
+ */
+const collectFunctionCallNodes = (sourceCode, node) => {
+  const scope = sourceCode.getScope(node)
+  if (!scope) return [];
+
+  const references =
+    scope.set.get(node.name)?.references;
+
+  if (!references) return [];
+
+  return references
+    .filter(ref =>
+      ref.identifier.parent.type === AST_NODE_TYPES.CallExpression)
+      .map(ref =>
+        /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
+        (ref.identifier.parent)
+      );
+};
 
 /**
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
@@ -690,6 +714,7 @@ module.exports = {
   getJSDocThrowsTagTypes,
   toFlattenedTypeArray,
   groupTypesByCompatibility,
+  collectFunctionCallNodes,
   findClosestFunctionNode,
   findNodeToComment,
   findIdentifierDeclaration,

@@ -18,6 +18,7 @@ const {
   findNodeToComment,
   findIdentifierDeclaration,
   toFlattenedTypeArray,
+  collectFunctionCallNodes,
 } = require('../utils');
 
 
@@ -272,24 +273,10 @@ module.exports = createRule({
         const rejectCallbackNode = callbackNode.params[1];
         if (rejectCallbackNode.type !== AST_NODE_TYPES.Identifier) return;
 
-        const callbackScope = sourceCode.getScope(callbackNode)
-        if (!callbackScope) return;
-
-        const rejectCallbackRefs =
-          callbackScope.set.get(rejectCallbackNode.name)?.references;
-
-        if (!rejectCallbackRefs) return;
-
-        const callRefs = rejectCallbackRefs
-          .filter(ref =>
-            ref.identifier.parent.type === AST_NODE_TYPES.CallExpression)
-          .map(ref =>
-            /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
-            (ref.identifier.parent)
-          );
-
-        const argumentTypes = callRefs
-          .map(ref => services.getTypeAtLocation(ref.arguments[0]));
+        const argumentTypes =
+          collectFunctionCallNodes(sourceCode, rejectCallbackNode)
+            .filter(callNode => callNode.arguments.length > 0)
+            .map(callNode => services.getTypeAtLocation(callNode.arguments[0]));
 
         rejectTypes.add(
           nodeToComment,

@@ -23,6 +23,7 @@ const {
   toFlattenedTypeArray,
   typesToUnionString,
   groupTypesByCompatibility,
+  collectFunctionCallNodes,
 } = require('../utils');
 
 
@@ -94,7 +95,7 @@ module.exports = createRule({
      *
      * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
      */
-    const visitExpression = (node) => {
+    const visitFunctionCallNode = (node) => {
       if (visitedExpressionNodes.has(getNodeID(node))) return;
       visitedExpressionNodes.add(getNodeID(node));
 
@@ -423,24 +424,10 @@ module.exports = createRule({
         const rejectCallbackNode = callbackNode.params[1];
         if (rejectCallbackNode.type !== AST_NODE_TYPES.Identifier) return;
 
-        const callbackScope = sourceCode.getScope(callbackNode)
-        if (!callbackScope) return;
-
-        const rejectCallbackRefs =
-          callbackScope.set.get(rejectCallbackNode.name)?.references;
-
-        if (!rejectCallbackRefs) return;
-
-        const callRefs = rejectCallbackRefs
-          .filter(ref =>
-            ref.identifier.parent.type === AST_NODE_TYPES.CallExpression)
-          .map(ref =>
-            /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
-            (ref.identifier.parent)
-          );
-
-        const argumentTypes = callRefs
-          .map(ref => services.getTypeAtLocation(ref.arguments[0]));
+        const argumentTypes =
+          collectFunctionCallNodes(sourceCode, rejectCallbackNode)
+            .filter(callNode => callNode.arguments.length > 0)
+            .map(callNode => services.getTypeAtLocation(callNode.arguments[0]));
 
         rejectTypes.add(
           nodeToComment,
@@ -490,15 +477,15 @@ module.exports = createRule({
 
         throwStatementNodes.push(node);
       },
-      'ArrowFunctionExpression MemberExpression[property.type="Identifier"]': visitExpression,
-      'FunctionDeclaration MemberExpression[property.type="Identifier"]': visitExpression,
-      'FunctionExpression MemberExpression[property.type="Identifier"]': visitExpression,
-      'ArrowFunctionExpression CallExpression[callee.type="Identifier"]': visitExpression,
-      'FunctionDeclaration CallExpression[callee.type="Identifier"]': visitExpression,
-      'FunctionExpression CallExpression[callee.type="Identifier"]': visitExpression,
-      'ArrowFunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitExpression,
-      'FunctionDeclaration AssignmentExpression[left.type="MemberExpression"]': visitExpression,
-      'FunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitExpression,
+      'ArrowFunctionExpression MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
+      'FunctionDeclaration MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
+      'FunctionExpression MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
+      'ArrowFunctionExpression CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
+      'FunctionDeclaration CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
+      'FunctionExpression CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
+      'ArrowFunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
+      'FunctionDeclaration AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
+      'FunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
 
       /**
        * @example
