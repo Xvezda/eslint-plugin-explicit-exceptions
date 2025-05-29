@@ -327,15 +327,9 @@ module.exports = createRule({
 
         throwStatementNodes.push(node);
       },
-      'ArrowFunctionExpression MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
-      'FunctionDeclaration MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
-      'FunctionExpression MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
-      'ArrowFunctionExpression CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
-      'FunctionDeclaration CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
-      'FunctionExpression CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
-      'ArrowFunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
-      'FunctionDeclaration AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
-      'FunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
+      ':function MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
+      ':function CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
+      ':function AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
 
       /**
        * @example
@@ -344,9 +338,7 @@ module.exports = createRule({
        * //          ^ here
        * ```
        */
-      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > ArrowFunctionExpression:first-child:exit':
-        visitPromiseCallbackOnExit,
-      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > FunctionExpression:first-child:exit':
+      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > :function:first-child:exit':
         visitPromiseCallbackOnExit,
       'NewExpression[callee.type="Identifier"][callee.name="Promise"] > Identifier:first-child:exit':
         visitPromiseCallbackOnExit,
@@ -359,9 +351,7 @@ module.exports = createRule({
        * //                       ^ or here
        * ```
        */
-      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > ArrowFunctionExpression:first-child:exit':
-        visitPromiseCallbackOnExit,
-      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > FunctionExpression:first-child:exit':
+      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > :function:first-child:exit':
         visitPromiseCallbackOnExit,
       'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > Identifier:first-child:exit':
         visitPromiseCallbackOnExit,
@@ -370,16 +360,11 @@ module.exports = createRule({
        * Process collected types when each function node exits
        */
       'FunctionDeclaration:exit': visitFunctionOnExit,
-      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:exit': visitFunctionOnExit,
-      'Property > ArrowFunctionExpression:exit': visitFunctionOnExit,
-      'PropertyDefinition > ArrowFunctionExpression:exit': visitFunctionOnExit,
-      'ReturnStatement > ArrowFunctionExpression:exit': visitFunctionOnExit,
-
-      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > FunctionExpression:exit': visitFunctionOnExit,
-      'Property > FunctionExpression:exit': visitFunctionOnExit,
-      'PropertyDefinition > FunctionExpression:exit': visitFunctionOnExit,
-      'MethodDefinition > FunctionExpression:exit': visitFunctionOnExit,
-      'ReturnStatement > FunctionExpression:exit': visitFunctionOnExit,
+      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > :function:exit': visitFunctionOnExit,
+      'Property > :function:exit': visitFunctionOnExit,
+      'PropertyDefinition > :function:exit': visitFunctionOnExit,
+      'ReturnStatement > :function:exit': visitFunctionOnExit,
+      'MethodDefinition > :function:exit': visitFunctionOnExit,
     };
   },
 });
