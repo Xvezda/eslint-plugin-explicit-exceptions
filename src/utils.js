@@ -198,11 +198,11 @@ const getDeclarationsByNode = (services, node) => {
  */
 const getCallee = (node) => {
   switch (node.type) {
+    case AST_NODE_TYPES.CallExpression:
+      return node.callee;
     // Setter
     case AST_NODE_TYPES.AssignmentExpression:
       return node.left;
-    case AST_NODE_TYPES.CallExpression:
-      return node.callee;
     // Getter
     case AST_NODE_TYPES.MemberExpression:
       return node.property;
@@ -332,8 +332,7 @@ const findFunctionCallNodes = (sourceCode, node) => {
   const scope = sourceCode.getScope(node)
   if (!scope) return [];
 
-  const references =
-    scope.set.get(node.name)?.references;
+  const references = scope.set.get(node.name)?.references;
 
   if (!references) return [];
 
@@ -453,10 +452,21 @@ const findNodeToComment = (node) => {
     case AST_NODE_TYPES.Identifier:
     case AST_NODE_TYPES.FunctionExpression:
     case AST_NODE_TYPES.ArrowFunctionExpression: {
-      // If the current function is inlined in Promise constructor
-      // or argument of thenable method,
-      // it makes sense to comment where promise is referenced to.
-      // Not the inline function itself.
+      /**
+       * If the current function is inlined in Promise constructor
+       * or argument of thenable method,
+       * it makes sense to comment where promise is referenced to.
+       * Not the inline function itself.
+       *
+       * @example
+       * ```
+       * // here
+       * function example() {
+       *   // not here
+       *   return new Promise((resolve, reject) => { ... });
+       * }
+       * ```
+       */
       if (
         isPromiseConstructorCallbackNode(node) ||
         isThenableCallbackNode(node)
