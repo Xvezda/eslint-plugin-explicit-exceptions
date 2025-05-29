@@ -539,19 +539,19 @@ module.exports = createRule({
         case AST_NODE_TYPES.MemberExpression: {
           // Use type information to find function declaration
           const propertySymbol = services.getSymbolAtLocation(node.property);
-          const declarationNode = getFirst(
+          const declaration = getFirst(
             propertySymbol
               ?.declarations
               ?.filter(decl => services.tsNodeToESTreeNodeMap.has(decl))
               .map(decl => services.tsNodeToESTreeNodeMap.get(decl)) ?? []
           );
-          if (!declarationNode) return;
+          if (!declaration) return;
 
           callbackNode =
-            /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | import('@typescript-eslint/utils').TSESTree.FunctionLike} */
-            (isAccessorNode(declarationNode)
-              ? declarationNode.value
-              : declarationNode);
+            /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike} */
+            (isAccessorNode(declaration)
+              ? declaration.value
+              : declaration);
 
           break;
         }
