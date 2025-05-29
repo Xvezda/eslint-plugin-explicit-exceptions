@@ -27,7 +27,6 @@ const {
 /**
  * Groups an array of objects by a specified key or function.
  *
- * @public
  * @template T
  * @template {string} K
  * @param {T[]} arr - The array to group.
