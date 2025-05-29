@@ -11,12 +11,14 @@ const {
   typesToUnionString,
   isInHandledContext,
   isInAsyncHandledContext,
+  isNodeReturned,
   isPromiseConstructorCallbackNode,
   isThenableCallbackNode,
   isAccessorNode,
   getCalleeDeclaration,
   getJSDocThrowsTagTypes,
   findParent,
+  findClosest,
   findClosestFunctionNode,
   findNodeToComment,
   findIdentifierDeclaration,
@@ -242,27 +244,17 @@ module.exports = createRule({
         // Return immediately
         (isPromiseConstructorCallback &&
           node.parent.type === AST_NODE_TYPES.NewExpression &&
-          node.parent.parent?.type === AST_NODE_TYPES.ReturnStatement ||
-          node.parent.parent?.type === AST_NODE_TYPES.ArrowFunctionExpression &&
-          node.parent.parent.body.type !== AST_NODE_TYPES.BlockStatement
+          isNodeReturned(node.parent)
         ) ||
         (isThenableCallback && findParent(node, n =>
           n.type === AST_NODE_TYPES.CallExpression &&
-          n.parent?.type === AST_NODE_TYPES.ReturnStatement ||
-          n.parent?.type === AST_NODE_TYPES.ArrowFunctionExpression &&
-          n.parent.body.type !== AST_NODE_TYPES.BlockStatement
+          isNodeReturned(n)
         )) ||
         // Promise is assigned and returned
         sourceCode.getScope(node.parent)
           ?.references
           .map(ref => ref.identifier)
-          .some(n =>
-            findParent(n, p =>
-              p.type === AST_NODE_TYPES.ReturnStatement ||
-              p.type === AST_NODE_TYPES.ArrowFunctionExpression &&
-              p.body.type !== AST_NODE_TYPES.BlockStatement
-            )
-          );
+          .some(n => findClosest(n, isNodeReturned));
 
       if (!isPromiseReturned) return;
 
