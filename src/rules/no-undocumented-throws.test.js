@@ -123,6 +123,56 @@ ruleTester.run(
       },
       {
         code: `
+          const obj = {
+            /**
+             * @throws {Error}
+             */
+            'foo'() {
+              throw new Error('foo');
+            },
+          };
+        `,
+      },
+      {
+        code: `
+          const obj = {
+            /**
+             * @throws {Error}
+             */
+            ['foo']: () => {
+              throw new Error('foo');
+            },
+          };
+        `,
+      },
+      {
+        code: `
+          const name = 'foo';
+          const obj = {
+            /**
+             * @throws {Error}
+             */
+            [name]: () => {
+              throw new Error('foo');
+            },
+          };
+        `,
+      },
+      {
+        code: `
+          const name = 'foo';
+          const obj = {
+            /**
+             * @throws {Error}
+             */
+            [name]: function () {
+              throw new Error('foo');
+            },
+          };
+        `,
+      },
+      {
+        code: `
           /**
            * @throws {"lol"}
            */
@@ -137,6 +187,147 @@ ruleTester.run(
            * @throws {string}
            */
           function foo() {
+            throw "lol";
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           * @throws {Promise<Error>}
+           */
+          async function foo() {
+            throw new Error('foo');
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           * @throws {Promise<Error>}
+           */
+          async function foo() {
+            {
+              throw new Error('foo');
+            }
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           * @throws {Promise<Error>}
+           */
+          const foo = async () => {
+            throw new Error('foo');
+          };
+        `,
+      },
+      {
+        code: `
+          class Foo {
+            /**
+             * @throws {Promise<Error>}
+             */
+            async bar() {
+              throw new Error('baz');
+            }
+          }
+        `,
+      },
+      {
+        code: `
+          const obj = {
+            /**
+             * @throws {Promise<Error>}
+             */
+            foo: async function () {
+              throw new Error('foo');
+            },
+          };
+        `,
+      },
+      {
+        code: `
+          const obj = {
+            /**
+             * @throws {Promise<Error>}
+             */
+            foo: async () => {
+              throw new Error('foo');
+            },
+          };
+        `,
+      },
+      {
+        code: `
+          const obj = {
+            /**
+             * @throws {Promise<Error>}
+             */
+            async 'foo'() {
+              throw new Error('foo');
+            },
+          };
+        `,
+      },
+      {
+        code: `
+          const obj = {
+            /**
+             * @throws {Promise<Error>}
+             */
+            ['foo']: async () => {
+              throw new Error('foo');
+            },
+          };
+        `,
+      },
+      {
+        code: `
+          const name = 'foo';
+          const obj = {
+            /**
+             * @throws {Promise<Error>}
+             */
+            [name]: async () => {
+              throw new Error('foo');
+            },
+          };
+        `,
+      },
+      {
+        code: `
+          const name = 'foo';
+          const obj = {
+            /**
+             * @throws {Promise<Error>}
+             */
+            async [name]: function () {
+              throw new Error('foo');
+            },
+          };
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<"lol">}
+           */
+          async function foo() {
+            throw "lol";
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<string>}
+           */
+          async function foo() {
             throw "lol";
           }
         `,
