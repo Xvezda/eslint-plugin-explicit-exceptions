@@ -233,6 +233,7 @@ module.exports = createRule({
         const throwsTags = getJSDocThrowsTags(functionDeclarationTSNode);
         const throwsTagTypeNodes = throwsTags
           .map(tag => tag.typeExpression?.type)
+          // Only keep throws tag with type defined
           .filter(tag => !!tag);
 
         if (!throwsTagTypeNodes.length) return;
@@ -273,7 +274,10 @@ module.exports = createRule({
           )
         );
 
-      if (!throwableTypes && !rejectableTypes) return;
+      if (
+        !throwableTypes.length &&
+        !rejectableTypes.length
+      ) return;
 
       const callerDeclarationTSNode =
         getDeclarationTSNodeOfESTreeNode(services, callerDeclaration);
@@ -333,10 +337,8 @@ module.exports = createRule({
                 typesToUnionString(
                   checker,
                   [
-                    ...throwTypeGroups.target.compatible ?? [],
-                    ...throwTypeGroups.source.incompatible ?? [],
-                    ...rejectTypeGroups.target.compatible ?? [],
-                    ...rejectTypeGroups.source.incompatible ?? [],
+                    ...throwableTypes,
+                    ...rejectableTypes,
                   ]
                 )
               }>`,
@@ -397,34 +399,24 @@ module.exports = createRule({
         node,
         messageId: 'throwTypeMismatch',
         fix(fixer) {
-          const throwTypes = [
-            ...throwTypeGroups.target.compatible ?? [],
-            ...throwTypeGroups.source.incompatible ?? [],
-          ];
-
-          const rejectTypes = [
-            ...rejectTypeGroups.target.compatible ?? [],
-            ...rejectTypeGroups.source.incompatible ?? [],
-          ];
-
           // If there is only one throws tag, make it as a union type
           return fixer.replaceTextRange(
             [lastThrowsTypeNode.pos, lastThrowsTypeNode.end],
             node.async
               ? `Promise<${
-                typesToUnionString(checker, [...throwTypes, ...rejectTypes])
+                typesToUnionString(checker, [...throwableTypes, ...rejectableTypes])
               }>`
               : [
-                throwTypes.length
+                throwableTypes.length
                   ? typesToUnionString(
-                    checker, throwTypes,
+                    checker, throwableTypes,
                   )
                   : '',
-                rejectTypes.length
+                rejectableTypes.length
                   ? `Promise<${
                     typesToUnionString(
                       checker,
-                      rejectTypes,
+                      rejectableTypes,
                     )}>`
                   : '',
               ].filter(t => !!t).join(' | ')
@@ -464,7 +456,10 @@ module.exports = createRule({
           )
         );
 
-      if (!isPromiseConstructorCallback && !isThenableCallback) return;
+      if (
+        !isPromiseConstructorCallback &&
+        !isThenableCallback
+      ) return;
 
       /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */
       let callbackNode = null;

@@ -22,6 +22,36 @@ ruleTester.run(
       {
         code: `
           /**
+           * @throws
+           */
+          function foo() {
+            throw "lol";
+          }
+          function bar() {
+            try {
+              foo();
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {"lol"}
+           */
+          function foo() {
+            throw "lol";
+          }
+          function bar() {
+            try {
+              foo();
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
            * foo bar baz
            * @throws {string}
            */

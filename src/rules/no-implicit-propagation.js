@@ -1,6 +1,7 @@
 // @ts-check
 const { ESLintUtils } = require('@typescript-eslint/utils');
 const {
+  TypeMap,
   getNodeID,
   createRule,
   isInHandledContext,
@@ -46,9 +47,8 @@ module.exports = createRule({
 
     /**
      * Group callee throws types by caller declaration.
-     * @type {Map<string, import('typescript').Type[]>}
      */
-    const calleeThrowsTypesGroup = new Map();
+    const calleeThrowsTypesMap = new TypeMap();
 
     /** @param {import('@typescript-eslint/utils').TSESTree.Expression} node */
     const visitFunctionCallNode = (node) => {
@@ -66,11 +66,7 @@ module.exports = createRule({
       const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
       if (!calleeThrowsTypes.length) return;
 
-      const key = getNodeID(callerDeclaration);
-      if (!calleeThrowsTypesGroup.has(key)) {
-        calleeThrowsTypesGroup.set(key, []);
-      }
-      calleeThrowsTypesGroup.get(key)?.push(...calleeThrowsTypes);
+      calleeThrowsTypesMap.add(callerDeclaration, calleeThrowsTypes);
     };
 
     /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */
@@ -83,17 +79,16 @@ module.exports = createRule({
       const nodeToComment = findNodeToComment(callerDeclaration);
       if (!nodeToComment) return;
 
-      const key = getNodeID(callerDeclaration);
-      if (!calleeThrowsTypesGroup.has(key)) return;
+      if (!calleeThrowsTypesMap.get(callerDeclaration).length) return;
 
       const calleeThrowsTypes =
         toFlattenedTypeArray(
           /** @type {import('typescript').Type[]} */(
-            calleeThrowsTypesGroup.get(key)
+            calleeThrowsTypesMap.get(callerDeclaration)
               ?.map(t => checker.getAwaitedType(t) ?? t))
         );
 
-      if (!calleeThrowsTypes) return;
+      if (!calleeThrowsTypes.length) return;
 
       if (hasJSDocThrowsTag(sourceCode, nodeToComment)) return;
 

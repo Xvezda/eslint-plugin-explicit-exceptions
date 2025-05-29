@@ -21,10 +21,30 @@ ruleTester.run(
       {
         code: `
           /**
+           * @throws
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+        `,
+      },
+      {
+        code: `
+          /**
            * @throws {Error}
            */
           function foo() {
             throw new Error('foo');
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function foo() {
+            throw new TypeError('foo');
           }
         `,
       },
@@ -605,6 +625,34 @@ ruleTester.run(
           /**
            * @throws {Promise<RangeError>}
            * @throws {SyntaxError}
+           */
+          function foo() {
+            const promise = Promise.resolve();
+
+            if (Math.random() > 0.5) {
+              try {
+                await promise.then(() => {
+                  throw new TypeError();
+                });
+              } catch {}
+            } else if (Math.random() > 0.3) {
+              try {
+                promise.finally(() => {
+                  throw new RangeError();
+                });
+              } catch {
+                throw new SyntaxError();
+              }
+            }
+            return promise;
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           * @throws {Error}
            */
           function foo() {
             const promise = Promise.resolve();
