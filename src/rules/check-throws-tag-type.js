@@ -148,25 +148,6 @@ module.exports = createRule({
     const visitedExpressionNodes = new Set();
 
     /**
-     * @typedef {import('@typescript-eslint/utils').TSESTree.Node | import('typescript').Type} MetadataKey
-     * @type {WeakMap<MetadataKey, { pos: number }>}
-     */
-    const metadata = new WeakMap();
-
-    /**
-     * @template {MetadataKey[]} T
-     * @param {T} items
-     */
-    const toSorted = (items) => {
-      return [...items]
-        .sort((a, b) => {
-          const aPos = metadata.get(a)?.pos ?? 0;
-          const bPos = metadata.get(b)?.pos ?? 0;
-          return aPos - bPos;
-        });
-    };
-
-    /**
      * Group throw statements in functions
      * Using function as a key
      * @type {Map<string, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>}
@@ -184,6 +165,25 @@ module.exports = createRule({
      * these types should be wrapped into `Promise<...>` later
      */
     const rejectTypes = new TypeMap();
+
+    /**
+     * @typedef {import('@typescript-eslint/utils').TSESTree.Node | import('typescript').Type} MetadataKey
+     * @type {WeakMap<MetadataKey, { pos: number }>}
+     */
+    const metadata = new WeakMap();
+
+    /**
+     * @template {MetadataKey[]} T
+     * @param {T} items
+     */
+    const toSortedByMetadata = (items) => {
+      return [...items]
+        .sort((a, b) => {
+          const aPos = metadata.get(a)?.pos ?? 0;
+          const bPos = metadata.get(b)?.pos ?? 0;
+          return aPos - bPos;
+        });
+    };
 
     /**
      * Visit function call node and collect types.
@@ -369,7 +369,7 @@ module.exports = createRule({
               `Promise<${
                 typesToUnionString(
                   checker,
-                  toSorted([
+                  toSortedByMetadata([
                     ...throwableTypes,
                     ...rejectableTypes,
                   ])
@@ -415,10 +415,10 @@ module.exports = createRule({
               appendThrowsTags(
                 appendThrowsTags(
                   callerJSDocTSNode.getFullText(),
-                  toSorted([...throwTypeGroups.source.incompatible ?? []])
+                  toSortedByMetadata([...throwTypeGroups.source.incompatible ?? []])
                     .map(t => utils.getTypeName(checker, t))
                 ),
-                toSorted([...rejectTypeGroups.source.incompatible ?? []])
+                toSortedByMetadata([...rejectTypeGroups.source.incompatible ?? []])
                   .map(t => `Promise<${utils.getTypeName(checker, t)}>`)
               )
             );
@@ -436,19 +436,22 @@ module.exports = createRule({
             [lastThrowsTypeNode.pos, lastThrowsTypeNode.end],
             node.async
               ? `Promise<${
-                typesToUnionString(checker, toSorted([...throwableTypes, ...rejectableTypes]))
+                typesToUnionString(
+                  checker,
+                  toSortedByMetadata([...throwableTypes, ...rejectableTypes])
+                )
               }>`
               : [
                 throwableTypes.length
                   ? typesToUnionString(
-                    checker, toSorted(throwableTypes),
+                    checker, toSortedByMetadata(throwableTypes),
                   )
                   : '',
                 rejectableTypes.length
                   ? `Promise<${
                     typesToUnionString(
                       checker,
-                      toSorted(rejectableTypes),
+                      toSortedByMetadata(rejectableTypes),
                     )}>`
                   : '',
               ].filter(t => !!t).join(' | ')
@@ -490,31 +493,32 @@ module.exports = createRule({
         !isThenableCallback
       ) return;
 
+      /**
+       * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+       */
+      const isNodeReturned = (node) => {
+        return (
+          node.parent?.type === AST_NODE_TYPES.ReturnStatement ||
+          node.parent?.type === AST_NODE_TYPES.ArrowFunctionExpression &&
+          node.parent.body.type !== AST_NODE_TYPES.BlockStatement
+        );
+      };
+
       const isPromiseReturned =
         // Return immediately
         (isPromiseConstructorCallback &&
           node.parent.type === AST_NODE_TYPES.NewExpression &&
-          node.parent.parent?.type === AST_NODE_TYPES.ReturnStatement ||
-          node.parent.parent?.type === AST_NODE_TYPES.ArrowFunctionExpression &&
-          node.parent.parent.body.type !== AST_NODE_TYPES.BlockStatement
+          isNodeReturned(node.parent.parent)
         ) ||
         (isThenableCallback && findParent(node, n =>
           n.type === AST_NODE_TYPES.CallExpression &&
-          n.parent?.type === AST_NODE_TYPES.ReturnStatement ||
-          n.parent?.type === AST_NODE_TYPES.ArrowFunctionExpression &&
-          n.parent.body.type !== AST_NODE_TYPES.BlockStatement
+          isNodeReturned(n)
         )) ||
         // Promise is assigned and returned
         sourceCode.getScope(node.parent)
           ?.references
           .map(ref => ref.identifier)
-          .some(n =>
-            findParent(n, p =>
-              p.type === AST_NODE_TYPES.ReturnStatement ||
-              p.type === AST_NODE_TYPES.ArrowFunctionExpression &&
-              p.body.type !== AST_NODE_TYPES.BlockStatement
-            )
-          );
+          .some(n => findParent(n, p => isNodeReturned(p)));
 
       if (!isPromiseReturned) return;
 
