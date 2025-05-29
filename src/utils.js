@@ -464,6 +464,7 @@ const findNodeToComment = (node) => {
        * function example() {
        *   // not here
        *   return new Promise((resolve, reject) => { ... });
+       *   //                 ^ node
        * }
        * ```
        */
@@ -485,6 +486,7 @@ const findNodeToComment = (node) => {
          * class Klass {
          *   // here
          *   target() { ... }
+         *   //    ^ node
          * }
          * ```
          */
@@ -495,6 +497,7 @@ const findNodeToComment = (node) => {
          * class Klass {
          *   // here
          *   target = () => { ... }
+         *   //       ^ node
          * }
          * ```
          */
@@ -505,6 +508,7 @@ const findNodeToComment = (node) => {
          * const obj = {
          *   // here
          *   target: () => { ... },
+         *   //      ^ node
          * };
          * ```
          */
@@ -514,6 +518,7 @@ const findNodeToComment = (node) => {
          * ```
          * // here
          * const target = () => { ... };
+         * //             ^ node
          * ```
          */
         findParent(node, (n) => n.type === AST_NODE_TYPES.VariableDeclaration) ??
@@ -523,6 +528,7 @@ const findNodeToComment = (node) => {
          * function factory() {
          *   // here
          *   return function target() { ... };
+         *   //     ^ node
          * }
          * ```
          */
