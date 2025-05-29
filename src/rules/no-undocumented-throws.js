@@ -67,9 +67,10 @@ module.exports = createRule({
 
     /**
      * Group throw statements in functions
+     * Using function as a key
      * @type {Map<string, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>}
      */
-    const throwStatements = new Map();
+    const throwStatementsInFunction = new Map();
 
     /**
      * Group of throwable types in functions
@@ -123,7 +124,7 @@ module.exports = createRule({
       if (!nodeToComment) return;
 
       const throwStatementNodes =
-        throwStatements.get(getNodeID(callerDeclaration));
+        throwStatementsInFunction.get(getNodeID(callerDeclaration));
 
       if (throwStatementNodes) {
         /** @type {import('typescript').Type[]} */
@@ -285,8 +286,8 @@ module.exports = createRule({
         );
       }
 
-      if (throwStatements.has(getNodeID(callbackNode))) {
-        const throwStatementTypes = throwStatements
+      if (throwStatementsInFunction.has(getNodeID(callbackNode))) {
+        const throwStatementTypes = throwStatementsInFunction
           .get(getNodeID(callbackNode))
           ?.map(n => services.getTypeAtLocation(n.argument));
 
@@ -318,12 +319,12 @@ module.exports = createRule({
         const currentFunction = findClosestFunctionNode(node);
         if (!currentFunction) return;
 
-        if (!throwStatements.has(getNodeID(currentFunction))) {
-          throwStatements.set(getNodeID(currentFunction), []);
+        if (!throwStatementsInFunction.has(getNodeID(currentFunction))) {
+          throwStatementsInFunction.set(getNodeID(currentFunction), []);
         }
         const throwStatementNodes =
           /** @type {import('@typescript-eslint/utils').TSESTree.ThrowStatement[]} */
-          (throwStatements.get(getNodeID(currentFunction)));
+          (throwStatementsInFunction.get(getNodeID(currentFunction)));
 
         throwStatementNodes.push(node);
       },

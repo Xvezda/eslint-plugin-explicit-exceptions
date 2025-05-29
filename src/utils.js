@@ -9,6 +9,7 @@ const createRule = ESLintUtils.RuleCreator(
 
 /**
  * Collects types for each node.
+ * @public
  */
 class TypeMap {
   constructor() {
@@ -46,25 +47,7 @@ class TypeMap {
 }
 
 /**
- * Groups an array of objects by a specified key or function.
- * @template T
- * @template {string} K
- * @param {T[]} arr - The array to group.
- * @param {((item: T) => K)} key
- * @return {Record<K, T[] | undefined>}
- */
-const groupBy = (arr, key) => {
-  return arr.reduce((acc, item) => {
-    const groupKey = key(item);
-    if (!acc[groupKey]) {
-      acc[groupKey] = [];
-    }
-    acc[groupKey].push(item);
-    return acc;
-  }, /** @type {Record<string, T[]>} */(Object.create(null)));
-};
-
-/**
+ * @public
  * @template {unknown} T
  * @param {Readonly<T[]>} arr
  * @return {T | null}
@@ -75,6 +58,7 @@ const getFirst = (arr) =>
     : null;
 
 /**
+ * @public
  * @template {unknown} T
  * @param {Readonly<T[]>} arr
  * @return {T | null}
@@ -84,12 +68,16 @@ const getLast = (arr) =>
     ? arr[arr.length - 1]
     : null;
 
-/** @param {string} comment */
+/**
+ * @public
+ * @param {string} comment
+ */
 const hasThrowsTag = comment =>
   comment.includes('@throws') ||
   comment.includes('@exception');
 
 /**
+ * @public
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @returns {string}
  */
@@ -100,6 +88,7 @@ const getNodeID = (node) => {
 /**
  * Check if node has JSDoc comment with @throws or @exception tag.
  *
+ * @public
  * @param {Readonly<import('@typescript-eslint/utils').TSESLint.SourceCode>} sourceCode
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @return {boolean}
@@ -118,6 +107,7 @@ const hasJSDocThrowsTag = (sourceCode, node) => {
 /**
  * Combine multiple types into union type string of given types.
  *
+ * @public
  * @param {import('typescript').TypeChecker} checker
  * @param {import('typescript').Type[]} types
  * @return {string}
@@ -126,6 +116,7 @@ const typesToUnionString = (checker, types) =>
   [...new Set(types.map(t => utils.getTypeName(checker, t)))].join(' | ');
 
 /**
+ * @public
  * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node
  * @param {function(import('@typescript-eslint/utils').TSESTree.Node): boolean} callback
  * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
@@ -143,6 +134,7 @@ const findClosest = (node, callback) => {
 };
 
 /**
+ * @public
  * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node
  * @param {function(import('@typescript-eslint/utils').TSESTree.Node): boolean} callback
  * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
@@ -160,6 +152,7 @@ const findParent = (node, callback) => {
  * Collects path from node to the root node until the predicate returns true.
  * If the predicate is not provided, it collects the entire path to the root.
  *
+ * @private
  * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node
  * @param {function(import('@typescript-eslint/utils').TSESTree.Node): boolean} [untilPredicate]
  * @returns {import('@typescript-eslint/utils').TSESTree.Node[]}
@@ -178,17 +171,7 @@ const collectPaths = (node, untilPredicate) => {
 };
 
 /**
- * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
- * @param {import('@typescript-eslint/utils').TSESTree.Node} node
- * @returns {import('typescript').Node | undefined}
- */
-const getDeclarationTSNodeOfESTreeNode = (services, node) =>
-  services
-    .getTypeAtLocation(node)
-    .symbol
-    ?.valueDeclaration;
-
-/**
+ * @private
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @return {import('typescript').Declaration[] | undefined}
@@ -200,6 +183,7 @@ const getDeclarationsByNode = (services, node) => {
 };
 
 /**
+ * @public
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @return {import('@typescript-eslint/utils').TSESTree.Node | null}
  */
@@ -220,6 +204,7 @@ const getCallee = (node) => {
 };
 
 /**
+ * @public
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
  * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
  * @return {import('typescript').Node | null}
@@ -286,6 +271,7 @@ const getCalleeDeclaration = (services, node) => {
 };
 
 /**
+ * @public
  * @param {import('typescript').Node} node
  * @returns {Readonly<import('typescript').JSDocThrowsTag[]>}
  */
@@ -294,6 +280,7 @@ const getJSDocThrowsTags = (node) =>
   (ts.getAllJSDocTagsOfKind(node, ts.SyntaxKind.JSDocThrowsTag));
 
 /**
+ * @public
  * @param {import('typescript').TypeChecker} checker
  * @param {import('typescript').Node} node
  * @returns {import('typescript').Type[]}
@@ -311,6 +298,7 @@ const getJSDocThrowsTagTypes = (checker, node) => {
 /**
  * Treats union types as separate types.
  *
+ * @public
  * @param {import('typescript').Type[]} types
  * @returns {import('typescript').Type[]}
  */
@@ -318,54 +306,9 @@ const toFlattenedTypeArray = (types) =>
   types.flatMap(type => type.isUnion() ? type.types : type);
 
 /**
- * @typedef {{ compatible?: import('typescript').Type[]; incompatible?: import('typescript').Type[] }} G
- * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation['program']} program
- * @param {import('typescript').Type[]} source
- * @param {import('typescript').Type[]} target
- * @returns {{ source: G; target: G }}
- */
-const groupTypesByCompatibility = (program, source, target) => {
-  const checker = program.getTypeChecker();
-
-  const sourceGroup = groupBy(source, sourceType => {
-    const isCompatible = target.some(targetType => {
-      if (
-        utils.isErrorLike(program, sourceType) &&
-        utils.isErrorLike(program, targetType)
-      ) {
-        return utils.typeIsOrHasBaseType(sourceType, targetType);
-      }
-      return checker.isTypeAssignableTo(sourceType, targetType);
-    });
-    return /** @type {'compatible'|'incompatible'} */(
-      isCompatible ? 'compatible' : 'incompatible'
-    );
-  });
-
-  const targetGroup = groupBy(target, targetType => {
-    const isCompatible = source.some(sourceType => {
-      if (
-        utils.isErrorLike(program, sourceType) &&
-        utils.isErrorLike(program, targetType)
-      ) {
-        return utils.typeIsOrHasBaseType(sourceType, targetType);
-      }
-      return checker.isTypeAssignableTo(sourceType, targetType);
-    });
-    return /** @type {'compatible'|'incompatible'} */(
-      isCompatible ? 'compatible' : 'incompatible'
-    );
-  });
-
-  return {
-    source: sourceGroup,
-    target: targetGroup,
-  };
-};
-
-/**
  * Collect function call expression nodes for given identifier node.
  *
+ * @public
  * @param {Readonly<import('@typescript-eslint/utils').TSESLint.SourceCode>} sourceCode
  * @param {import('@typescript-eslint/utils').TSESTree.Identifier} node
  * @return {import('@typescript-eslint/utils').TSESTree.CallExpression[]}
@@ -389,6 +332,7 @@ const findFunctionCallNodes = (sourceCode, node) => {
 };
 
 /**
+ * @private
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @returns {node is import('@typescript-eslint/utils').TSESTree.FunctionDeclaration | import('@typescript-eslint/utils').TSESTree.FunctionExpression | import('@typescript-eslint/utils').TSESTree.FunctionLike}
  */
@@ -401,6 +345,7 @@ const isFunctionNode = (node) => {
 };
 
 /**
+ * @public
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
  * @param {import('typescript').Type} type
  * @returns {boolean}
@@ -413,6 +358,7 @@ const isPromiseType = (services, type) => {
 };
 
 /**
+ * @private
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @returns {node is import('@typescript-eslint/utils').TSESTree.MethodDefinition | import('@typescript-eslint/utils').TSESTree.Property}
  */
@@ -428,6 +374,7 @@ const isAccessorNode = (node) => {
 /**
  * Find closest function where exception is thrown
  *
+ * @public
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @returns {import('@typescript-eslint/utils').TSESTree.FunctionLike | null}
  */
@@ -440,6 +387,7 @@ const findClosestFunctionNode = (node) => {
 };
 
 /**
+ * @public
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  */
 const isPromiseConstructorCallbackNode = (node) => {
@@ -451,6 +399,7 @@ const isPromiseConstructorCallbackNode = (node) => {
 };
 
 /**
+ * @public
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  */
 const isThenableCallbackNode = (node) => {
@@ -465,6 +414,7 @@ const isThenableCallbackNode = (node) => {
 /**
  * Find where JSDoc comment should be added
  *
+ * @public
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
  */
@@ -557,6 +507,7 @@ const findNodeToComment = (node) => {
 /**
  * Find declaration node of identifier node
  *
+ * @public
  * @param {Readonly<import('@typescript-eslint/utils').TSESLint.SourceCode>} sourceCode
  * @param {import('@typescript-eslint/utils').TSESTree.Identifier} node
  * @return {import('@typescript-eslint/utils').TSESTree.Node | null}
@@ -606,6 +557,7 @@ const findIdentifierDeclaration = (sourceCode, node) => {
 };
 
 /**
+ * @private
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @param {import('@typescript-eslint/utils').TSESTree.Node} other
  * @returns {boolean}
@@ -620,6 +572,7 @@ const isParentOrAncestor = (node, other) => {
 /**
  * Check if node is in try-catch block where exception is handled
  *
+ * @public
  * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node
  * @returns {boolean}
  */
@@ -644,7 +597,10 @@ const isInHandledContext = (node) => {
   return false;
 };
 
-/** @param {import('@typescript-eslint/utils').TSESTree.Node} node */
+/**
+ * @private
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ */
 const isCatchMethodCalled = (node) => {
   return (
     node.parent?.parent?.type === AST_NODE_TYPES.CallExpression &&
@@ -654,7 +610,10 @@ const isCatchMethodCalled = (node) => {
   );
 };
 
-/** @param {import('@typescript-eslint/utils').TSESTree.Node} node */
+/**
+ * @private
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ */
 const isAwaitCatchPattern = (node) => {
   return (
     node.type === AST_NODE_TYPES.AwaitExpression &&
@@ -673,6 +632,7 @@ const isAwaitCatchPattern = (node) => {
  * Check if node promise rejection handled.
  * Such as `try .. await node .. catch` or `node.catch(...)`
  *
+ * @public
  * @param {Readonly<import('@typescript-eslint/utils').TSESLint.SourceCode>} sourceCode
  * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node
  * @returns {boolean}
@@ -707,20 +667,15 @@ module.exports = {
   typesToUnionString,
   findClosest,
   findParent,
-  getDeclarationTSNodeOfESTreeNode,
-  getDeclarationsByNode,
   getCallee,
   getCalleeDeclaration,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
   toFlattenedTypeArray,
-  groupTypesByCompatibility,
   findFunctionCallNodes,
   findClosestFunctionNode,
   findNodeToComment,
   findIdentifierDeclaration,
-  isCatchMethodCalled,
-  isAwaitCatchPattern,
   isInHandledContext,
   isInAsyncHandledContext,
   isPromiseType,
