@@ -16,16 +16,91 @@ const {
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
   getCalleeDeclaration,
-  getDeclarationTSNodeOfESTreeNode,
   findClosestFunctionNode,
   findNodeToComment,
   findIdentifierDeclaration,
   toFlattenedTypeArray,
   typesToUnionString,
-  groupTypesByCompatibility,
   findFunctionCallNodes,
 } = require('../utils');
 
+/**
+ * Groups an array of objects by a specified key or function.
+ *
+ * @public
+ * @template T
+ * @template {string} K
+ * @param {T[]} arr - The array to group.
+ * @param {((item: T) => K)} key
+ * @return {Record<K, T[] | undefined>}
+ */
+const groupBy = (arr, key) => {
+  return arr.reduce((acc, item) => {
+    const groupKey = key(item);
+    if (!acc[groupKey]) {
+      acc[groupKey] = [];
+    }
+    acc[groupKey].push(item);
+    return acc;
+  }, /** @type {Record<string, T[]>} */(Object.create(null)));
+};
+
+/**
+ * @typedef {{ compatible?: import('typescript').Type[]; incompatible?: import('typescript').Type[] }} G
+ * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation['program']} program
+ * @param {import('typescript').Type[]} source
+ * @param {import('typescript').Type[]} target
+ * @returns {{ source: G; target: G }}
+ */
+const groupTypesByCompatibility = (program, source, target) => {
+  const checker = program.getTypeChecker();
+
+  const sourceGroup = groupBy(source, sourceType => {
+    const isCompatible = target.some(targetType => {
+      if (
+        utils.isErrorLike(program, sourceType) &&
+        utils.isErrorLike(program, targetType)
+      ) {
+        return utils.typeIsOrHasBaseType(sourceType, targetType);
+      }
+      return checker.isTypeAssignableTo(sourceType, targetType);
+    });
+    return /** @type {'compatible'|'incompatible'} */(
+      isCompatible ? 'compatible' : 'incompatible'
+    );
+  });
+
+  const targetGroup = groupBy(target, targetType => {
+    const isCompatible = source.some(sourceType => {
+      if (
+        utils.isErrorLike(program, sourceType) &&
+        utils.isErrorLike(program, targetType)
+      ) {
+        return utils.typeIsOrHasBaseType(sourceType, targetType);
+      }
+      return checker.isTypeAssignableTo(sourceType, targetType);
+    });
+    return /** @type {'compatible'|'incompatible'} */(
+      isCompatible ? 'compatible' : 'incompatible'
+    );
+  });
+
+  return {
+    source: sourceGroup,
+    target: targetGroup,
+  };
+};
+
+/**
+ * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @returns {import('typescript').Node | undefined}
+ */
+const getDeclarationTSNodeOfESTreeNode = (services, node) =>
+  services
+    .getTypeAtLocation(node)
+    .symbol
+    ?.valueDeclaration;
 
 module.exports = createRule({
   name: 'check-throws-tag-type',
@@ -72,9 +147,10 @@ module.exports = createRule({
 
     /**
      * Group throw statements in functions
+     * Using function as a key
      * @type {Map<string, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>}
      */
-    const throwStatements = new Map();
+    const throwStatementsInFunction = new Map();
 
     /**
      * Group of throwable types in functions
@@ -127,7 +203,7 @@ module.exports = createRule({
       if (!hasJSDocThrowsTag(sourceCode, nodeToComment)) return;
 
       const throwStatementNodes =
-        throwStatements.get(getNodeID(node));
+        throwStatementsInFunction.get(getNodeID(node));
 
       if (throwStatementNodes) {
         /** @type {import('typescript').Type[]} */
@@ -436,8 +512,8 @@ module.exports = createRule({
         );
       }
 
-      if (throwStatements.has(getNodeID(callbackNode))) {
-        const throwStatementTypes = throwStatements
+      if (throwStatementsInFunction.has(getNodeID(callbackNode))) {
+        const throwStatementTypes = throwStatementsInFunction
           .get(getNodeID(callbackNode))
           ?.map(n => services.getTypeAtLocation(n.argument));
 
@@ -469,12 +545,12 @@ module.exports = createRule({
         const currentFunction = findClosestFunctionNode(node);
         if (!currentFunction) return;
 
-        if (!throwStatements.has(getNodeID(currentFunction))) {
-          throwStatements.set(getNodeID(currentFunction), []);
+        if (!throwStatementsInFunction.has(getNodeID(currentFunction))) {
+          throwStatementsInFunction.set(getNodeID(currentFunction), []);
         }
         const throwStatementNodes =
           /** @type {import('@typescript-eslint/utils').TSESTree.ThrowStatement[]} */
-          (throwStatements.get(getNodeID(currentFunction)));
+          (throwStatementsInFunction.get(getNodeID(currentFunction)));
 
         throwStatementNodes.push(node);
       },

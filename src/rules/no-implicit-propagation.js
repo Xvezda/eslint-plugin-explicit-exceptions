@@ -36,9 +36,10 @@ module.exports = createRule({
 
     /**
      * Group throw statements in functions
+     * Using function as a key
      * @type {Map<string, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>}
      */
-    const throwStatements = new Map();
+    const throwStatementsInFunction = new Map();
 
     /** @type {Set<string>} */
     const visitedExpressionNodes = new Set();
@@ -132,12 +133,12 @@ module.exports = createRule({
         const functionDeclaration = findClosestFunctionNode(node);
         if (!functionDeclaration) return;
 
-        if (!throwStatements.has(getNodeID(functionDeclaration))) {
-          throwStatements.set(getNodeID(functionDeclaration), []);
+        if (!throwStatementsInFunction.has(getNodeID(functionDeclaration))) {
+          throwStatementsInFunction.set(getNodeID(functionDeclaration), []);
         }
         const throwStatementNodes =
           /** @type {import('@typescript-eslint/utils').TSESTree.ThrowStatement[]} */
-          (throwStatements.get(getNodeID(functionDeclaration)));
+          (throwStatementsInFunction.get(getNodeID(functionDeclaration)));
 
         throwStatementNodes.push(node);
       },
