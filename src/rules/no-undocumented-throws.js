@@ -107,25 +107,19 @@ module.exports = createRule({
       const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
       if (!calleeThrowsTypes.length) return;
 
-      const nodeToComment = findNodeToComment(callerDeclaration);
-      if (!nodeToComment) return;
-
-      throwTypes.add(nodeToComment, calleeThrowsTypes);
+      throwTypes.add(node, calleeThrowsTypes);
     };
 
     /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */
     const visitFunctionOnExit = (node) => {
-      const callerDeclaration = findClosestFunctionNode(node);
-      if (!callerDeclaration) return;
+      if (visitedFunctionNodes.has(getNodeID(node))) return;
+      visitedFunctionNodes.add(getNodeID(node));
 
-      if (visitedFunctionNodes.has(getNodeID(callerDeclaration))) return;
-      visitedFunctionNodes.add(getNodeID(callerDeclaration));
-
-      const nodeToComment = findNodeToComment(callerDeclaration);
+      const nodeToComment = findNodeToComment(node);
       if (!nodeToComment) return;
 
       const throwStatementNodes =
-        throwStatementsInFunction.get(getNodeID(callerDeclaration));
+        throwStatementsInFunction.get(getNodeID(node));
 
       if (throwStatementNodes) {
         /** @type {import('typescript').Type[]} */
@@ -148,13 +142,13 @@ module.exports = createRule({
           )
           .map(t => checker.getAwaitedType(t) ?? t);
 
-        throwTypes.add(callerDeclaration, throwStatementTypes);
+        throwTypes.add(node, throwStatementTypes);
       }
 
       const throwableTypes =
         toFlattenedTypeArray(
           /** @type {import('typescript').Type[]} */(
-          throwTypes.get(callerDeclaration)
+          throwTypes.get(node)
             ?.map(t => checker.getAwaitedType(t) ?? t)
           )
         );
@@ -162,7 +156,7 @@ module.exports = createRule({
       const rejectableTypes =
         toFlattenedTypeArray(
           /** @type {import('typescript').Type[]} */(
-          rejectTypes.get(callerDeclaration)
+          rejectTypes.get(node)
             ?.map(t => checker.getAwaitedType(t) ?? t)
           )
         );
@@ -216,9 +210,6 @@ module.exports = createRule({
     const visitPromiseCallbackOnExit = (node) => {
       if (isInAsyncHandledContext(sourceCode, node.parent)) return;
 
-      const nodeToComment = findNodeToComment(node);
-      if (!nodeToComment) return;
-
       const isPromiseConstructorCallback =
         isPromiseConstructorCallbackNode(node) &&
         utils.isPromiseConstructorLike(
@@ -240,20 +231,24 @@ module.exports = createRule({
           )
         );
 
-      if (!isPromiseConstructorCallback && !isThenableCallback) return;
+      if (
+        !isPromiseConstructorCallback &&
+        !isThenableCallback
+      ) return;
 
       const isPromiseReturned =
         // Return immediately
         (isPromiseConstructorCallback &&
           node.parent.type === AST_NODE_TYPES.NewExpression &&
-          (node.parent.parent.type === AST_NODE_TYPES.ReturnStatement ||
-            node.parent.parent.type === AST_NODE_TYPES.ArrowFunctionExpression)
+          node.parent.parent?.type === AST_NODE_TYPES.ReturnStatement ||
+          node.parent.parent?.type === AST_NODE_TYPES.ArrowFunctionExpression &&
+          node.parent.parent.body.type !== AST_NODE_TYPES.BlockStatement
         ) ||
         (isThenableCallback && findParent(node, n =>
           n.type === AST_NODE_TYPES.CallExpression &&
-          (n.parent.type === AST_NODE_TYPES.ReturnStatement ||
-            n.parent.type === AST_NODE_TYPES.ArrowFunctionExpression
-          )
+          n.parent?.type === AST_NODE_TYPES.ReturnStatement ||
+          n.parent?.type === AST_NODE_TYPES.ArrowFunctionExpression &&
+          n.parent.body.type !== AST_NODE_TYPES.BlockStatement
         )) ||
         // Promise is assigned and returned
         sourceCode.getScope(node.parent)
@@ -262,11 +257,26 @@ module.exports = createRule({
           .some(n =>
             findParent(n, p =>
               p.type === AST_NODE_TYPES.ReturnStatement ||
-              p.type === AST_NODE_TYPES.ArrowFunctionExpression
+              p.type === AST_NODE_TYPES.ArrowFunctionExpression &&
+              p.body.type !== AST_NODE_TYPES.BlockStatement
             )
           );
 
       if (!isPromiseReturned) return;
+
+      /**
+       * Find function where promise is actually returned.
+       */ 
+      let promiseReturningFunction = findClosestFunctionNode(node.parent);
+      while (
+        promiseReturningFunction &&
+        (isPromiseConstructorCallbackNode(promiseReturningFunction) ||
+          isThenableCallbackNode(promiseReturningFunction))
+      ) {
+        promiseReturningFunction =
+          findClosestFunctionNode(promiseReturningFunction.parent);
+      }
+      if (!promiseReturningFunction) return;
 
       /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */
       let callbackNode = null;
@@ -308,7 +318,7 @@ module.exports = createRule({
             .map(expr => services.getTypeAtLocation(expr.arguments[0]));
 
         rejectTypes.add(
-          nodeToComment,
+          promiseReturningFunction,
           toFlattenedTypeArray(argumentTypes)
         );
       }
@@ -320,7 +330,7 @@ module.exports = createRule({
 
         if (throwStatementTypes) {
           rejectTypes.add(
-            nodeToComment,
+            promiseReturningFunction,
             toFlattenedTypeArray(throwStatementTypes)
           );
         }
@@ -333,7 +343,7 @@ module.exports = createRule({
 
       if (callbackThrowsTagTypes.length) {
         rejectTypes.add(
-          nodeToComment,
+          promiseReturningFunction,
           toFlattenedTypeArray(callbackThrowsTagTypes)
         );
       }

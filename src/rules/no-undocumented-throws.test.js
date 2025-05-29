@@ -691,10 +691,23 @@ ruleTester.run(
         code: `
           const obj = {
             foo: () => {
-              return new Promise((resolve, reject) => {
+              new Promise((resolve, reject) => {
                 reject(new Error());
               })
                 .then(console.log);
+            },
+          };
+        `,
+      },
+      {
+        code: `
+          const obj = {
+            foo: () => {
+              return new Promise((resolve, reject) => {
+                reject(new Error());
+              })
+                .then(console.log)
+                .catch(console.error);
             },
           };
         `,
@@ -1104,6 +1117,28 @@ ruleTester.run(
               reject(new Error());
             });
           }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          const foo = () => {
+            return new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+          };
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          const foo = () => {
+            return new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+          };
         `,
         errors: [
           { messageId: 'missingThrowsTag' },
