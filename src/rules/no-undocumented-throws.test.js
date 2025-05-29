@@ -421,7 +421,7 @@ ruleTester.run(
       {
         code: `
           function foo() {
-            new Promise((resolve, reject) => {
+            return new Promise((resolve, reject) => {
               reject(new Error());
             })
               .then(console.log)
@@ -436,7 +436,7 @@ ruleTester.run(
               reject(new Error());
             });
 
-            promise.catch(console.error);
+            return promise.catch(console.error);
           }
         `,
       },
@@ -674,6 +674,42 @@ ruleTester.run(
             }
             return promise;
           }
+        `,
+      },
+      {
+        code: `
+          function foo() {
+            // Not returned promise should be reported as unhandled rejection rule
+            new Promise((resolve, reject) => {
+              reject(new Error());
+            })
+              .then(console.log);
+          }
+        `,
+      },
+      {
+        code: `
+          const obj = {
+            foo: () => {
+              new Promise((resolve, reject) => {
+                reject(new Error());
+              })
+                .then(console.log);
+            },
+          };
+        `,
+      },
+      {
+        code: `
+          const obj = {
+            foo: () => {
+              return new Promise((resolve, reject) => {
+                reject(new Error());
+              })
+                .then(console.log)
+                .catch(console.error);
+            },
+          };
         `,
       },
     ],
@@ -1081,6 +1117,28 @@ ruleTester.run(
               reject(new Error());
             });
           }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          const foo = () => {
+            return new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+          };
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          const foo = () => {
+            return new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+          };
         `,
         errors: [
           { messageId: 'missingThrowsTag' },
@@ -1902,6 +1960,132 @@ ruleTester.run(
         `,
         errors: [
           { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          const foo = {
+            bar: (resolve, reject) => {
+              throw new TypeError();
+            },
+          };
+
+          function baz() {
+            const promise = Promise.resolve();
+
+            return promise.then(foo.bar);
+          }
+        `,
+        output: `
+          const foo = {
+            /**
+             * @throws {TypeError}
+             */
+            bar: (resolve, reject) => {
+              throw new TypeError();
+            },
+          };
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          function baz() {
+            const promise = Promise.resolve();
+
+            return promise.then(foo.bar);
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          const foo = {
+            bar: {
+              baz: (resolve, reject) => {
+                throw new TypeError();
+              },
+            },
+          };
+
+          function baz() {
+            const promise = Promise.resolve();
+
+            return promise.then(foo.bar.baz);
+          }
+        `,
+        output: `
+          const foo = {
+            bar: {
+              /**
+               * @throws {TypeError}
+               */
+              baz: (resolve, reject) => {
+                throw new TypeError();
+              },
+            },
+          };
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          function baz() {
+            const promise = Promise.resolve();
+
+            return promise.then(foo.bar.baz);
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          const foo = {
+            get bar() {
+              return {
+                baz: (resolve, reject) => {
+                  throw new TypeError();
+                },
+              };
+            },
+          };
+
+          function baz() {
+            const promise = Promise.resolve();
+
+            return promise.then(foo.bar.baz);
+          }
+        `,
+        output: `
+          const foo = {
+            get bar() {
+              return {
+                /**
+                 * @throws {TypeError}
+                 */
+                baz: (resolve, reject) => {
+                  throw new TypeError();
+                },
+              };
+            },
+          };
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          function baz() {
+            const promise = Promise.resolve();
+
+            return promise.then(foo.bar.baz);
+          }
+        `,
+        errors: [
           { messageId: 'missingThrowsTag' },
           { messageId: 'missingThrowsTag' },
         ],
