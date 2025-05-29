@@ -47,6 +47,8 @@ class TypeMap {
 }
 
 /**
+ * Get first element of array or null if empty.
+ *
  * @public
  * @template {unknown} T
  * @param {Readonly<T[]>} arr
@@ -58,6 +60,8 @@ const getFirst = (arr) =>
     : null;
 
 /**
+ * Get last element of array or null if empty.
+ *
  * @public
  * @template {unknown} T
  * @param {Readonly<T[]>} arr
@@ -69,6 +73,8 @@ const getLast = (arr) =>
     : null;
 
 /**
+ * Check if comment string contains JSDoc throws tag.
+ *
  * @public
  * @param {string} comment
  */
@@ -77,6 +83,8 @@ const hasThrowsTag = comment =>
   comment.includes('@exception');
 
 /**
+ * Get unique ID for node based on its location.
+ *
  * @public
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @returns {string}
@@ -116,6 +124,8 @@ const typesToUnionString = (checker, types) =>
   [...new Set(types.map(t => utils.getTypeName(checker, t)))].join(' | ');
 
 /**
+ * Find closest node that matches the callback predicate.
+ *
  * @public
  * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node
  * @param {function(import('@typescript-eslint/utils').TSESTree.Node): boolean} callback
@@ -134,6 +144,8 @@ const findClosest = (node, callback) => {
 };
 
 /**
+ * Find parent node that matches the callback predicate.
+ *
  * @public
  * @param {import('@typescript-eslint/utils').TSESTree.Node | undefined} node
  * @param {function(import('@typescript-eslint/utils').TSESTree.Node): boolean} callback
@@ -183,16 +195,20 @@ const getDeclarationsByNode = (services, node) => {
 };
 
 /**
+ * Get callee node from given node's type.
+ *
  * @public
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  * @return {import('@typescript-eslint/utils').TSESTree.Node | null}
  */
 const getCallee = (node) => {
   switch (node.type) {
+    // Setter
     case AST_NODE_TYPES.AssignmentExpression:
       return node.left;
     case AST_NODE_TYPES.CallExpression:
       return node.callee;
+    // Getter
     case AST_NODE_TYPES.MemberExpression:
       return node.property;
     case AST_NODE_TYPES.Identifier:
@@ -204,6 +220,8 @@ const getCallee = (node) => {
 };
 
 /**
+ * Get declaration node of callee from given node's type.
+ *
  * @public
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
  * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
@@ -280,6 +298,8 @@ const getJSDocThrowsTags = (node) =>
   (ts.getAllJSDocTagsOfKind(node, ts.SyntaxKind.JSDocThrowsTag));
 
 /**
+ * Grab types from only typed throws tags.
+ *
  * @public
  * @param {import('typescript').TypeChecker} checker
  * @param {import('typescript').Node} node
@@ -345,6 +365,8 @@ const isFunctionNode = (node) => {
 };
 
 /**
+ * Check if type is exactly a Promise type.
+ *
  * @public
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
  * @param {import('typescript').Type} type
@@ -387,6 +409,8 @@ const findClosestFunctionNode = (node) => {
 };
 
 /**
+ * Check if node is a callback function of Promise constructor.
+ *
  * @public
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  */
@@ -399,6 +423,8 @@ const isPromiseConstructorCallbackNode = (node) => {
 };
 
 /**
+ * Check if node is a callback function of one of the promise chain thenable methods.
+ *
  * @public
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  */
