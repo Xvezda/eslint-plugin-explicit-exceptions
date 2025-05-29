@@ -28,7 +28,9 @@ class TypeMap {
     if (!this.map.has(key)) {
       this.map.set(key, []);
     }
-    return this.map.get(key)?.push(...types);
+    const items = this.get(node);
+    items.push(...types);
+    return items;
   }
 
   /**

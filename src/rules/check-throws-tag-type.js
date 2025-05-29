@@ -18,6 +18,7 @@ const {
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
   getCalleeDeclaration,
+  findParent,
   findClosestFunctionNode,
   findNodeToComment,
   findIdentifierDeclaration,
@@ -147,6 +148,25 @@ module.exports = createRule({
     const visitedExpressionNodes = new Set();
 
     /**
+     * @typedef {import('@typescript-eslint/utils').TSESTree.Node | import('typescript').Type} MetadataKey
+     * @type {WeakMap<MetadataKey, { pos: number }>}
+     */
+    const metadata = new WeakMap();
+
+    /**
+     * @template {MetadataKey[]} T
+     * @param {T} items
+     */
+    const toSorted = (items) => {
+      return [...items]
+        .sort((a, b) => {
+          const aPos = metadata.get(a)?.pos ?? 0;
+          const bPos = metadata.get(b)?.pos ?? 0;
+          return aPos - bPos;
+        });
+    };
+
+    /**
      * Group throw statements in functions
      * Using function as a key
      * @type {Map<string, import('@typescript-eslint/utils').TSESTree.ThrowStatement[]>}
@@ -178,7 +198,7 @@ module.exports = createRule({
 
       if (isInHandledContext(node)) return;
 
-      const callerDeclaration = findClosestFunctionNode(node);
+      const callerDeclaration = findClosestFunctionNode(node.parent);
       if (!callerDeclaration) return;
 
       const calleeDeclaration = getCalleeDeclaration(services, node);
@@ -187,10 +207,25 @@ module.exports = createRule({
       const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
       if (!calleeThrowsTypes.length) return;
 
-      const nodeToComment = findNodeToComment(callerDeclaration);
-      if (!nodeToComment) return;
+      if (
+        isPromiseConstructorCallbackNode(callerDeclaration) ||
+        isThenableCallbackNode(callerDeclaration) ||
+        calleeThrowsTypes
+          .some(type => utils.isPromiseLike(services.program, type))
+      ) {
+        const awaitedTypes = calleeThrowsTypes
+          .map(t => checker.getAwaitedType(t) ?? t);
 
-      throwTypes.add(nodeToComment, calleeThrowsTypes);
+        rejectTypes.add(callerDeclaration, awaitedTypes);
+
+        awaitedTypes
+          .forEach(type => metadata.set(type, { pos: node.range[0] }));
+      } else {
+        throwTypes.add(callerDeclaration, calleeThrowsTypes);
+
+        calleeThrowsTypes
+          .forEach(type => metadata.set(type, { pos: node.range[0] }));
+      }
     };
 
     /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */
@@ -208,24 +243,25 @@ module.exports = createRule({
 
       if (throwStatementNodes) {
         /** @type {import('typescript').Type[]} */
-        const throwStatementTypes =
-          toFlattenedTypeArray(
-            throwStatementNodes
-              .map(n => {
-                const type = services.getTypeAtLocation(n.argument);
+        const throwStatementTypes = [];
 
-                if (
-                  useBaseTypeOfLiteral &&
-                  ts.isLiteralTypeLiteral(
-                    services.esTreeNodeToTSNodeMap.get(n.argument)
-                  )
-                ) {
-                  return checker.getBaseTypeOfLiteralType(type);
-                }
-                return type;
-              })
-          )
-          .map(t => checker.getAwaitedType(t) ?? t);
+        for (const throwStatement of throwStatementNodes) {
+          const throwType = services.getTypeAtLocation(throwStatement.argument);
+          if (
+            useBaseTypeOfLiteral &&
+            ts.isLiteralTypeLiteral(
+              services.esTreeNodeToTSNodeMap.get(throwStatement.argument)
+            )
+          ) {
+            const type = checker.getBaseTypeOfLiteralType(throwType);
+            throwStatementTypes.push(type);
+            metadata.set(type, { pos: throwStatement.range[0] });
+          } else {
+            throwStatementTypes.push(throwType);
+            metadata.set(throwType, { pos: throwStatement.range[0] });
+          }
+        }
+        throwTypes.add(node, throwStatementTypes);
 
         if (!services.esTreeNodeToTSNodeMap.has(nodeToComment)) return;
 
@@ -253,17 +289,12 @@ module.exports = createRule({
 
         const lastTagtypeNode = getLast(throwsTagTypeNodes);
         if (!lastTagtypeNode) return;
-
-        throwTypes.add(nodeToComment, throwStatementTypes);
       }
-
-      const callerDeclaration = findClosestFunctionNode(node);
-      if (!callerDeclaration) return;
 
       const throwableTypes =
         toFlattenedTypeArray(
           /** @type {import('typescript').Type[]} */(
-          throwTypes.get(callerDeclaration)
+          throwTypes.get(node)
             ?.map(t => checker.getAwaitedType(t) ?? t)
           )
         );
@@ -271,7 +302,7 @@ module.exports = createRule({
       const rejectableTypes =
         toFlattenedTypeArray(
           /** @type {import('typescript').Type[]} */(
-          rejectTypes.get(callerDeclaration)
+          rejectTypes.get(node)
             ?.map(t => checker.getAwaitedType(t) ?? t)
           )
         );
@@ -282,7 +313,7 @@ module.exports = createRule({
       ) return;
 
       const callerDeclarationTSNode =
-        getDeclarationTSNodeOfESTreeNode(services, callerDeclaration);
+        getDeclarationTSNodeOfESTreeNode(services, node);
 
       if (!callerDeclarationTSNode) return;
 
@@ -338,13 +369,12 @@ module.exports = createRule({
               `Promise<${
                 typesToUnionString(
                   checker,
-                  [
+                  toSorted([
                     ...throwableTypes,
                     ...rejectableTypes,
-                  ]
+                  ])
                 )
-              }>`,
-            );
+              }>`);
           },
         });
         return;
@@ -385,10 +415,10 @@ module.exports = createRule({
               appendThrowsTags(
                 appendThrowsTags(
                   callerJSDocTSNode.getFullText(),
-                  [...throwTypeGroups.source.incompatible ?? []]
+                  toSorted([...throwTypeGroups.source.incompatible ?? []])
                     .map(t => utils.getTypeName(checker, t))
                 ),
-                [...rejectTypeGroups.source.incompatible ?? []]
+                toSorted([...rejectTypeGroups.source.incompatible ?? []])
                   .map(t => `Promise<${utils.getTypeName(checker, t)}>`)
               )
             );
@@ -406,19 +436,19 @@ module.exports = createRule({
             [lastThrowsTypeNode.pos, lastThrowsTypeNode.end],
             node.async
               ? `Promise<${
-                typesToUnionString(checker, [...throwableTypes, ...rejectableTypes])
+                typesToUnionString(checker, toSorted([...throwableTypes, ...rejectableTypes]))
               }>`
               : [
                 throwableTypes.length
                   ? typesToUnionString(
-                    checker, throwableTypes,
+                    checker, toSorted(throwableTypes),
                   )
                   : '',
                 rejectableTypes.length
                   ? `Promise<${
                     typesToUnionString(
                       checker,
-                      rejectableTypes,
+                      toSorted(rejectableTypes),
                     )}>`
                   : '',
               ].filter(t => !!t).join(' | ')
@@ -431,11 +461,8 @@ module.exports = createRule({
      * @typedef {import('@typescript-eslint/utils').TSESTree.FunctionLike | import('@typescript-eslint/utils').TSESTree.Identifier | import('@typescript-eslint/utils').TSESTree.MemberExpression} PromiseCallbackType
      * @param {PromiseCallbackType} node
      */
-    const visitPromiseCallback = (node) => {
-      if (isInAsyncHandledContext(sourceCode, node)) return;
-
-      const nodeToComment = findNodeToComment(node);
-      if (!nodeToComment) return;
+    const visitPromiseCallbackOnExit = (node) => {
+      if (isInAsyncHandledContext(sourceCode, node.parent)) return;
 
       const isPromiseConstructorCallback =
         isPromiseConstructorCallbackNode(node) &&
@@ -462,6 +489,48 @@ module.exports = createRule({
         !isPromiseConstructorCallback &&
         !isThenableCallback
       ) return;
+
+      const isPromiseReturned =
+        // Return immediately
+        (isPromiseConstructorCallback &&
+          node.parent.type === AST_NODE_TYPES.NewExpression &&
+          node.parent.parent?.type === AST_NODE_TYPES.ReturnStatement ||
+          node.parent.parent?.type === AST_NODE_TYPES.ArrowFunctionExpression &&
+          node.parent.parent.body.type !== AST_NODE_TYPES.BlockStatement
+        ) ||
+        (isThenableCallback && findParent(node, n =>
+          n.type === AST_NODE_TYPES.CallExpression &&
+          n.parent?.type === AST_NODE_TYPES.ReturnStatement ||
+          n.parent?.type === AST_NODE_TYPES.ArrowFunctionExpression &&
+          n.parent.body.type !== AST_NODE_TYPES.BlockStatement
+        )) ||
+        // Promise is assigned and returned
+        sourceCode.getScope(node.parent)
+          ?.references
+          .map(ref => ref.identifier)
+          .some(n =>
+            findParent(n, p =>
+              p.type === AST_NODE_TYPES.ReturnStatement ||
+              p.type === AST_NODE_TYPES.ArrowFunctionExpression &&
+              p.body.type !== AST_NODE_TYPES.BlockStatement
+            )
+          );
+
+      if (!isPromiseReturned) return;
+
+      /**
+       * Find function where promise is actually returned.
+       */ 
+      let promiseReturningFunction = findClosestFunctionNode(node.parent);
+      while (
+        promiseReturningFunction &&
+        (isPromiseConstructorCallbackNode(promiseReturningFunction) ||
+          isThenableCallbackNode(promiseReturningFunction))
+      ) {
+        promiseReturningFunction =
+          findClosestFunctionNode(promiseReturningFunction.parent);
+      }
+      if (!promiseReturningFunction) return;
 
       /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */
       let callbackNode = null;
@@ -516,15 +585,28 @@ module.exports = createRule({
         const rejectCallbackNode = callbackNode.params[1];
         if (rejectCallbackNode.type !== AST_NODE_TYPES.Identifier) return;
 
-        const argumentTypes =
+        const functionCallNodes =
           findFunctionCallNodes(sourceCode, rejectCallbackNode)
-            .filter(expr => expr.arguments.length > 0)
+            .filter(expr => expr.arguments.length > 0);
+
+        const argumentTypes =
+          functionCallNodes
             .map(expr => services.getTypeAtLocation(expr.arguments[0]));
 
-        rejectTypes.add(
-          nodeToComment,
-          toFlattenedTypeArray(argumentTypes)
-        );
+        argumentTypes.forEach((type, i) => {
+          const flattenedTypes = toFlattenedTypeArray([type]);
+
+          rejectTypes
+            .add(
+              promiseReturningFunction,
+              flattenedTypes,
+            );
+
+          flattenedTypes
+            .forEach(t => {
+              metadata.set(t, { pos: functionCallNodes[i].range[0] });
+            });
+        });
       }
 
       if (throwStatementsInFunction.has(getNodeID(callbackNode))) {
@@ -533,10 +615,15 @@ module.exports = createRule({
           ?.map(n => services.getTypeAtLocation(n.argument));
 
         if (throwStatementTypes) {
-          rejectTypes.add(
-            nodeToComment,
-            toFlattenedTypeArray(throwStatementTypes)
-          );
+          const flattenedTypes = toFlattenedTypeArray(throwStatementTypes);
+
+          rejectTypes
+            .add(promiseReturningFunction, flattenedTypes);
+
+          flattenedTypes
+            .forEach(t => {
+              metadata.set(t, { pos: callbackNode.range[0] });
+            });
         }
       }
 
@@ -546,10 +633,17 @@ module.exports = createRule({
       );
 
       if (callbackThrowsTagTypes.length) {
+        const flattenedTypes = 
+          toFlattenedTypeArray(callbackThrowsTagTypes);
+
         rejectTypes.add(
-          nodeToComment,
-          toFlattenedTypeArray(callbackThrowsTagTypes)
+          promiseReturningFunction,
+          flattenedTypes,
         );
+
+        flattenedTypes.forEach(t => {
+          metadata.set(t, { pos: callbackNode.range[0] });
+        });
       }
     };
 
@@ -568,6 +662,7 @@ module.exports = createRule({
           (throwStatementsInFunction.get(getNodeID(currentFunction)));
 
         throwStatementNodes.push(node);
+        metadata.set(node, { pos: node.range[0] });
       },
       ':function MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
       ':function CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
@@ -580,12 +675,12 @@ module.exports = createRule({
        * //          ^ here
        * ```
        */
-      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > :function:first-child':
-        visitPromiseCallback,
-      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > Identifier:first-child':
-        visitPromiseCallback,
-      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > MemberExpression:first-child':
-        visitPromiseCallback,
+      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > :function:first-child:exit':
+        visitPromiseCallbackOnExit,
+      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > Identifier:first-child:exit':
+        visitPromiseCallbackOnExit,
+      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > MemberExpression:first-child:exit':
+        visitPromiseCallbackOnExit,
       /**
        * @example
        * ```
@@ -595,12 +690,12 @@ module.exports = createRule({
        * //                       ^ or here
        * ```
        */
-      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > :function:first-child':
-        visitPromiseCallback,
-      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > Identifier:first-child':
-        visitPromiseCallback,
-      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > MemberExpression:first-child':
-        visitPromiseCallback,
+      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > :function:first-child:exit':
+        visitPromiseCallbackOnExit,
+      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > Identifier:first-child:exit':
+        visitPromiseCallbackOnExit,
+      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > MemberExpression:first-child:exit':
+        visitPromiseCallbackOnExit,
 
       /**
        * Process collected types when each function node exits

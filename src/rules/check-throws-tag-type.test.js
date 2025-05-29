@@ -790,6 +790,57 @@ ruleTester.run(
           { messageId: 'throwTypeMismatch' },
         ],
       },
+      {
+        code: `
+          /**
+           * @throws {Promise<SyntaxError>}
+           */
+          function foo() {
+            const obj = {
+              bar: (resolve, reject) => {
+                reject(new RangeError());
+              },
+              /**
+               * @throws {Promise<TypeError>}
+               */
+              baz: () => {
+                return new Promise((resolve, reject) => {
+                  reject(new TypeError());
+                });
+              }
+            };
+
+            return new Promise(obj.bar)
+              .then(obj.baz);
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<RangeError | TypeError>}
+           */
+          function foo() {
+            const obj = {
+              bar: (resolve, reject) => {
+                reject(new RangeError());
+              },
+              /**
+               * @throws {Promise<TypeError>}
+               */
+              baz: () => {
+                return new Promise((resolve, reject) => {
+                  reject(new TypeError());
+                });
+              }
+            };
+
+            return new Promise(obj.bar)
+              .then(obj.baz);
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
     ],
   },
 );
