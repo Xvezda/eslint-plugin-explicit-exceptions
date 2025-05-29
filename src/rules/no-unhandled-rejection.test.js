@@ -68,6 +68,47 @@ ruleTester.run(
             return Promise.reject(new Error());
           }
 
+          foo().then(() => {}, () => {});
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.reject(new Error());
+          }
+
+          const promise = foo();
+          console.log('do something catch later');
+
+          promise.then(() => {}, () => {});
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.reject(new Error());
+          }
+
+          function bar() {
+            foo().then(() => {}, () => {});
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          function foo() {
+            return Promise.reject(new Error());
+          }
+
           async function bar() {
             try {
               await foo()

@@ -625,7 +625,11 @@ const isCatchMethodCalled = (node) => {
     node.parent?.parent?.type === AST_NODE_TYPES.CallExpression &&
     node.parent?.type === AST_NODE_TYPES.MemberExpression &&
     node.parent.property.type === AST_NODE_TYPES.Identifier &&
-    node.parent.property.name === 'catch'
+    (node.parent.property.name === 'catch' ||
+      node.parent.property.name === 'then' &&
+      node.parent.parent.arguments.length >= 2 &&
+      isFunctionNode(node.parent.parent.arguments[1])
+    )
   );
 };
 
