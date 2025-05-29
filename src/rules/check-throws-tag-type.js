@@ -10,6 +10,7 @@ const {
   getLast,
   isInHandledContext,
   isInAsyncHandledContext,
+  isNodeReturned,
   isPromiseType,
   isPromiseConstructorCallbackNode,
   isThenableCallbackNode,
@@ -19,6 +20,7 @@ const {
   getJSDocThrowsTagTypes,
   getCalleeDeclaration,
   findParent,
+  findClosest,
   findClosestFunctionNode,
   findNodeToComment,
   findIdentifierDeclaration,
@@ -493,17 +495,6 @@ module.exports = createRule({
         !isThenableCallback
       ) return;
 
-      /**
-       * @param {import('@typescript-eslint/utils').TSESTree.Node} node
-       */
-      const isNodeReturned = (node) => {
-        return (
-          node.parent?.type === AST_NODE_TYPES.ReturnStatement ||
-          node.parent?.type === AST_NODE_TYPES.ArrowFunctionExpression &&
-          node.parent.body.type !== AST_NODE_TYPES.BlockStatement
-        );
-      };
-
       const isPromiseReturned =
         // Return immediately
         (isPromiseConstructorCallback &&
@@ -518,7 +509,7 @@ module.exports = createRule({
         sourceCode.getScope(node.parent)
           ?.references
           .map(ref => ref.identifier)
-          .some(n => findParent(n, p => isNodeReturned(p)));
+          .some(n => findClosest(n, isNodeReturned));
 
       if (!isPromiseReturned) return;
 

@@ -680,6 +680,18 @@ const isInAsyncHandledContext = (sourceCode, node) => {
   return rejectionHandled;
 };
 
+/**
+ * @public
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ */
+const isNodeReturned = (node) => {
+  return (
+    node.parent?.type === AST_NODE_TYPES.ReturnStatement ||
+    node.parent?.type === AST_NODE_TYPES.ArrowFunctionExpression &&
+    node.parent?.body.type !== AST_NODE_TYPES.BlockStatement
+  );
+};
+
 module.exports = {
   TypeMap,
   getFirst,
@@ -702,6 +714,7 @@ module.exports = {
   findIdentifierDeclaration,
   isInHandledContext,
   isInAsyncHandledContext,
+  isNodeReturned,
   isPromiseType,
   isPromiseConstructorCallbackNode,
   isAccessorNode,
