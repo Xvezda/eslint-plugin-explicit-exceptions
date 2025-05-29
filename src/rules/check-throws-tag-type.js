@@ -76,16 +76,24 @@ module.exports = createRule({
     const throwStatements = new Map();
 
     /**
-     * Group callee throws types by caller declaration.
+     * Group of throwable types in functions
      */
     const throwTypes = new TypeMap();
 
     /**
-     * Types which thrown or rejected and should be wrapped into `Promise<...>` later
+     * Group of promise rejectable types in functions
+     * Since `Promise<Error>` is own convention of this project,
+     * these types should be wrapped into `Promise<...>` later
      */
     const rejectTypes = new TypeMap();
 
-    /** @param {import('@typescript-eslint/utils').TSESTree.Expression} node */
+    /**
+     * Visit function call node and collect types.
+     * Since JavaScript has implicit function call via getters and setters,
+     * this function handles those cases too.
+     *
+     * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
+     */
     const visitExpression = (node) => {
       if (visitedExpressionNodes.has(getNodeID(node))) return;
       visitedExpressionNodes.add(getNodeID(node));
@@ -109,19 +117,16 @@ module.exports = createRule({
 
     /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */
     const visitFunctionOnExit = (node) => {
-      const functionDeclaration = findClosestFunctionNode(node);
-      if (!functionDeclaration) return;
+      if (visitedFunctionNodes.has(getNodeID(node))) return;
+      visitedFunctionNodes.add(getNodeID(node));
 
-      if (visitedFunctionNodes.has(getNodeID(functionDeclaration))) return;
-      visitedFunctionNodes.add(getNodeID(functionDeclaration));
-
-      const nodeToComment = findNodeToComment(functionDeclaration);
+      const nodeToComment = findNodeToComment(node);
       if (!nodeToComment) return;
 
       if (!hasJSDocThrowsTag(sourceCode, nodeToComment)) return;
 
       const throwStatementNodes =
-        throwStatements.get(getNodeID(functionDeclaration));
+        throwStatements.get(getNodeID(node));
 
       if (throwStatementNodes) {
         /** @type {import('typescript').Type[]} */
@@ -146,7 +151,7 @@ module.exports = createRule({
         if (!services.esTreeNodeToTSNodeMap.has(nodeToComment)) return;
 
         const functionDeclarationTSNode =
-          services.esTreeNodeToTSNodeMap.get(functionDeclaration);
+          services.esTreeNodeToTSNodeMap.get(node);
 
         const throwsTags = getJSDocThrowsTags(functionDeclarationTSNode);
         const throwsTagTypeNodes = throwsTags
@@ -175,7 +180,7 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
-      const calleeThrowTypes =
+      const throwableTypes =
         toFlattenedTypeArray(
           /** @type {import('typescript').Type[]} */(
           throwTypes.get(callerDeclaration)
@@ -183,7 +188,7 @@ module.exports = createRule({
           )
         );
 
-      const calleeRejectTypes =
+      const rejectableTypes =
         toFlattenedTypeArray(
           /** @type {import('typescript').Type[]} */(
           rejectTypes.get(callerDeclaration)
@@ -191,28 +196,28 @@ module.exports = createRule({
           )
         );
 
-      if (!calleeThrowTypes && !calleeRejectTypes) return;
+      if (!throwableTypes && !rejectableTypes) return;
 
       const callerDeclarationTSNode =
         getDeclarationTSNodeOfESTreeNode(services, callerDeclaration);
 
       if (!callerDeclarationTSNode) return;
 
-      const callerThrowsTags = getJSDocThrowsTags(callerDeclarationTSNode);
-      const callerThrowsTypeNodes =
-        callerThrowsTags
+      const documentedThrowsTags = getJSDocThrowsTags(callerDeclarationTSNode);
+      const documentedThrowsTypeNodes =
+        documentedThrowsTags
           .map(tag => tag.typeExpression?.type)
           .filter(tag => !!tag);
 
-      if (!callerThrowsTypeNodes.length) return;
+      if (!documentedThrowsTypeNodes.length) return;
 
-      const callerThrowTypes =
+      const documentedThrowTypes =
         toFlattenedTypeArray(
           getJSDocThrowsTagTypes(checker, callerDeclarationTSNode)
             .filter(type => !isPromiseType(services, type))
         );
 
-      const callerRejectTypes =
+      const documentedRejectTypes =
         toFlattenedTypeArray(
           getJSDocThrowsTagTypes(checker, callerDeclarationTSNode)
             .filter(type => isPromiseType(services, type))
@@ -222,17 +227,17 @@ module.exports = createRule({
 
       const throwTypeGroups = groupTypesByCompatibility(
         services.program,
-        calleeThrowTypes,
-        callerThrowTypes,
+        throwableTypes,
+        documentedThrowTypes,
       );
 
       const rejectTypeGroups = groupTypesByCompatibility(
         services.program,
-        calleeRejectTypes,
-        callerRejectTypes,
+        rejectableTypes,
+        documentedRejectTypes,
       );
 
-      const lastThrowsTypeNode = getLast(callerThrowsTypeNodes);
+      const lastThrowsTypeNode = getLast(documentedThrowsTypeNodes);
       if (!lastThrowsTypeNode) return;
 
       // All thrown types must be documented as promise if it's in called async function
@@ -271,10 +276,10 @@ module.exports = createRule({
         !rejectTypeGroups.source.incompatible
       ) return;
 
-      const lastThrowsTag = getLast(callerThrowsTags);
+      const lastThrowsTag = getLast(documentedThrowsTags);
       if (!lastThrowsTag) return;
 
-      if (callerThrowsTags.length > 1) {
+      if (documentedThrowsTags.length > 1) {
         const callerJSDocTSNode = lastThrowsTag.parent;
         /**
          * @param {string} jsdocString
@@ -285,7 +290,6 @@ module.exports = createRule({
           typeStrings.reduce((acc, typeString) =>
             acc.replace(
               /([^*\n]+)(\*+[/])/,
-              // `$1* @throws {${utils.getTypeName(checker, t)}}\n$1$2`
               `$1* @throws {${typeString}}\n$1$2`
             ),
             jsdocString
@@ -362,9 +366,6 @@ module.exports = createRule({
       const nodeToComment = findNodeToComment(node);
       if (!nodeToComment) return;
 
-      const functionDeclaration = findClosestFunctionNode(nodeToComment);
-      if (!functionDeclaration) return;
-
       const isPromiseConstructorCallback =
         isPromiseConstructorCallbackNode(node) &&
         utils.isPromiseConstructorLike(
@@ -415,7 +416,10 @@ module.exports = createRule({
       const isRejectCallbackNameDeclared =
         callbackNode.params.length >= 2;
 
-      if (isRejectCallbackNameDeclared) {
+      if (
+        isPromiseConstructorCallback &&
+        isRejectCallbackNameDeclared
+      ) {
         const rejectCallbackNode = callbackNode.params[1];
         if (rejectCallbackNode.type !== AST_NODE_TYPES.Identifier) return;
 
@@ -439,7 +443,7 @@ module.exports = createRule({
           .map(ref => services.getTypeAtLocation(ref.arguments[0]));
 
         rejectTypes.add(
-          functionDeclaration,
+          nodeToComment,
           toFlattenedTypeArray(argumentTypes)
         );
       }
@@ -451,7 +455,7 @@ module.exports = createRule({
 
         if (throwStatementTypes) {
           rejectTypes.add(
-            functionDeclaration,
+            nodeToComment,
             toFlattenedTypeArray(throwStatementTypes)
           );
         }
@@ -464,7 +468,7 @@ module.exports = createRule({
 
       if (callbackThrowsTagTypes.length) {
         rejectTypes.add(
-          functionDeclaration,
+          nodeToComment,
           toFlattenedTypeArray(callbackThrowsTagTypes)
         );
       }
@@ -474,15 +478,15 @@ module.exports = createRule({
       ThrowStatement(node) {
         if (isInHandledContext(node)) return; 
 
-        const functionDeclaration = findClosestFunctionNode(node);
-        if (!functionDeclaration) return;
+        const currentFunction = findClosestFunctionNode(node);
+        if (!currentFunction) return;
 
-        if (!throwStatements.has(getNodeID(functionDeclaration))) {
-          throwStatements.set(getNodeID(functionDeclaration), []);
+        if (!throwStatements.has(getNodeID(currentFunction))) {
+          throwStatements.set(getNodeID(currentFunction), []);
         }
         const throwStatementNodes =
           /** @type {import('@typescript-eslint/utils').TSESTree.ThrowStatement[]} */
-          (throwStatements.get(getNodeID(functionDeclaration)));
+          (throwStatements.get(getNodeID(currentFunction)));
 
         throwStatementNodes.push(node);
       },
@@ -497,6 +501,7 @@ module.exports = createRule({
       'FunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitExpression,
 
       /**
+       * @example
        * ```
        * new Promise(...)
        * //          ^ here
@@ -509,6 +514,7 @@ module.exports = createRule({
       'NewExpression[callee.type="Identifier"][callee.name="Promise"] > Identifier:first-child':
         visitPromiseCallback,
       /**
+       * @example
        * ```
        * new Promise(...).then(...)
        * //                    ^ here
@@ -523,6 +529,9 @@ module.exports = createRule({
       'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > Identifier:first-child':
         visitPromiseCallback,
 
+      /**
+       * Process collected types when each function node exits
+       */
       'FunctionDeclaration:exit': visitFunctionOnExit,
       'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:exit': visitFunctionOnExit,
       'Property > ArrowFunctionExpression:exit': visitFunctionOnExit,

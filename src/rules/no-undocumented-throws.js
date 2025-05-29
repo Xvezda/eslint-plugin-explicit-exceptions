@@ -71,17 +71,25 @@ module.exports = createRule({
     const throwStatements = new Map();
 
     /**
-     * Group callee throws types by caller declaration.
+     * Group of throwable types in functions
      */
     const throwTypes = new TypeMap();
 
     /**
-     * Types which thrown or rejected and should be wrapped into `Promise<...>` later
+     * Group of promise rejectable types in functions
+     * Since `Promise<Error>` is own convention of this project,
+     * these types should be wrapped into `Promise<...>` later
      */
     const rejectTypes = new TypeMap();
 
-    /** @param {import('@typescript-eslint/utils').TSESTree.Expression} node */
-    const visitExpression = (node) => {
+    /**
+     * Visit function call node and collect types.
+     * Since JavaScript has implicit function call via getters and setters,
+     * this function handles those cases too.
+     *
+     * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
+     */
+    const visitFunctionCallNode = (node) => {
       if (visitedExpressionNodes.has(getNodeID(node))) return;
       visitedExpressionNodes.add(getNodeID(node));
 
@@ -139,7 +147,7 @@ module.exports = createRule({
         throwTypes.add(callerDeclaration, throwStatementTypes);
       }
 
-      const calleeThrowTypes =
+      const throwableTypes =
         toFlattenedTypeArray(
           /** @type {import('typescript').Type[]} */(
           throwTypes.get(callerDeclaration)
@@ -147,7 +155,7 @@ module.exports = createRule({
           )
         );
 
-      const calleeRejectTypes =
+      const rejectableTypes =
         toFlattenedTypeArray(
           /** @type {import('typescript').Type[]} */(
           rejectTypes.get(callerDeclaration)
@@ -156,8 +164,8 @@ module.exports = createRule({
         );
 
       if (
-        !calleeThrowTypes.length &&
-        !calleeRejectTypes.length
+        !throwableTypes.length &&
+        !rejectableTypes.length
       ) return;
 
       if (hasJSDocThrowsTag(sourceCode, nodeToComment)) return;
@@ -173,16 +181,16 @@ module.exports = createRule({
           const newType =
             node.async
             ? `Promise<${typesToUnionString(checker, [
-              ...calleeThrowTypes,
-              ...calleeRejectTypes,
+              ...throwableTypes,
+              ...rejectableTypes,
             ])}>`
             : [
-              ...calleeThrowTypes.length
-              ? [typesToUnionString(checker, calleeThrowTypes)]
-              : [],
-              ...calleeRejectTypes.length
-              ? [`Promise<${typesToUnionString(checker, calleeRejectTypes)}>`]
-              : [],
+              ...throwableTypes.length
+                ? [typesToUnionString(checker, throwableTypes)]
+                : [],
+              ...rejectableTypes.length
+                ? [`Promise<${typesToUnionString(checker, rejectableTypes)}>`]
+                : [],
             ].join(' | ');
 
           return fixer
@@ -206,9 +214,6 @@ module.exports = createRule({
 
       const nodeToComment = findNodeToComment(node);
       if (!nodeToComment) return;
-
-      const functionDeclaration = findClosestFunctionNode(nodeToComment);
-      if (!functionDeclaration) return;
 
       const isPromiseConstructorCallback =
         isPromiseConstructorCallbackNode(node) &&
@@ -260,7 +265,10 @@ module.exports = createRule({
       const isRejectCallbackNameDeclared =
         callbackNode.params.length >= 2;
 
-      if (isRejectCallbackNameDeclared) {
+      if (
+        isPromiseConstructorCallback &&
+        isRejectCallbackNameDeclared
+      ) {
         const rejectCallbackNode = callbackNode.params[1];
         if (rejectCallbackNode.type !== AST_NODE_TYPES.Identifier) return;
 
@@ -284,7 +292,7 @@ module.exports = createRule({
           .map(ref => services.getTypeAtLocation(ref.arguments[0]));
 
         rejectTypes.add(
-          functionDeclaration,
+          nodeToComment,
           toFlattenedTypeArray(argumentTypes)
         );
       }
@@ -296,7 +304,7 @@ module.exports = createRule({
 
         if (throwStatementTypes) {
           rejectTypes.add(
-            functionDeclaration,
+            nodeToComment,
             toFlattenedTypeArray(throwStatementTypes)
           );
         }
@@ -309,7 +317,7 @@ module.exports = createRule({
 
       if (callbackThrowsTagTypes.length) {
         rejectTypes.add(
-          functionDeclaration,
+          nodeToComment,
           toFlattenedTypeArray(callbackThrowsTagTypes)
         );
       }
@@ -319,29 +327,30 @@ module.exports = createRule({
       ThrowStatement(node) {
         if (isInHandledContext(node)) return; 
 
-        const functionDeclaration = findClosestFunctionNode(node);
-        if (!functionDeclaration) return;
+        const currentFunction = findClosestFunctionNode(node);
+        if (!currentFunction) return;
 
-        if (!throwStatements.has(getNodeID(functionDeclaration))) {
-          throwStatements.set(getNodeID(functionDeclaration), []);
+        if (!throwStatements.has(getNodeID(currentFunction))) {
+          throwStatements.set(getNodeID(currentFunction), []);
         }
         const throwStatementNodes =
           /** @type {import('@typescript-eslint/utils').TSESTree.ThrowStatement[]} */
-          (throwStatements.get(getNodeID(functionDeclaration)));
+          (throwStatements.get(getNodeID(currentFunction)));
 
         throwStatementNodes.push(node);
       },
-      'ArrowFunctionExpression MemberExpression[property.type="Identifier"]': visitExpression,
-      'FunctionDeclaration MemberExpression[property.type="Identifier"]': visitExpression,
-      'FunctionExpression MemberExpression[property.type="Identifier"]': visitExpression,
-      'ArrowFunctionExpression CallExpression[callee.type="Identifier"]': visitExpression,
-      'FunctionDeclaration CallExpression[callee.type="Identifier"]': visitExpression,
-      'FunctionExpression CallExpression[callee.type="Identifier"]': visitExpression,
-      'ArrowFunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitExpression,
-      'FunctionDeclaration AssignmentExpression[left.type="MemberExpression"]': visitExpression,
-      'FunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitExpression,
+      'ArrowFunctionExpression MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
+      'FunctionDeclaration MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
+      'FunctionExpression MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
+      'ArrowFunctionExpression CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
+      'FunctionDeclaration CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
+      'FunctionExpression CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
+      'ArrowFunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
+      'FunctionDeclaration AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
+      'FunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
 
       /**
+       * @example
        * ```
        * new Promise(...)
        * //          ^ here
@@ -354,6 +363,7 @@ module.exports = createRule({
       'NewExpression[callee.type="Identifier"][callee.name="Promise"] > Identifier:first-child:exit':
         visitPromiseCallbackOnExit,
       /**
+       * @example
        * ```
        * new Promise(...).then(...)
        * //                    ^ here
@@ -368,6 +378,9 @@ module.exports = createRule({
       'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > Identifier:first-child:exit':
         visitPromiseCallbackOnExit,
 
+      /**
+       * Process collected types when each function node exits
+       */
       'FunctionDeclaration:exit': visitFunctionOnExit,
       'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > ArrowFunctionExpression:exit': visitFunctionOnExit,
       'Property > ArrowFunctionExpression:exit': visitFunctionOnExit,

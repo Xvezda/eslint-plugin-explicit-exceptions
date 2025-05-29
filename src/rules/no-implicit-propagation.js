@@ -50,7 +50,7 @@ module.exports = createRule({
     const calleeThrowsTypesGroup = new Map();
 
     /** @param {import('@typescript-eslint/utils').TSESTree.Expression} node */
-    const visitExpression = (node) => {
+    const visitFunctionCallNode = (node) => {
       if (visitedExpressionNodes.has(getNodeID(node))) return;
       visitedExpressionNodes.add(getNodeID(node));
 
@@ -73,7 +73,7 @@ module.exports = createRule({
     };
 
     /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */
-    const exitFunction = (node) => {
+    const visitFunctionOnExit = (node) => {
       if (isInHandledContext(node)) return;
 
       const callerDeclaration = findClosestFunctionNode(node);
@@ -141,19 +141,19 @@ module.exports = createRule({
 
         throwStatementNodes.push(node);
       },
-      'ArrowFunctionExpression MemberExpression[property.type="Identifier"]': visitExpression,
-      'FunctionDeclaration MemberExpression[property.type="Identifier"]': visitExpression,
-      'FunctionExpression MemberExpression[property.type="Identifier"]': visitExpression,
-      'ArrowFunctionExpression CallExpression[callee.type="Identifier"]': visitExpression,
-      'FunctionDeclaration CallExpression[callee.type="Identifier"]': visitExpression,
-      'FunctionExpression CallExpression[callee.type="Identifier"]': visitExpression,
-      'ArrowFunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitExpression,
-      'FunctionDeclaration AssignmentExpression[left.type="MemberExpression"]': visitExpression,
-      'FunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitExpression,
+      'ArrowFunctionExpression MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
+      'FunctionDeclaration MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
+      'FunctionExpression MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
+      'ArrowFunctionExpression CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
+      'FunctionDeclaration CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
+      'FunctionExpression CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
+      'ArrowFunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
+      'FunctionDeclaration AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
+      'FunctionExpression AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
 
-      'ArrowFunctionExpression:exit': exitFunction,
-      'FunctionDeclaration:exit': exitFunction,
-      'FunctionExpression:exit': exitFunction,
+      'ArrowFunctionExpression:exit': visitFunctionOnExit,
+      'FunctionDeclaration:exit': visitFunctionOnExit,
+      'FunctionExpression:exit': visitFunctionOnExit,
     };
   },
   defaultOptions: [],
