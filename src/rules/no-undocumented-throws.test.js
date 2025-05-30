@@ -2090,6 +2090,42 @@ ruleTester.run(
           { messageId: 'missingThrowsTag' },
         ],
       },
+      {
+        code: `
+          export function foo() {
+            throw new Error();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          export function foo() {
+            throw new Error();
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export default function foo() {
+            throw new Error();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          export default function foo() {
+            throw new Error();
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
     ],
   },
 );

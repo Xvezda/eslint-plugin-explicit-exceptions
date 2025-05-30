@@ -474,6 +474,12 @@ const findNodeToComment = (node) => {
      * ```
      */
     case AST_NODE_TYPES.FunctionDeclaration:
+      if (
+        node.parent?.type === AST_NODE_TYPES.ExportNamedDeclaration ||
+        node.parent?.type === AST_NODE_TYPES.ExportDefaultDeclaration
+      ) {
+        return node.parent;
+      }
       return node;
     case AST_NODE_TYPES.Identifier:
     case AST_NODE_TYPES.FunctionExpression:
