@@ -2164,6 +2164,50 @@ ruleTester.run(
       },
       {
         code: `
+          export function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          export function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export default function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          export default function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
           export const foo = function () {
             throw new Error();
           };
