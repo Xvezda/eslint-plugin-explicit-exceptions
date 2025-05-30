@@ -2144,6 +2144,60 @@ ruleTester.run(
           { messageId: 'missingThrowsTag' },
         ],
       },
+      {
+        code: `
+          export let foo = function () {
+            throw new Error();
+          };
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          export let foo = function () {
+            throw new Error();
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export const foo = () => {
+            throw new Error();
+          };
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          export const foo = () => {
+            throw new Error();
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export let foo = () => {
+            throw new Error();
+          };
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          export let foo = () => {
+            throw new Error();
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
     ],
   },
 );
