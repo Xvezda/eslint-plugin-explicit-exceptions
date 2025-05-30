@@ -5,10 +5,12 @@ const ts = require('typescript');
 const {
   TypeMap,
   getNodeID,
+  getNodeIndent,
   getFirst,
   createRule,
   hasJSDocThrowsTag,
   typesToUnionString,
+  typeStringsToUnionString,
   isInHandledContext,
   isInAsyncHandledContext,
   isNodeReturned,
@@ -126,27 +128,28 @@ module.exports = createRule({
         throwStatementsInFunction.get(getNodeID(node));
 
       if (throwStatementNodes) {
-        /** @type {import('typescript').Type[]} */
         const throwStatementTypes =
-          toFlattenedTypeArray(
-            throwStatementNodes
-              .map(n => {
-                const type = services.getTypeAtLocation(n.argument);
+          throwStatementNodes
+            .map(n => {
+              const type = services.getTypeAtLocation(n.argument);
 
-                if (
-                  useBaseTypeOfLiteral &&
-                  ts.isLiteralTypeLiteral(
-                    services.esTreeNodeToTSNodeMap.get(n.argument)
-                  )
-                ) {
-                  return checker.getBaseTypeOfLiteralType(type);
-                }
-                return type;
-              })
-          )
+              if (
+                useBaseTypeOfLiteral &&
+                ts.isLiteralTypeLiteral(
+                  services.esTreeNodeToTSNodeMap.get(n.argument)
+                )
+              ) {
+                return checker.getBaseTypeOfLiteralType(type);
+              }
+              return type;
+            });
+
+        const flattenedTypes = toFlattenedTypeArray(throwStatementTypes);
+
+        const awaitedTypes = flattenedTypes
           .map(t => checker.getAwaitedType(t) ?? t);
 
-        throwTypes.add(node, throwStatementTypes);
+        throwTypes.add(node, awaitedTypes);
       }
 
       const throwableTypes =
@@ -176,24 +179,22 @@ module.exports = createRule({
         node: nodeToComment,
         messageId: 'missingThrowsTag',
         fix(fixer) {
-          const lines = sourceCode.getLines();
-          const currentLine = lines[node.loc.start.line - 1];
-          const indent = currentLine.match(/^\s*/)?.[0] ?? '';
+          const indent = getNodeIndent(sourceCode, node);
 
-          const newType =
+          const newType = 
             node.async
-            ? `Promise<${typesToUnionString(checker, [
-              ...throwableTypes,
-              ...rejectableTypes,
-            ])}>`
-            : [
-              ...throwableTypes.length
-                ? [typesToUnionString(checker, throwableTypes)]
-                : [],
-              ...rejectableTypes.length
-                ? [`Promise<${typesToUnionString(checker, rejectableTypes)}>`]
-                : [],
-            ].join(' | ');
+              ? `Promise<${typesToUnionString(checker, [
+                ...throwableTypes,
+                ...rejectableTypes,
+              ])}>`
+              : typeStringsToUnionString([
+                ...throwableTypes.length
+                  ? [typesToUnionString(checker, throwableTypes)]
+                  : [],
+                ...rejectableTypes.length
+                  ? [`Promise<${typesToUnionString(checker, rejectableTypes)}>`]
+                  : [],
+              ]);
 
           return fixer
             .insertTextBefore(

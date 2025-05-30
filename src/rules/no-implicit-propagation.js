@@ -3,6 +3,7 @@ const { ESLintUtils } = require('@typescript-eslint/utils');
 const {
   TypeMap,
   getNodeID,
+  getNodeIndent,
   createRule,
   isInHandledContext,
   typesToUnionString,
@@ -98,9 +99,7 @@ module.exports = createRule({
         node,
         messageId: 'implicitPropagation',
         fix(fixer) {
-          const lines = sourceCode.getLines();
-          const currentLine = lines[nodeToComment.loc.start.line - 1];
-          const indent = currentLine.match(/^\s*/)?.[0] ?? '';
+          const indent = getNodeIndent(sourceCode, nodeToComment);
 
           return fixer
             .insertTextBefore(
