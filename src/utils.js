@@ -89,6 +89,22 @@ const getNodeID = (node) => {
 };
 
 /**
+ * Get indentation of the node in source code.
+ * 
+ * @public
+ * @param {Readonly<import('@typescript-eslint/utils').TSESLint.SourceCode>} sourceCode
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @returns {string}
+ */
+const getNodeIndent = (sourceCode, node) => {
+  const lines = sourceCode.getLines();
+  const currentLine = lines[node.loc.start.line - 1];
+  const indent = currentLine.match(/^\s*/)?.[0] ?? '';
+
+  return indent;
+};
+
+/**
  * Check if node has JSDoc comment with @throws or @exception tag.
  *
  * @public
@@ -111,12 +127,22 @@ const hasJSDocThrowsTag = (sourceCode, node) => {
  * Combine multiple types into union type string of given types.
  *
  * @public
+ * @param {string[]} typeStrings
+ * @return {string}
+ */
+const typeStringsToUnionString = (typeStrings) =>
+  [...new Set(typeStrings)].join(' | ');
+
+/**
+ * Combine multiple types into union type string of given types.
+ *
+ * @public
  * @param {import('typescript').TypeChecker} checker
  * @param {import('typescript').Type[]} types
  * @return {string}
  */
 const typesToUnionString = (checker, types) =>
-  [...new Set(types.map(t => utils.getTypeName(checker, t)))].join(' | ');
+  typeStringsToUnionString(types.map(t => utils.getTypeName(checker, t)))
 
 /**
  * Find closest node that matches the callback predicate.
@@ -719,9 +745,11 @@ module.exports = {
   getFirst,
   getLast,
   getNodeID,
+  getNodeIndent,
   createRule,
   hasThrowsTag,
   hasJSDocThrowsTag,
+  typeStringsToUnionString,
   typesToUnionString,
   findClosest,
   findParent,

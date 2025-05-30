@@ -26,6 +26,7 @@ const {
   findIdentifierDeclaration,
   toFlattenedTypeArray,
   typesToUnionString,
+  typeStringsToUnionString,
   findFunctionCallNodes,
 } = require('../utils');
 
@@ -443,7 +444,7 @@ module.exports = createRule({
                   toSortedByMetadata([...throwableTypes, ...rejectableTypes])
                 )
               }>`
-              : [
+              : typeStringsToUnionString([
                 throwableTypes.length
                   ? typesToUnionString(
                     checker, toSortedByMetadata(throwableTypes),
@@ -456,7 +457,7 @@ module.exports = createRule({
                       toSortedByMetadata(rejectableTypes),
                     )}>`
                   : '',
-              ].filter(t => !!t).join(' | ')
+              ].filter(t => !!t))
           );
         },
       });
