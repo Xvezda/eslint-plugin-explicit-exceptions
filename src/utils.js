@@ -474,6 +474,17 @@ const findNodeToComment = (node) => {
      * ```
      */
     case AST_NODE_TYPES.FunctionDeclaration:
+      /**
+       * Exported function declaration should be commented at export node,
+       * not at the function declaration itself.
+       *
+       * @example
+       * ```
+       * // here
+       * export default function target() { ... }
+       * //             ^ not here
+       * ```
+       */
       if (
         node.parent?.type === AST_NODE_TYPES.ExportNamedDeclaration ||
         node.parent?.type === AST_NODE_TYPES.ExportDefaultDeclaration
