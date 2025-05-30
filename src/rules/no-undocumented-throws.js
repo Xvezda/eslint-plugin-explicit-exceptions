@@ -364,6 +364,11 @@ module.exports = createRule({
     };
 
     return {
+      /**
+       * Each throws or throwable calls are collected when enter nodes,
+       * then processed when function nodes exit
+       * to efficiently avoid duplicate processing of the same nodes.
+       */
       ThrowStatement(node) {
         if (isInHandledContext(node)) return; 
 
