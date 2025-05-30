@@ -3,6 +3,7 @@ const { ESLintUtils, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const utils = require('@typescript-eslint/type-utils');
 const ts = require('typescript');
 
+// https://typescript-eslint.io/developers/eslint-plugins/#rulecreator-usage
 const createRule = ESLintUtils.RuleCreator(
   name => `https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/${name}.md`,
 );
