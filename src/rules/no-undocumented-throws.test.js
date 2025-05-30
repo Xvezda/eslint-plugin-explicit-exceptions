@@ -2128,6 +2128,42 @@ ruleTester.run(
       },
       {
         code: `
+          export async function foo() {
+            throw new Error();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          export async function foo() {
+            throw new Error();
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export default async function foo() {
+            throw new Error();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          export default async function foo() {
+            throw new Error();
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
           export const foo = function () {
             throw new Error();
           };
@@ -2191,6 +2227,78 @@ ruleTester.run(
            * @throws {Error}
            */
           export let foo = () => {
+            throw new Error();
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export const foo = async function () {
+            throw new Error();
+          };
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          export const foo = async function () {
+            throw new Error();
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export let foo = async function () {
+            throw new Error();
+          };
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          export let foo = async function () {
+            throw new Error();
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export const foo = async () => {
+            throw new Error();
+          };
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          export const foo = async () => {
+            throw new Error();
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export let foo = async () => {
+            throw new Error();
+          };
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          export let foo = async () => {
             throw new Error();
           };
         `,
