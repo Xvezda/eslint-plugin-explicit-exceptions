@@ -2090,6 +2090,266 @@ ruleTester.run(
           { messageId: 'missingThrowsTag' },
         ],
       },
+      {
+        code: `
+          export function foo() {
+            throw new Error();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          export function foo() {
+            throw new Error();
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export default function foo() {
+            throw new Error();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          export default function foo() {
+            throw new Error();
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export async function foo() {
+            throw new Error();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          export async function foo() {
+            throw new Error();
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export default async function foo() {
+            throw new Error();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          export default async function foo() {
+            throw new Error();
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          export function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export default function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          export default function foo() {
+            return new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export const foo = function () {
+            throw new Error();
+          };
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          export const foo = function () {
+            throw new Error();
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export let foo = function () {
+            throw new Error();
+          };
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          export let foo = function () {
+            throw new Error();
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export const foo = () => {
+            throw new Error();
+          };
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          export const foo = () => {
+            throw new Error();
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export let foo = () => {
+            throw new Error();
+          };
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          export let foo = () => {
+            throw new Error();
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export const foo = async function () {
+            throw new Error();
+          };
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          export const foo = async function () {
+            throw new Error();
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export let foo = async function () {
+            throw new Error();
+          };
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          export let foo = async function () {
+            throw new Error();
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export const foo = async () => {
+            throw new Error();
+          };
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          export const foo = async () => {
+            throw new Error();
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          export let foo = async () => {
+            throw new Error();
+          };
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          export let foo = async () => {
+            throw new Error();
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
     ],
   },
 );
