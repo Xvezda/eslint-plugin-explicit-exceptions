@@ -523,6 +523,8 @@ const findNodeToComment = (node) => {
         // TODO: Fallback?
         return null;
       }
+      if (!isFunctionNode(node)) return null;
+
       return (
         /**
          * @example
