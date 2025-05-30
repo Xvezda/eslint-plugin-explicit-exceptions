@@ -140,6 +140,11 @@ module.exports = createRule({
       ':function CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
       ':function AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
 
+      /**
+       * Each throws or throwable calls are collected when enter nodes,
+       * then processed when function nodes exit
+       * to efficiently avoid duplicate processing of the same nodes.
+       */
       ':function:exit': visitFunctionOnExit,
     };
   },
