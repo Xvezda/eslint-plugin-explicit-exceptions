@@ -127,11 +127,11 @@ const hasJSDocThrowsTag = (sourceCode, node) => {
  * Combine multiple types into union type string of given types.
  *
  * @public
- * @param {string[]} typesString
+ * @param {string[]} typeStrings
  * @return {string}
  */
-const typeStringsToUnionString = (typesString) =>
-  [...new Set(typesString)].join(' | ');
+const typeStringsToUnionString = (typeStrings) =>
+  [...new Set(typeStrings)].join(' | ');
 
 /**
  * Combine multiple types into union type string of given types.
