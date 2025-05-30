@@ -2126,6 +2126,24 @@ ruleTester.run(
           { messageId: 'missingThrowsTag' },
         ],
       },
+      {
+        code: `
+          export const foo = function () {
+            throw new Error();
+          };
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          export const foo = function () {
+            throw new Error();
+          };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
     ],
   },
 );

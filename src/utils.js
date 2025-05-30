@@ -549,6 +549,15 @@ const findNodeToComment = (node) => {
          * @example
          * ```
          * // here
+         * export const target = () => { ... };
+         * //                    ^ node
+         * ```
+         */
+        findParent(node, (n) => n.type === AST_NODE_TYPES.ExportNamedDeclaration) ??
+        /**
+         * @example
+         * ```
+         * // here
          * const target = () => { ... };
          * //             ^ node
          * ```
