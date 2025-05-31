@@ -31,7 +31,7 @@ jobs:
         git fetch origin _meta
         git checkout _meta
         rm -rf ./coverage.*
-        git stash apply --index
+        git stash apply
         git add coverage.svg
         git commit -m 'Update metadata'
         git push origin _meta
