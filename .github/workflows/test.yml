@@ -28,10 +28,12 @@ jobs:
         rm -rf ./coverage.txt
         git add coverage.svg
         git stash
-        git switch --orphan _meta
+        git switch --orphan _tmp
         git stash apply
         git add coverage.svg
         git commit -m 'Update metadata'
         git fetch origin _meta
-        git rebase origin/_meta
-        git push --force origin _meta
+        git switch _meta
+        git reset --hard
+        git cherry-pick -Xtheirs _tmp~1
+        git push origin _meta
