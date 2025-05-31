@@ -28,6 +28,7 @@ jobs:
         rm -rf ./coverage.txt
         git add .
         git stash
+        git fetch origin _meta
         git checkout _meta
         git stash pop
         git add .
