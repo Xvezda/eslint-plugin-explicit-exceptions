@@ -21,7 +21,7 @@ jobs:
     - run: pnpm install
     - run: pnpm run --if-present build
     - name: Run test
-      if: ${{ github.ref != 'refs/heads/master' || github.ref != 'refs/heads/main' }}
+      if: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/main' }}
       run: pnpm test --experimental-test-coverage --test-coverage-exclude='**/*.test.js' --test-coverage-exclude='test-setup.js'
     - name: Generate coverage badge
       if: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' }}
