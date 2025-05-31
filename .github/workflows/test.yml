@@ -20,7 +20,7 @@ jobs:
         cache: 'pnpm'
     - run: pnpm install
     - run: pnpm run --if-present build
-    - run: pnpm test --experimental-test-coverage --test-reporter=spec --test-reporter=spec --test-reporter-destination=stdout --test-reporter-destination=coverage.txt
+    - run: pnpm test --experimental-test-coverage --test-coverage-exclude='**/*.test.js' --test-coverage-exclude='test-setup.js' --test-reporter=spec --test-reporter=spec --test-reporter-destination=stdout --test-reporter-destination=coverage.txt
     - run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
