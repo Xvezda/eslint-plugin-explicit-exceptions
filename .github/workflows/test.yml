@@ -34,5 +34,5 @@ jobs:
         git fetch origin _meta
         git switch _meta
         git reset --hard
-        git cherry-pick -Xtheirs _tmp~1
+        git cherry-pick -Xtheirs _tmp
         git push origin _meta
