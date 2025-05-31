@@ -27,11 +27,7 @@ jobs:
         node -e 'r=fs.readFileSync("./coverage.txt", "utf8").toString().replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "").match(/all files\s+[^\d]+(\d{0,3}\.\d{0,2})/)[1] + "%";fetch("https://img.shields.io/badge/coverage-"+"X".repeat(r.length)+"-blue").then(r => r.text()).then(t => fs.writeFileSync("./coverage.svg", t.replace(new RegExp("X".repeat(r.length), "g"), r)))'
         rm -rf ./coverage.txt
         git add coverage.svg
-        git stash
-        git switch --orphan _tmp
-        git stash apply
-        git add coverage.svg
-        git commit -m 'Update metadata'
+        git stash branch _tmp
         git fetch origin _meta
         git switch _meta
         git reset --hard
