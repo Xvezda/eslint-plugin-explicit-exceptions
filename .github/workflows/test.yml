@@ -20,4 +20,4 @@ jobs:
         cache: 'pnpm'
     - run: pnpm install
     - run: pnpm run --if-present build
-    - run: pnpm test
+    - run: pnpm test --experimental-test-coverage --test-reporter=spec --test-reporter=spec --test-reporter-destination=stdout --test-reporter-destination=coverage.txt
