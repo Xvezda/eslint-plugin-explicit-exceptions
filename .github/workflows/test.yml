@@ -32,4 +32,6 @@ jobs:
         git stash apply
         git add coverage.svg
         git commit -m 'Update metadata'
+        git fetch origin _meta
+        git rebase origin _meta
         git push --force origin _meta
