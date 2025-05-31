@@ -30,6 +30,7 @@ jobs:
         git stash
         git fetch origin _meta
         git checkout _meta
+        rm -rf ./coverage.*
         git stash pop
         git add .
         git commit -m 'Update metadata'
