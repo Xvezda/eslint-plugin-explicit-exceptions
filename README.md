@@ -13,7 +13,7 @@ Just as [Java’s throws keyword](https://dev.java/learn/exceptions/throwing/) d
 - Verifies that the exception types match the documented types.
 
 ## Examples
-For functions that propagate exceptions to the caller because they aren’t wrapped in a `try…catch`, this plugin enforces the use of a `@throws` comment.
+For functions that propagate exceptions to the caller because they didn’t handle exceptions, this plugin enforces the use of a `@throws` comment.
 ```javascript
 // ❌ Error - no `@throws` tag
 function foo() {
@@ -35,14 +35,13 @@ function baz() {
 // ✅ OK
 /** @throws {Error} */
 function qux() {
-  foo();
-  baz();
+  maybeThrow();
 }
 ```
 
 It also leverages these comments for type checking, helping ensure that errors are handled safely.
 ```javascript
-// ❌ Error
+// ❌ Error - type mismatch
 /** @throws {TypeError} */
 function foo() {
   throw new RangeError();
@@ -73,7 +72,8 @@ function qux() {
 }
 ```
 
-For error classes, since TypeScript uses duck typing for type checking, this plugin treats inherited error classes as different types. However, documenting a common parent class is permitted.
+For error classes, since TypeScript uses duck typing for type checking, this plugin treats inherited error classes as different types.
+However, documenting a common parent class is permitted.
 ```javascript
 // ✅ OK
 /** @throws {RangeError | TypeError} */
@@ -104,12 +104,13 @@ function foo() {
  */
 async function bar() {
   if (randomBool()) {
-    throw new Error();  // This becomes promise rejection
+    throw new TypeError();  // This becomes promise rejection
   } else {
     return maybeThrowRangeError();
   }
 }
 ```
+For more examples, check out [examples](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/tree/master/examples) directory and rules below.
 
 ## Rules
  - [`no-implicit-propagation`](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/no-implicit-propagation.md)
