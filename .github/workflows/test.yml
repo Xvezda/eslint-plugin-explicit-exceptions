@@ -29,7 +29,7 @@ jobs:
         git add coverage.svg
         git stash
         git fetch origin _meta
-        git checkout _meta
+        git checkout --theirs _meta
         rm -rf ./coverage.*
         git stash pop
         git add coverage.svg
