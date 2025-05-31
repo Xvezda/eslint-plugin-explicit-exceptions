@@ -155,6 +155,24 @@ export default tseslint.config(
   },
 );
 ```
+
+For legacy, `.eslintrc.json`
+
+```json
+{
+  "extends": [
+    "eslint:recommended",
+    "plugin:eslint-plugin-explicit-exceptions/recommended-type-checked-legacy"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "parserOptions": {
+    "projectService": true
+  },
+  "root": true
+}
+```
+
 Check out [`typescript-eslint`](https://typescript-eslint.io/getting-started/) for more information if you having an issue with configuring.
 
 ## License

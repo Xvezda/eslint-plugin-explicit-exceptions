@@ -14,16 +14,26 @@ const plugin = {
   },
 };
 
+const rules = /** @type {const} */({
+  'explicit-exceptions/no-undocumented-throws': 'error',
+  'explicit-exceptions/no-implicit-propagation': 'error',
+  'explicit-exceptions/no-unhandled-rejection': 'error',
+  'explicit-exceptions/check-throws-tag-type': 'error',
+});
+
 const recommendedTypeChecked = /** @type {const} */({
   plugins: {
     'explicit-exceptions': plugin,
   },
-  rules: {
-    'explicit-exceptions/no-undocumented-throws': 'error',
-    'explicit-exceptions/no-implicit-propagation': 'error',
-    'explicit-exceptions/no-unhandled-rejection': 'error',
-    'explicit-exceptions/check-throws-tag-type': 'error',
-  }
+  rules, 
+});
+
+// Legacy config for backwards compatibility
+Object.assign(plugin.configs, {
+  'recommended-type-checked-legacy': {
+    plugins: ['explicit-exceptions'],
+    rules,
+  },
 });
 
 module.exports = plugin;
