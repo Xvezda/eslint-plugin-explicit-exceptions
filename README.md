@@ -12,6 +12,105 @@ Just as [Java’s throws keyword](https://dev.java/learn/exceptions/throwing/) d
 - Reports and provides fixes for async functions and Promise rejections.
 - Verifies that the exception types match the documented types.
 
+## Examples
+For functions that propagate exceptions to the caller because they aren’t wrapped in a `try…catch`, this plugin enforces the use of a `@throws` comment.
+```javascript
+// ❌ Error - no `@throws` tag
+function foo() {
+  throw new RangeError();
+}
+
+// ✅ OK - no exception propagation
+function bar() {
+  try {
+    throw new TypeError();
+  } catch {}
+}
+
+// ❌ Error
+function baz() {
+  maybeThrow();
+}
+
+// ✅ OK
+/** @throws {Error} */
+function qux() {
+  foo();
+  baz();
+}
+```
+
+It also leverages these comments for type checking, helping ensure that errors are handled safely.
+```javascript
+// ❌ Error
+/** @throws {TypeError} */
+function foo() {
+  throw new RangeError();
+}
+
+// ✅ OK
+/**
+ * @throws {TypeError}
+ * @throws {RangeError}
+ */
+function bar() {
+  maybeThrowTypeError();
+  maybeThrowRangeError();
+}
+
+// ✅ OK
+/** @throws {number} */
+function baz() {
+  throw 42;
+}
+
+// ✅ OK
+/**
+ * @throws {"error"}
+ */
+function qux() {
+  throw 'error';
+}
+```
+
+For error classes, since TypeScript uses duck typing for type checking, this plugin treats inherited error classes as different types. However, documenting a common parent class is permitted.
+```javascript
+// ✅ OK
+/** @throws {RangeError | TypeError} */
+function foo() {
+  maybeThrowRangeError();
+  maybeThrowTypeError();
+}
+
+// ✅ OK
+/** @throws {Error} */
+function bar() {
+  maybeThrowRangeError();
+  maybeThrowTypeError();
+}
+```
+
+To clearly distinguish between a synchronous throw and an asynchronous promise rejection, this plugin requires that promise rejections be documented in the special form of `Promise<Error>`.
+```javascript
+/**
+ * @throws {Promise<Error>}
+ */
+function foo() {
+  return new Promise((resolve, reject) => reject(new Error()));
+}
+
+/**
+ * @throws {Promise<TypeError | RangeError>}
+ */
+async function bar() {
+  if (randomBool()) {
+    throw new Error();  // This becomes promise rejection
+  } else {
+    return maybeThrowRangeError();
+  }
+}
+```
+
 ## Rules
  - [`no-implicit-propagation`](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/no-implicit-propagation.md)
  - [`no-undocumented-throws`](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/docs/rules/no-undocumented-throws.md)
