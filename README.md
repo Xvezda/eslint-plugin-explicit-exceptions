@@ -1,6 +1,7 @@
 # eslint-plugin-explicit-exceptions
 
 [![NPM Version](https://img.shields.io/npm/v/eslint-plugin-explicit-exceptions)](https://www.npmjs.com/package/eslint-plugin-explicit-exceptions)
+[![Coverage](https://raw.githubusercontent.com/Xvezda/eslint-plugin-explicit-exceptions/refs/heads/_meta/coverage.svg)](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/actions/workflows/test.yml)
 [![Test](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/actions/workflows/test.yml/badge.svg)](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/actions/workflows/test.yml)
 
 https://github.com/user-attachments/assets/4a833442-b8a5-462f-abeb-a28bd0e5863f
