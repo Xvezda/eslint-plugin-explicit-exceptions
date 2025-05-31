@@ -467,13 +467,6 @@ const isThenableCallbackNode = (node) => {
  */
 const findNodeToComment = (node) => {
   switch (node.type) {
-    /**
-     * @example
-     * ```
-     * // here
-     * function target() { ... }
-     * ```
-     */
     case AST_NODE_TYPES.FunctionDeclaration:
       /**
        * Exported function declaration should be commented at export node,
@@ -492,6 +485,13 @@ const findNodeToComment = (node) => {
       ) {
         return node.parent;
       }
+      /**
+       * @example
+       * ```
+       * // here
+       * function target() { ... }
+       * ```
+       */
       return node;
     case AST_NODE_TYPES.Identifier:
     case AST_NODE_TYPES.FunctionExpression:
@@ -523,6 +523,8 @@ const findNodeToComment = (node) => {
         // TODO: Fallback?
         return null;
       }
+      if (!isFunctionNode(node)) return null;
+
       return (
         /**
          * @example
