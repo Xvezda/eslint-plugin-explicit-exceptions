@@ -30,17 +30,17 @@ const {
   findClosestFunctionNode,
 } = require('./utils');
 
+const tsconfigRootDir = path.resolve(path.join(__dirname, '..'));
+const program = createProgram('tsconfig-test.json', tsconfigRootDir);
+
 /**
  * @param {string} code
  */
 function parseCode(code) {
-  const tsconfigRootDir = path.resolve(path.join(__dirname, '..'));
   const parsed = parse(code, {
     tsconfigRootDir,
     filePath: __filename,
-    programs: [
-      createProgram('tsconfig-test.json', tsconfigRootDir),
-    ],
+    programs: [program],
     projectService: {
       allowDefaultProject: ['*.js', '*.ts*'],
     },
