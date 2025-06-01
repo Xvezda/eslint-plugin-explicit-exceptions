@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const { TSESLint, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const { simpleTraverse } = require('@typescript-eslint/typescript-estree');
-const { parseForESLint: parse } = require('@typescript-eslint/parser');
+const { parseForESLint: parse, createProgram } = require('@typescript-eslint/parser');
 
 const {
   TypeMap,
@@ -38,6 +38,12 @@ function parseCode(code) {
     tsconfigRootDir: path.resolve(path.join(__dirname, '..')),
     // filePath: __filename,
     filePath: path.resolve(path.join(__dirname, 'fixture.ts')),
+    programs: [
+      createProgram(
+        'tsconfig-test.json',
+        path.resolve(path.join(__dirname, '..'))
+      )
+    ],
     projectService: {
       allowDefaultProject: ['*.js', '*.ts*'],
     },
@@ -595,7 +601,7 @@ function foo() {
   });
 
   // TODO: null type does not appears on CI environment. Why is it?
-  test.skip('toFlattenTypeArray', (t) => {
+  test('toFlattenTypeArray', (t) => {
     const { ast, services } = parseCode(`
 let a: string = 'foo';
 let b: number = 42;
