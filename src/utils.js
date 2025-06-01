@@ -279,7 +279,8 @@ const getCalleeDeclaration = (services, node) => {
           return isAccessorNode(declarationNode) &&
             declarationNode.kind === 'set';
         });
-      return setter ?? declarations[0];
+
+      return setter ?? null;
     }
     /**
      * Return type of getter when accessing
@@ -302,6 +303,9 @@ const getCalleeDeclaration = (services, node) => {
 
       if (getter) {
         return getter;
+      }
+      if (node.parent?.type !== AST_NODE_TYPES.CallExpression) {
+        return null;
       }
       // fallthrough
     }

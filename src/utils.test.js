@@ -388,8 +388,9 @@ obj.baz = 42;
     );
   });
 
-  test('getCallee', (t) => {
-    const { ast, services, sourceCode } = parseCode(`
+  describe('getCalleeDeclaration', () => {
+    test('get declaration of a function calls', (t) => {
+      const { ast, services, sourceCode } = parseCode(`
 // foo declaration
 function foo() {}
 
@@ -401,62 +402,109 @@ const obj = {
 };
 
 foo();
-const qux = obj.bar;
+const _ = obj.bar;
 obj.baz = 42;
-    `);
+      `);
 
-    /** @type {Map<string, import('@typescript-eslint/typescript-estree').TSESTree.Node>} */
-    const map = new Map();
-    simpleTraverse(ast, {
-      visitors: {
-        [AST_NODE_TYPES.CallExpression](node) {
-          map.set(AST_NODE_TYPES.CallExpression, node);
+      /** @type {Map<string, import('@typescript-eslint/typescript-estree').TSESTree.Node>} */
+      const map = new Map();
+      simpleTraverse(ast, {
+        visitors: {
+          [AST_NODE_TYPES.CallExpression](node) {
+            map.set(AST_NODE_TYPES.CallExpression, node);
+          },
+          [AST_NODE_TYPES.MemberExpression](node) {
+            if (node.parent?.type === AST_NODE_TYPES.AssignmentExpression) return;
+
+            map.set(AST_NODE_TYPES.MemberExpression, node);
+          },
+          [AST_NODE_TYPES.AssignmentExpression](node) {
+            map.set(AST_NODE_TYPES.AssignmentExpression, node);
+          },
         },
-        [AST_NODE_TYPES.MemberExpression](node) {
-          if (node.parent?.type === AST_NODE_TYPES.AssignmentExpression) return;
+      }, true);
 
-          map.set(AST_NODE_TYPES.MemberExpression, node);
+      t.assert.equal(map.size, 3);
+
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.CallExpression} */
+      const callExpression = map.get(AST_NODE_TYPES.CallExpression);
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.MemberExpression} */
+      const memberExpression = map.get(AST_NODE_TYPES.MemberExpression);
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.AssignmentExpression} */
+      const assignmentExpression = map.get(AST_NODE_TYPES.AssignmentExpression);
+
+      t.assert.ok(
+        sourceCode
+          .getCommentsBefore(
+            services.tsNodeToESTreeNodeMap
+              .get(getCalleeDeclaration(services, callExpression))
+          )
+          .some(({ value }) => value.includes('foo declaration')),
+        '`foo()` must return the declaration of `foo`',
+      );
+
+      t.assert.ok(
+        sourceCode
+          .getCommentsBefore(
+            services.tsNodeToESTreeNodeMap
+              .get(getCalleeDeclaration(services, memberExpression)),
+          )
+          .some(({ value }) => value.includes('bar declaration')),
+        '`const value = obj.bar` must return the declaration of `obj.bar`',
+      );
+
+      t.assert.ok(
+        sourceCode
+          .getCommentsBefore(
+            services.tsNodeToESTreeNodeMap
+              .get(getCalleeDeclaration(services, assignmentExpression)),
+          )
+          .some(({ value }) => value.includes('baz declaration')),
+        '`obj.baz = 42` must return the declaration of `obj.baz`',
+      );
+    });
+
+    test('return null if it is not getter or setter', (t) => {
+      const { ast, services } = parseCode(`
+const obj = {
+  bar: 123,
+  baz: 456,
+};
+
+const _ = obj.bar;
+obj.baz = 42;
+      `);
+
+      /** @type {Map<string, import('@typescript-eslint/typescript-estree').TSESTree.Node>} */
+      const map = new Map();
+      simpleTraverse(ast, {
+        visitors: {
+          [AST_NODE_TYPES.MemberExpression](node) {
+            if (node.parent?.type === AST_NODE_TYPES.AssignmentExpression) return;
+            map.set(AST_NODE_TYPES.MemberExpression, node);
+          },
+          [AST_NODE_TYPES.AssignmentExpression](node) {
+            map.set(AST_NODE_TYPES.AssignmentExpression, node);
+          },
         },
-        [AST_NODE_TYPES.AssignmentExpression](node) {
-          map.set(AST_NODE_TYPES.AssignmentExpression, node);
-        },
-      },
-    }, true);
+      }, true);
 
-    t.assert.equal(map.size, 3);
+      t.assert.equal(map.size, 2);
 
-    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.CallExpression} */
-    const callExpression = map.get(AST_NODE_TYPES.CallExpression);
-    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.MemberExpression} */
-    const memberExpression = map.get(AST_NODE_TYPES.MemberExpression);
-    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.AssignmentExpression} */
-    const assignmentExpression = map.get(AST_NODE_TYPES.AssignmentExpression);
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.MemberExpression} */
+      const memberExpression = map.get(AST_NODE_TYPES.MemberExpression);
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.AssignmentExpression} */
+      const assignmentExpression = map.get(AST_NODE_TYPES.AssignmentExpression);
 
-    t.assert.ok(
-      sourceCode
-        .getCommentsBefore(
-          services.tsNodeToESTreeNodeMap
-            .get(getCalleeDeclaration(services, callExpression))
-        )
-        .some(({ value }) => value.includes('foo declaration')),
-    );
+      t.assert.equal(
+        getCalleeDeclaration(services, memberExpression),
+        null
+      );
 
-    t.assert.ok(
-      sourceCode
-        .getCommentsBefore(
-          services.tsNodeToESTreeNodeMap
-            .get(getCalleeDeclaration(services, memberExpression)),
-        )
-        .some(({ value }) => value.includes('bar declaration')),
-    );
-
-    t.assert.ok(
-      sourceCode
-        .getCommentsBefore(
-          services.tsNodeToESTreeNodeMap
-            .get(getCalleeDeclaration(services, assignmentExpression)),
-        )
-        .some(({ value }) => value.includes('baz declaration')),
-    );
+      t.assert.equal(
+        getCalleeDeclaration(services, assignmentExpression),
+        null
+      );
+    });
   });
 });
