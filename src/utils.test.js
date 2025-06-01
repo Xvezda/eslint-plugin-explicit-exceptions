@@ -35,6 +35,7 @@ function parseCode(code) {
     tsconfigRootDir: path.resolve(path.join(__dirname, '..')),
     filePath: __filename,
     projectService: {
+      loadTypeScriptPlugins: true,
       defaultProject: 'tsconfig-test.json',
     },
     project: true,
