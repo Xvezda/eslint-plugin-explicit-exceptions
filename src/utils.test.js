@@ -24,6 +24,7 @@ const {
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
   toFlattenedTypeArray,
+  findFunctionCallNodes,
 } = require('./utils');
 
 /**
@@ -620,5 +621,32 @@ let d: null | number = null;
       flattened
         .every((type) => !checker.typeToString(type).includes('|'))
     );
+  });
+
+  test('findFunctionCallNodes', (t) => {
+    const { ast, sourceCode } = parseCode(`
+function foo(bar) {
+  bar(42);
+  bar('bar');
+}
+    `);
+
+    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier | null} */
+    let found = null;
+    simpleTraverse(ast, {
+      visitors: {
+        /** @param {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} node */
+        Identifier(node) {
+          if (node.name === 'bar') {
+            found = node;
+          }
+        },
+      },
+    }, true);
+
+    const callExpressions =
+      findFunctionCallNodes(sourceCode, found);
+
+    t.assert.equal(callExpressions.length, 2);
   });
 });
