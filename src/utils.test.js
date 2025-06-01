@@ -37,12 +37,12 @@ function parseCode(code) {
   const parsed = parse(code, {
     tsconfigRootDir: path.resolve(path.join(__dirname, '..')),
     // filePath: __filename,
-    filePath: 'file.ts',
+    filePath: path.resolve(path.join(__dirname, 'fixture.ts')),
     projectService: {
       allowDefaultProject: ['*.js', '*.ts*'],
     },
     errorOnUnknownASTType: true,
-    project: 'tsconfig-test.json',
+    project: './tsconfig-test.json',
     comment: true,
     loc: true,
     range: true,
