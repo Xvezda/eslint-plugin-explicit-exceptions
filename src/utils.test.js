@@ -25,6 +25,9 @@ const {
   getJSDocThrowsTagTypes,
   toFlattenedTypeArray,
   findFunctionCallNodes,
+  isPromiseType,
+  isAccessorNode,
+  findClosestFunctionNode,
 } = require('./utils');
 
 /**
@@ -649,5 +652,103 @@ function foo(bar) {
       findFunctionCallNodes(sourceCode, found);
 
     t.assert.equal(callExpressions.length, 2);
+  });
+
+  test('isPromiseType', (t) => {
+    const { ast, services } = parseCode(`
+function foo() {
+  return Promise.resolve('foo');
+}
+
+function bar() {
+  return { then: () => {} };
+}
+    `);
+    const checker = services.program.getTypeChecker();
+    const nodes = [];
+    simpleTraverse(ast, {
+      visitors: {
+        FunctionDeclaration(node) {
+          nodes.push(node);
+        },
+      },
+    }, true);
+
+    /** @param {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} node */ 
+    const getReturnType = (node) => {
+      const type = services.getTypeAtLocation(node);
+      return checker.getReturnTypeOfSignature(type.getCallSignatures()[0]);
+    };
+
+    const fooReturnType = getReturnType(nodes[0]);
+    const barReturnType = getReturnType(nodes[1]);
+
+    t.assert.equal(isPromiseType(services, fooReturnType), true);
+    t.assert.equal(isPromiseType(services, barReturnType), false);
+  });
+
+  test('isAccessorNode', (t) => {
+    const { ast } = parseCode(`
+const obj = {
+  get foo() { return 42; },
+  bar: 'baz',
+};
+    `);
+
+    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier[]} */
+    const nodes = [];
+    simpleTraverse(ast, {
+      visitors: {
+        Identifier(node) {
+          nodes.push(node);
+        },
+      },
+    }, true);
+
+    const foo = nodes.find((node) => node.name === 'foo');
+    const bar = nodes.find((node) => node.name === 'bar');
+
+    t.assert.equal(isAccessorNode(foo.parent), true);
+    t.assert.equal(isAccessorNode(bar.parent), false);
+  });
+
+  test('findClosestFunctionNode', (t) => {
+    const { ast } = parseCode(`
+const foo = 'baz';
+const buzz = 42;
+
+function bar() {
+  function fizz() {
+    console.log(buzz);
+  }
+  return foo;
+}
+    `);
+
+    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier[]} */
+    const nodes = [];
+    simpleTraverse(ast, {
+      visitors: {
+        Identifier(node) {
+          if (node.parent.type === AST_NODE_TYPES.VariableDeclarator) return;
+          nodes.push(node);
+        },
+      },
+    }, true);
+
+    const foo = nodes.find((node) => node.name === 'foo');
+
+    const fooClosest = findClosestFunctionNode(foo);
+    t.assert.ok(
+      fooClosest?.type === AST_NODE_TYPES.FunctionDeclaration &&
+      fooClosest.id.name === 'bar',
+    );
+
+    const buzz = nodes.find((node) => node.name === 'buzz');
+    const buzzClosest = findClosestFunctionNode(buzz);
+    t.assert.ok(
+      buzzClosest?.type === AST_NODE_TYPES.FunctionDeclaration &&
+      buzzClosest.id.name === 'fizz',
+    );
   });
 });
