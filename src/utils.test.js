@@ -592,6 +592,7 @@ function foo() {
 let a: string = 'foo';
 let b: number = 42;
 let c: string | number = 'bar';
+let d: number | null = null;
     `);
 
     const nodes = [];
@@ -603,17 +604,17 @@ let c: string | number = 'bar';
       },
     }, true);
 
-    t.assert.equal(nodes.length, 3);
+    t.assert.equal(nodes.length, 4);
 
-    // ['string', 'number', 'string | number']
+    // ['string', 'number', 'string | number', 'number | null']
     const types = nodes.map((node => services.getTypeAtLocation(node)));
-    t.assert.equal(types.length, 3);
+    t.assert.equal(types.length, 4);
 
     const checker = services.program.getTypeChecker();
 
-    // ['string', 'number', 'string', 'number']
+    // ['string', 'number', 'string', 'number', 'number', 'null']
     const flattened = toFlattenedTypeArray(types);
-    t.assert.equal(flattened.length, 4);
+    t.assert.equal(flattened.length, 6);
     t.assert.ok(
       flattened
         .every((type) => !checker.typeToString(type).includes('|'))
