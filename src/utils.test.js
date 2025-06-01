@@ -21,7 +21,9 @@ const {
   findParent,
   getCallee,
   getCalleeDeclaration,
+  getJSDocThrowsTags,
 } = require('./utils');
+const { isFunctionDeclaration } = require('typescript');
 
 /**
  * @param {string} code
@@ -506,5 +508,42 @@ obj.baz = 42;
         null
       );
     });
+  });
+
+  test('getJSDocThrowsTags', (t) => {
+    const { ast, services } = parseCode(`
+/**
+ * @throws {Error} This throws an error.
+ * @throws {TypeError} This also throws a type error.
+ */
+function foo() {
+  if (Math.random() > 0.5) {
+    throw new Error();
+  } else {
+    throw new TypeError();
+  }
+};
+    `);
+
+    let found = null;
+    simpleTraverse(ast, {
+      visitors: {
+        /** @param {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} node */
+        FunctionDeclaration(node) {
+          if (node.id.name === 'foo') {
+            found = node;
+          }
+        },
+      },
+    }, true);
+
+    const tsNode = services.esTreeNodeToTSNodeMap.get(found);
+    const tags = getJSDocThrowsTags(tsNode);
+
+    t.assert.equal(tags.length, 2);
+    t.assert.ok(tags.every((tag) => tag.typeExpression?.type));
+
+    t.assert.ok(tags.some((tag) => /This throws an error/.test(tag.comment)));
+    t.assert.ok(tags.some((tag) => /This also throws a type error/.test(tag.comment)));
   });
 });
