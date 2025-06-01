@@ -15,6 +15,7 @@ const createRule = ESLintUtils.RuleCreator(
 class TypeMap {
   constructor() {
     /**
+     * @private
      * @type {Map<string, import('typescript').Type[]>}
      */
     this.map = new Map();

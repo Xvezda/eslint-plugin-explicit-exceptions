@@ -5,7 +5,7 @@
   "description": "ESLint rules for explicitly handling exceptions",
   "main": "./src/plugin.js",
   "scripts": {
-    "test": "node --require ./test-setup.js --test"
+    "test": "node --require ./.test-setup.js --test"
   },
   "keywords": [
     "eslint",
@@ -32,6 +32,7 @@
     "@typescript-eslint/parser": "^8.32.1",
     "@typescript-eslint/rule-tester": "^8.32.1",
     "@typescript-eslint/type-utils": "^8.32.1",
+    "@typescript-eslint/typescript-estree": "^8.33.0",
     "@typescript-eslint/utils": "^8.32.1",
     "typescript-eslint": "^8.32.1"
   },
