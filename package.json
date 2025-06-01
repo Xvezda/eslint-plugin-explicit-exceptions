@@ -5,7 +5,7 @@
   "description": "ESLint rules for explicitly handling exceptions",
   "main": "./src/plugin.js",
   "scripts": {
-    "test": "node --require ./.test-setup.js --test"
+    "test": "node --require ./test-setup.js --test"
   },
   "keywords": [
     "eslint",
