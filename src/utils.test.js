@@ -616,7 +616,11 @@ let d: null | number = null;
 
     // ['string', 'number', 'string', 'number', 'null', 'number']
     const flattened = toFlattenedTypeArray(types);
-    t.assert.equal(flattened.length, 6);
+    t.assert.equal(
+      flattened.length,
+      6,
+      `${JSON.stringify(flattened)} should have 6 types`
+    );
     t.assert.ok(
       flattened
         .every((type) => !checker.typeToString(type).includes('|'))
