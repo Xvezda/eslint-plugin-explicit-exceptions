@@ -38,7 +38,7 @@ function parseCode(code) {
     tsconfigRootDir: path.resolve(path.join(__dirname, '..')),
     filePath: __filename,
     projectService: {
-      allowDefaultProject: ['*.js'],
+      allowDefaultProject: ['*.js', '*.ts*'],
     },
     project: 'tsconfig-test.json',
     comment: true,
