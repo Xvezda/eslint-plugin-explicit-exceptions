@@ -148,7 +148,7 @@ function bar() {
     );
   });
 
-  test('getNodeIndent', (t, done) => {
+  test('getNodeIndent', (t) => {
     const { ast, sourceCode } = parseCode(`
 function foo() {
   const bar: string = 'baz';
@@ -162,7 +162,6 @@ function foo() {
           if (node.name === 'bar') {
             const indent = getNodeIndent(sourceCode, node);
             t.assert.equal(indent.length, 2);
-            done();
           }
         },
       },
