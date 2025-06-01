@@ -38,7 +38,6 @@ function parseCode(code) {
   const parsed = parse(code, {
     tsconfigRootDir,
     filePath: __filename,
-    filePath: path.resolve(path.join(__dirname, 'fixture.ts')),
     programs: [
       createProgram('tsconfig-test.json', tsconfigRootDir),
     ],
