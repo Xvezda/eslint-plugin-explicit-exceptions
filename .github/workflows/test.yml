@@ -18,7 +18,7 @@ jobs:
       with:
         node-version: 22
         cache: 'pnpm'
-    - run: pnpm install
+    - run: pnpm install --frozen-lockfile
     - run: pnpm run --if-present build
     - name: Run test
       if: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/main' }}
