@@ -42,7 +42,7 @@ function parseCode(code) {
       allowDefaultProject: ['*.js', '*.ts*'],
     },
     errorOnUnknownASTType: true,
-    project: './tsconfig-test.json',
+    project: true,
     comment: true,
     loc: true,
     range: true,
