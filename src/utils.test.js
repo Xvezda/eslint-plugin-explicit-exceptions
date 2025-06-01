@@ -34,15 +34,13 @@ const {
  * @param {string} code
  */
 function parseCode(code) {
+  const tsconfigRootDir = path.resolve(path.join(__dirname, '..'));
   const parsed = parse(code, {
-    tsconfigRootDir: path.resolve(path.join(__dirname, '..')),
-    // filePath: __filename,
+    tsconfigRootDir,
+    filePath: __filename,
     filePath: path.resolve(path.join(__dirname, 'fixture.ts')),
     programs: [
-      createProgram(
-        'tsconfig-test.json',
-        path.resolve(path.join(__dirname, '..'))
-      )
+      createProgram('tsconfig-test.json', tsconfigRootDir),
     ],
     projectService: {
       allowDefaultProject: ['*.js', '*.ts*'],
@@ -600,7 +598,6 @@ function foo() {
     );
   });
 
-  // TODO: null type does not appears on CI environment. Why is it?
   test('toFlattenTypeArray', (t) => {
     const { ast, services } = parseCode(`
 let a: string = 'foo';
