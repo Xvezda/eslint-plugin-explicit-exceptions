@@ -304,10 +304,11 @@ const getCalleeDeclaration = (services, node) => {
       if (getter) {
         return getter;
       }
+      // It is not method call
       if (node.parent?.type !== AST_NODE_TYPES.CallExpression) {
         return null;
       }
-      // fallthrough
+      return declarations[0];
     }
     case AST_NODE_TYPES.CallExpression:
       return declarations[0];
@@ -467,7 +468,7 @@ const isThenableCallbackNode = (node) => {
  * Find where JSDoc comment should be added
  *
  * @public
- * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @param {import('@typescript-eslint/utils').TSESTree.FunctionLike | import('@typescript-eslint/utils').TSESTree.Identifier} node
  * @returns {import('@typescript-eslint/utils').TSESTree.Node | null}
  */
 const findNodeToComment = (node) => {
@@ -525,7 +526,6 @@ const findNodeToComment = (node) => {
         if (functionDeclaration) {
           return findNodeToComment(functionDeclaration);
         }
-        // TODO: Fallback?
         return null;
       }
       if (!isFunctionNode(node)) return null;

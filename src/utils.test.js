@@ -28,6 +28,9 @@ const {
   isPromiseType,
   isAccessorNode,
   findClosestFunctionNode,
+  isPromiseConstructorCallbackNode,
+  isThenableCallbackNode,
+  findNodeToComment,
 } = require('./utils');
 
 const tsconfigRootDir = path.resolve(path.join(__dirname, '..'));
@@ -754,5 +757,177 @@ function bar() {
       buzzClosest?.type === AST_NODE_TYPES.FunctionDeclaration &&
       buzzClosest.id.name === 'fizz',
     );
+  });
+
+  test('isPromiseConstructorCallbackNode', (t) => {
+    const { ast } = parseCode(`
+function foo() {
+  return new Promise((resolve) => {});
+}
+    `);
+
+    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier[]} */
+    const nodes = [];
+    simpleTraverse(ast, {
+      visitors: {
+        Identifier(node) {
+          nodes.push(node);
+        },
+      },
+    }, true);
+
+    const resolve = nodes.find((node) => node.name === 'resolve');
+    const callback = resolve?.parent;
+
+    t.assert.equal(isPromiseConstructorCallbackNode(callback), true);
+
+    const foo = nodes.find((node) => node.name === 'foo');
+    t.assert.equal(isPromiseConstructorCallbackNode(foo), false);
+  });
+
+  test('isThenableCallbackNode', (t) => {
+    const { ast } = parseCode(`
+function foo() {
+  return Promise((resolve, reject) => {
+    resolve(42);
+  })
+    .then((num) => {
+      console.log(typeof num);
+      return String(num);
+    })
+    .catch((e) => console.error(e))
+    .finally((str) => {
+      console.log(str);
+    });
+}
+    `);
+
+    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier[]} */
+    const nodes = [];
+    simpleTraverse(ast, {
+      visitors: {
+        Identifier(node) {
+          if (node.parent?.type !== AST_NODE_TYPES.ArrowFunctionExpression) {
+            return;
+          }
+          nodes.push(node);
+        },
+      },
+    }, true);
+
+
+    t.assert.equal(
+      isThenableCallbackNode(
+        nodes
+        .find((node) => node.name === 'num')
+        ?.parent
+      ),
+      true,
+    );
+
+    t.assert.equal(
+      isThenableCallbackNode(
+        nodes
+        .find((node) => node.name === 'str')
+        ?.parent
+      ),
+      true,
+    );
+
+    t.assert.equal(
+      isThenableCallbackNode(
+        nodes
+        .find((node) => node.name === 'resolve')
+        ?.parent
+      ),
+      false,
+    );
+  });
+
+  describe('findNodeToComment', () => {
+    test('declared function', (t) => {
+      const { ast, sourceCode } = parseCode(`
+// here
+function foo() {}
+    `);
+
+      const map = new Map();
+      simpleTraverse(ast, {
+        visitors: {
+          [AST_NODE_TYPES.FunctionDeclaration](node) {
+            map.set(AST_NODE_TYPES.FunctionDeclaration, node);
+          },
+        },
+      }, true);
+
+      const functionDeclaration = map.get(AST_NODE_TYPES.FunctionDeclaration);
+
+      t.assert.equal(
+        sourceCode
+          .getCommentsBefore(findNodeToComment(functionDeclaration))
+          .some((comment) => comment.value.includes('here')),
+        true,
+      );
+    });
+
+    test('assigned arrow function', (t) => {
+      const { ast, sourceCode } = parseCode(`
+// here
+const foo = () => {};
+    `);
+
+      const map = new Map();
+      simpleTraverse(ast, {
+        visitors: {
+          [AST_NODE_TYPES.ArrowFunctionExpression](node) {
+            map.set(AST_NODE_TYPES.ArrowFunctionExpression, node);
+          },
+        },
+      }, true);
+
+      const arrowFunction = map.get(AST_NODE_TYPES.ArrowFunctionExpression);
+
+      t.assert.equal(
+        sourceCode.getCommentsBefore(arrowFunction).length,
+        0,
+      );
+
+      t.assert.equal(
+        sourceCode
+          .getCommentsBefore(findNodeToComment(arrowFunction))
+          .some((comment) => comment.value.includes('here')),
+        true,
+      );
+    });
+
+    test('exported assigned arrow function', (t) => {
+      const { ast, sourceCode } = parseCode(`
+// here
+export const foo = () => {};
+    `);
+
+      const map = new Map();
+      simpleTraverse(ast, {
+        visitors: {
+          [AST_NODE_TYPES.ArrowFunctionExpression](node) {
+            map.set(AST_NODE_TYPES.ArrowFunctionExpression, node);
+          },
+        },
+      }, true);
+
+      const arrowFunction = map.get(AST_NODE_TYPES.ArrowFunctionExpression);
+
+      t.assert.equal(
+        sourceCode.getCommentsBefore(arrowFunction).length,
+        0,
+      );
+
+      t.assert.equal(
+        sourceCode
+          .getCommentsBefore(findNodeToComment(arrowFunction))
+          .some((comment) => comment.value.includes('here')),
+        true,
+      );
+    });
   });
 });
