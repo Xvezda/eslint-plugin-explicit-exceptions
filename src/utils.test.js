@@ -22,8 +22,8 @@ const {
   getCallee,
   getCalleeDeclaration,
   getJSDocThrowsTags,
+  getJSDocThrowsTagTypes,
 } = require('./utils');
-const { isFunctionDeclaration } = require('typescript');
 
 /**
  * @param {string} code
@@ -545,5 +545,45 @@ function foo() {
 
     t.assert.ok(tags.some((tag) => /This throws an error/.test(tag.comment)));
     t.assert.ok(tags.some((tag) => /This also throws a type error/.test(tag.comment)));
+  });
+
+  test('getJSDocThrowsTagTypes', (t) => {
+    const { ast, services } = parseCode(`
+/**
+ * @throws {Error} This throws an error.
+ * @throws {TypeError} This also throws a type error.
+ */
+function foo() {
+  if (Math.random() > 0.5) {
+    throw new Error();
+  } else {
+    throw new TypeError();
+  }
+};
+    `);
+
+    let found = null;
+    simpleTraverse(ast, {
+      visitors: {
+        /** @param {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} node */
+        FunctionDeclaration(node) {
+          if (node.id.name === 'foo') {
+            found = node;
+          }
+        },
+      },
+    }, true);
+
+    const checker = services.program.getTypeChecker();
+
+    const tsNode = services.esTreeNodeToTSNodeMap.get(found);
+    const types = getJSDocThrowsTagTypes(checker, tsNode);
+
+    t.assert.equal(types.length, 2);
+
+    t.assert.ok(
+      types.every((type) =>
+        /^(Error|TypeError)$/.test(checker.typeToString(type)))
+    );
   });
 });
