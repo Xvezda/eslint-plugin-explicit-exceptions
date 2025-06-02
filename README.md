@@ -172,6 +172,7 @@ For legacy, `.eslintrc.json`
   "root": true
 }
 ```
+This project uses [TypeScript](https://www.typescriptlang.org/) and [typescript-eslint](https://typescript-eslint.io/) to leverage type information. To prevent errors or bugs caused by incorrect type data, it is recommended to [set the `tsconfig.json` `"strict"` option to `true`](https://www.typescriptlang.org/tsconfig/#strict).
 
 Check out [`typescript-eslint`](https://typescript-eslint.io/getting-started/) for more information if you having an issue with configuring.
 
