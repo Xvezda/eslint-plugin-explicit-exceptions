@@ -34,6 +34,8 @@ jobs:
         git switch --orphan _tmp
         git add coverage.svg
         if git diff --quiet --exit-code coverage.svg; then
+          true
+        else
           git commit -m 'Update metadata'
           git add .
           git stash -u
