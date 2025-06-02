@@ -70,8 +70,6 @@ module.exports = createRule({
 
     /** @type {Set<string>} */
     const visitedFunctionNodes = new Set();
-    /** @type {Set<string>} */
-    const visitedExpressionNodes = new Set();
 
     /**
      * Group throw statements in functions
@@ -100,11 +98,6 @@ module.exports = createRule({
      * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
      */
     const visitFunctionCallNode = (node) => {
-      if (visitedExpressionNodes.has(getNodeID(node))) return;
-      visitedExpressionNodes.add(getNodeID(node));
-
-      if (isInHandledContext(node)) return;
-
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
@@ -115,13 +108,15 @@ module.exports = createRule({
         const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
         if (!calleeThrowsTypes.length) continue;
 
-        calleeThrowsTypes.forEach(type => {
+        for (const type of calleeThrowsTypes) {
           if (isPromiseType(services, type)) {
+            if (isInAsyncHandledContext(sourceCode, node)) continue;
             rejectTypes.add(callerDeclaration, [type]);
           } else {
+            if (isInHandledContext(node)) continue;
             throwTypes.add(callerDeclaration, [type]);
           }
-        });
+        };
       }
     };
 
