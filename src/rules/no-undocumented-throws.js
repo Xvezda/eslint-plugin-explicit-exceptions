@@ -13,11 +13,12 @@ const {
   typeStringsToUnionString,
   isInHandledContext,
   isInAsyncHandledContext,
+  isPromiseType,
   isNodeReturned,
   isPromiseConstructorCallbackNode,
   isThenableCallbackNode,
   isAccessorNode,
-  getCalleeDeclaration,
+  getCalleeDeclarations,
   getJSDocThrowsTagTypes,
   findParent,
   findClosest,
@@ -107,13 +108,21 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
-      const calleeDeclaration = getCalleeDeclaration(services, node);
-      if (!calleeDeclaration) return;
+      const calleeDeclarations = getCalleeDeclarations(services, node);
+      if (!calleeDeclarations.length) return;
 
-      const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
-      if (!calleeThrowsTypes.length) return;
+      for (const calleeDeclaration of calleeDeclarations) {
+        const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
+        if (!calleeThrowsTypes.length) continue;
 
-      throwTypes.add(node, calleeThrowsTypes);
+        calleeThrowsTypes.forEach(type => {
+          if (isPromiseType(services, type)) {
+            rejectTypes.add(callerDeclaration, [type]);
+          } else {
+            throwTypes.add(callerDeclaration, [type]);
+          }
+        });
+      }
     };
 
     /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */
