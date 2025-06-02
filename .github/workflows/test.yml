@@ -33,7 +33,7 @@ jobs:
         rm -rf ./coverage.txt
         git switch --orphan _tmp
         git add coverage.svg
-        git commit -m 'Update metadata' || exit 0
+        git diff --cached --quiet || git commit -m 'Update metadata'
         git add .
         git stash -u
         git fetch origin _meta
