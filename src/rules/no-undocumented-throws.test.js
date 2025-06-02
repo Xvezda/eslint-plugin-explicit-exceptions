@@ -742,6 +742,21 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          function foo() {
+            // no return
+            Promise.reject(new Error());
+          }
+        `,
+      },
     ],
     invalid: [
       {
