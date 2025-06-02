@@ -31,6 +31,7 @@ const {
   isPromiseConstructorCallbackNode,
   isThenableCallbackNode,
   findNodeToComment,
+  findIdentifierDeclaration,
 } = require('./utils');
 
 const tsconfigRootDir = path.resolve(path.join(__dirname, '..'));
@@ -69,6 +70,24 @@ function parseCode(code) {
     }),
   };
 }
+
+/**
+ * @param {import('@typescript-eslint/typescript-estree').TSESTree.Node} node
+ * @returns {import('@typescript-eslint/typescript-estree').TSESTree.Node | null}
+ */
+const getNodeNextTo = (node) => {
+  switch (node.parent.type) {
+    case AST_NODE_TYPES.Program:
+    case AST_NODE_TYPES.BlockStatement: {
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.BlockStatement['body']} */
+      const body = [...node.parent.body];
+      return body[body.findIndex((n) => n === node) + 1] ?? null;
+    }
+    default:
+      break;
+  }
+  return null;
+};
 
 describe('utils', () => {
   test('TypeMap', (t) => {
@@ -999,5 +1018,33 @@ export const foo = () => {
         true,
       );
     });
+  });
+
+  test('findIdentifierDeclaration', (t) => {
+    const { ast, sourceCode } = parseCode(`
+function foo() {}
+
+debugger;
+foo;
+    `);
+
+    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.ExpressionStatement} */
+    let found = null;
+    simpleTraverse(ast, {
+      visitors: {
+        [AST_NODE_TYPES.DebuggerStatement](node) {
+          found = getNodeNextTo(node);
+        },
+      },
+    }, true);
+    t.assert.ok(found);
+
+    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration | null} */
+    const declaration =
+      findIdentifierDeclaration(sourceCode, found.expression);
+
+    t.assert.ok(declaration);
+    t.assert.equal(declaration.type, AST_NODE_TYPES.FunctionDeclaration);
+    t.assert.equal(declaration.id.name, 'foo');
   });
 });
