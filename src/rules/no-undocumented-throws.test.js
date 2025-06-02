@@ -2350,6 +2350,38 @@ ruleTester.run(
           { messageId: 'missingThrowsTag' },
         ],
       },
+      {
+        code: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          function foo() {
+            return Promise.reject(new Error());
+          }
+        `,
+        output: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          /**
+           * @throws {Promise<unknown>}
+           */
+          function foo() {
+            return Promise.reject(new Error());
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
     ],
   },
 );
