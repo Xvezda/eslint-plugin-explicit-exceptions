@@ -242,7 +242,7 @@ const getCallee = (node) => {
 };
 
 /**
- * Get all declarations node of callee from given node's type.
+ * Get all declaration nodes of the callee from the given node's type.
  *
  * @public
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
