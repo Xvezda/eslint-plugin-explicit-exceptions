@@ -33,7 +33,9 @@ jobs:
         rm -rf ./coverage.txt
         git switch --orphan _tmp
         git add coverage.svg
-        if [ $(git diff --cached --quiet) -eq 1 ]; then
+        if git diff --cached --quiet; then
+          true
+        else
           git commit -m 'Update metadata'
           git add .
           git stash -u
@@ -42,6 +44,4 @@ jobs:
           git reset --hard
           git cherry-pick -Xtheirs _tmp
           git push origin _meta
-        else
-          true
         fi
