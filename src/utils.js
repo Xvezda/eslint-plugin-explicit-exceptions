@@ -242,81 +242,6 @@ const getCallee = (node) => {
 };
 
 /**
- * Get declaration node of callee from given node's type.
- *
- * @public
- * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
- * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
- * @return {import('typescript').Node | null}
- */
-const getCalleeDeclaration = (services, node) => {
-  /** @type {import('@typescript-eslint/utils').TSESTree.Node | null} */
-  const calleeNode = getCallee(node);
-  if (!calleeNode) return null;
-
-  const declarations = getDeclarationsByNode(services, calleeNode);
-  if (!declarations || !declarations.length) {
-    return null;
-  }
-
-  switch (node.type) {
-    /**
-     * Return type of setter when assigning
-     *
-     * @example
-     * ```
-     * foo.bar = 'baz';
-     * //  ^ This can be a setter
-     * ```
-     */
-    case AST_NODE_TYPES.AssignmentExpression: {
-      const setter = declarations
-        .find(declaration => {
-          const declarationNode =
-            services.tsNodeToESTreeNodeMap.get(declaration);
-
-          return isAccessorNode(declarationNode) &&
-            declarationNode.kind === 'set';
-        });
-
-      return setter ?? null;
-    }
-    /**
-     * Return type of getter when accessing
-     *
-     * @example
-     * ```
-     * const baz = foo.bar;
-     * //              ^ This can be a getter
-     * ```
-     */
-    case AST_NODE_TYPES.MemberExpression: {
-      const getter = declarations
-        .find(declaration => {
-          const declarationNode =
-            services.tsNodeToESTreeNodeMap.get(declaration);
-
-          return isAccessorNode(declarationNode) &&
-            declarationNode.kind === 'get';
-        });
-
-      if (getter) {
-        return getter;
-      }
-      // It is method call
-      if (node.parent?.type === AST_NODE_TYPES.CallExpression) {
-        return declarations[0];
-      }
-      return null;
-    }
-    case AST_NODE_TYPES.CallExpression:
-      return declarations[0];
-    default:
-      return null;
-  }
-};
-
-/**
  * Get all declarations node of callee from given node's type.
  *
  * @public
@@ -869,7 +794,6 @@ module.exports = {
   findClosest,
   findParent,
   getCallee,
-  getCalleeDeclaration,
   getCalleeDeclarations,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,

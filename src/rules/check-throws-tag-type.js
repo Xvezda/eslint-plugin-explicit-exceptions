@@ -18,7 +18,7 @@ const {
   hasJSDocThrowsTag,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
-  getCalleeDeclaration,
+  getCalleeDeclarations,
   findParent,
   findClosest,
   findClosestFunctionNode,
@@ -204,30 +204,32 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node.parent);
       if (!callerDeclaration) return;
 
-      const calleeDeclaration = getCalleeDeclaration(services, node);
-      if (!calleeDeclaration) return;
+      const calleeDeclarations = getCalleeDeclarations(services, node);
+      if (!calleeDeclarations.length) return;
 
-      const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
-      if (!calleeThrowsTypes.length) return;
+      for (const calleeDeclaration of calleeDeclarations) {
+        const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
+        if (!calleeThrowsTypes.length) continue;
 
-      if (
-        isPromiseConstructorCallbackNode(callerDeclaration) ||
-        isThenableCallbackNode(callerDeclaration) ||
-        calleeThrowsTypes
+        if (
+          isPromiseConstructorCallbackNode(callerDeclaration) ||
+          isThenableCallbackNode(callerDeclaration) ||
+          calleeThrowsTypes
           .some(type => utils.isPromiseLike(services.program, type))
-      ) {
-        const awaitedTypes = calleeThrowsTypes
-          .map(t => checker.getAwaitedType(t) ?? t);
+        ) {
+          const awaitedTypes = calleeThrowsTypes
+            .map(t => checker.getAwaitedType(t) ?? t);
 
-        rejectTypes.add(callerDeclaration, awaitedTypes);
+          rejectTypes.add(callerDeclaration, awaitedTypes);
 
-        awaitedTypes
-          .forEach(type => metadata.set(type, { pos: node.range[0] }));
-      } else {
-        throwTypes.add(callerDeclaration, calleeThrowsTypes);
+          awaitedTypes
+            .forEach(type => metadata.set(type, { pos: node.range[0] }));
+        } else {
+          throwTypes.add(callerDeclaration, calleeThrowsTypes);
 
-        calleeThrowsTypes
-          .forEach(type => metadata.set(type, { pos: node.range[0] }));
+          calleeThrowsTypes
+            .forEach(type => metadata.set(type, { pos: node.range[0] }));
+        }
       }
     };
 

@@ -2,7 +2,7 @@
 const { ESLintUtils } = require('@typescript-eslint/utils');
 const {
   createRule,
-  getCalleeDeclaration,
+  getCalleeDeclarations,
   isInAsyncHandledContext,
   isPromiseType,
   getJSDocThrowsTagTypes,
@@ -31,18 +31,25 @@ module.exports = createRule({
 
     /** @param {import('@typescript-eslint/utils').TSESTree.Expression} node */
     const visitExpression = (node) => {
-      const calleeDeclaration = getCalleeDeclaration(services, node);
-      if (!calleeDeclaration) return;
+      const calleeDeclarations = getCalleeDeclarations(services, node);
+      if (!calleeDeclarations.length) return;
 
-      const jsDocThrowsTagTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
-      if (!jsDocThrowsTagTypes.length) return;
+      const isRejectable = calleeDeclarations
+        .some((calleeDeclaration) => {
+          const jsDocThrowsTagTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
+          if (!jsDocThrowsTagTypes.length) return false;
 
-      const maybeReject = jsDocThrowsTagTypes
-        .some(type => isPromiseType(services, type));
+          const maybeReject = jsDocThrowsTagTypes
+            .some(type => isPromiseType(services, type));
 
-      if (!maybeReject) return;
+          if (!maybeReject) return false;
 
-      if (isInAsyncHandledContext(sourceCode, node)) return;
+          if (isInAsyncHandledContext(sourceCode, node)) return false;
+
+          return true;
+        });
+
+      if (!isRejectable) return;
 
       context.report({
         node,
