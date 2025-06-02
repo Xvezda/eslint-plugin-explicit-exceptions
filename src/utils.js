@@ -304,11 +304,11 @@ const getCalleeDeclaration = (services, node) => {
       if (getter) {
         return getter;
       }
-      // It is not method call
-      if (node.parent?.type !== AST_NODE_TYPES.CallExpression) {
-        return null;
+      // It is method call
+      if (node.parent?.type === AST_NODE_TYPES.CallExpression) {
+        return declarations[0];
       }
-      return declarations[0];
+      return null;
     }
     case AST_NODE_TYPES.CallExpression:
       return declarations[0];
