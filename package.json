@@ -4,8 +4,10 @@
   "version": "0.9.0",
   "description": "ESLint rules for explicitly handling exceptions",
   "main": "./src/plugin.js",
+  "types": "./dist/plugin.d.ts",
   "scripts": {
-    "test": "node --require ./test-setup.js --test"
+    "test": "node --require ./test-setup.js --test",
+    "build": "npx tsc --project tsconfig-prod.json"
   },
   "keywords": [
     "eslint",
