@@ -712,6 +712,51 @@ ruleTester.run(
           };
         `,
       },
+      {
+        code: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          function foo() {
+            return Promise.reject(new Error())
+              .catch(console.error);
+          }
+        `,
+      },
+      {
+        code: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          function foo() {
+            return Promise.reject(new Error())
+              .then(console.log, console.error);
+          }
+        `,
+      },
+      {
+        code: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          function foo() {
+            // no return
+            Promise.reject(new Error());
+          }
+        `,
+      },
     ],
     invalid: [
       {
@@ -2345,6 +2390,72 @@ ruleTester.run(
           export let foo = async () => {
             throw new Error();
           };
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          function foo() {
+            return Promise.reject(new Error());
+          }
+        `,
+        output: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          /**
+           * @throws {Promise<unknown>}
+           */
+          function foo() {
+            return Promise.reject(new Error());
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          function foo() {
+            return Promise.reject(new Error())
+              .then(console.log);
+          }
+        `,
+        output: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          /**
+           * @throws {Promise<unknown>}
+           */
+          function foo() {
+            return Promise.reject(new Error())
+              .then(console.log);
+          }
         `,
         errors: [
           { messageId: 'missingThrowsTag' },

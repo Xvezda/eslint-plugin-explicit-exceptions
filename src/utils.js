@@ -242,21 +242,21 @@ const getCallee = (node) => {
 };
 
 /**
- * Get declaration node of callee from given node's type.
+ * Get all declaration nodes of the callee from the given node's type.
  *
  * @public
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
  * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
- * @return {import('typescript').Node | null}
+ * @return {import('typescript').Node[]}
  */
-const getCalleeDeclaration = (services, node) => {
+const getCalleeDeclarations = (services, node) => {
   /** @type {import('@typescript-eslint/utils').TSESTree.Node | null} */
   const calleeNode = getCallee(node);
-  if (!calleeNode) return null;
+  if (!calleeNode) return [];
 
   const declarations = getDeclarationsByNode(services, calleeNode);
   if (!declarations || !declarations.length) {
-    return null;
+    return [];
   }
 
   switch (node.type) {
@@ -271,7 +271,7 @@ const getCalleeDeclaration = (services, node) => {
      */
     case AST_NODE_TYPES.AssignmentExpression: {
       const setter = declarations
-        .find(declaration => {
+        .filter(declaration => {
           const declarationNode =
             services.tsNodeToESTreeNodeMap.get(declaration);
 
@@ -279,7 +279,7 @@ const getCalleeDeclaration = (services, node) => {
             declarationNode.kind === 'set';
         });
 
-      return setter ?? null;
+      return setter;
     }
     /**
      * Return type of getter when accessing
@@ -292,7 +292,7 @@ const getCalleeDeclaration = (services, node) => {
      */
     case AST_NODE_TYPES.MemberExpression: {
       const getter = declarations
-        .find(declaration => {
+        .filter(declaration => {
           const declarationNode =
             services.tsNodeToESTreeNodeMap.get(declaration);
 
@@ -300,19 +300,19 @@ const getCalleeDeclaration = (services, node) => {
             declarationNode.kind === 'get';
         });
 
-      if (getter) {
+      if (getter.length) {
         return getter;
       }
       // It is method call
       if (node.parent?.type === AST_NODE_TYPES.CallExpression) {
-        return declarations[0];
+        return declarations;
       }
-      return null;
+      return [];
     }
     case AST_NODE_TYPES.CallExpression:
-      return declarations[0];
+      return declarations;
     default:
-      return null;
+      return [];
   }
 };
 
@@ -794,7 +794,7 @@ module.exports = {
   findClosest,
   findParent,
   getCallee,
-  getCalleeDeclaration,
+  getCalleeDeclarations,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
   toFlattenedTypeArray,
