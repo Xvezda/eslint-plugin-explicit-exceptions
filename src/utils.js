@@ -312,6 +312,8 @@ const getCalleeDeclaration = (services, node) => {
     }
     case AST_NODE_TYPES.CallExpression:
       return declarations[0];
+    default:
+      break;
   }
   return null;
 };
