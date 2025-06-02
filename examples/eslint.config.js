@@ -1,6 +1,5 @@
 "use strict";
 
-const path = require("path");
 const tseslint = require("typescript-eslint");
 const eslintPlugin = require("../src/plugin");
 
