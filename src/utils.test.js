@@ -1257,6 +1257,28 @@ function foo() {
       t.assert.equal(isNodeReturned(bar), true);
     });
 
+    test('not last item of sequence expression', (t) => {
+      const { ast } = parse(`
+function foo() {
+  return bar, 42;
+}
+      `);
+
+      const bar = getFirstFoundIdentifier(ast, 'bar');
+      t.assert.equal(isNodeReturned(bar), false);
+    });
+
+    test('last item of sequence expression', (t) => {
+      const { ast } = parse(`
+function foo() {
+  return 42, bar;
+}
+      `);
+
+      const bar = getFirstFoundIdentifier(ast, 'bar');
+      t.assert.equal(isNodeReturned(bar), true);
+    });
+
     test('after return statement', (t) => {
       const { ast } = parse(`
 function foo() {

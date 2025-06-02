@@ -766,6 +766,13 @@ const isInAsyncHandledContext = (sourceCode, node) => {
  * @param {import('@typescript-eslint/utils').TSESTree.Node} node
  */
 const isNodeReturned = (node) => {
+  while (
+    node.parent?.type === AST_NODE_TYPES.SequenceExpression &&
+    node.parent.expressions
+      .findIndex(expr => expr === node) === node.parent.expressions.length - 1
+  ) {
+    node = node.parent;
+  }
   return (
     node.parent?.type === AST_NODE_TYPES.ReturnStatement ||
     node.parent?.type === AST_NODE_TYPES.ArrowFunctionExpression &&
