@@ -9,7 +9,7 @@ const {
   typesToUnionString,
   hasJSDocThrowsTag,
   getJSDocThrowsTagTypes,
-  getCalleeDeclaration,
+  getCalleeDeclarations,
   toFlattenedTypeArray,
   findClosestFunctionNode,
   findNodeToComment,
@@ -61,13 +61,15 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
-      const calleeDeclaration = getCalleeDeclaration(services, node);
-      if (!calleeDeclaration) return;
+      const calleeDeclarations = getCalleeDeclarations(services, node);
+      if (!calleeDeclarations.length) return;
 
-      const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
-      if (!calleeThrowsTypes.length) return;
+      for (const calleeDeclaration of calleeDeclarations) {
+        const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
+        if (!calleeThrowsTypes.length) continue;
 
-      calleeThrowsTypesMap.add(callerDeclaration, calleeThrowsTypes);
+        calleeThrowsTypesMap.add(callerDeclaration, calleeThrowsTypes);
+      }
     };
 
     /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */

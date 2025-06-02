@@ -317,6 +317,81 @@ const getCalleeDeclaration = (services, node) => {
 };
 
 /**
+ * Get all declarations node of callee from given node's type.
+ *
+ * @public
+ * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
+ * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
+ * @return {import('typescript').Node[]}
+ */
+const getCalleeDeclarations = (services, node) => {
+  /** @type {import('@typescript-eslint/utils').TSESTree.Node | null} */
+  const calleeNode = getCallee(node);
+  if (!calleeNode) return [];
+
+  const declarations = getDeclarationsByNode(services, calleeNode);
+  if (!declarations || !declarations.length) {
+    return [];
+  }
+
+  switch (node.type) {
+    /**
+     * Return type of setter when assigning
+     *
+     * @example
+     * ```
+     * foo.bar = 'baz';
+     * //  ^ This can be a setter
+     * ```
+     */
+    case AST_NODE_TYPES.AssignmentExpression: {
+      const setter = declarations
+        .filter(declaration => {
+          const declarationNode =
+            services.tsNodeToESTreeNodeMap.get(declaration);
+
+          return isAccessorNode(declarationNode) &&
+            declarationNode.kind === 'set';
+        });
+
+      return setter;
+    }
+    /**
+     * Return type of getter when accessing
+     *
+     * @example
+     * ```
+     * const baz = foo.bar;
+     * //              ^ This can be a getter
+     * ```
+     */
+    case AST_NODE_TYPES.MemberExpression: {
+      const getter = declarations
+        .filter(declaration => {
+          const declarationNode =
+            services.tsNodeToESTreeNodeMap.get(declaration);
+
+          return isAccessorNode(declarationNode) &&
+            declarationNode.kind === 'get';
+        });
+
+      if (getter.length) {
+        return getter;
+      }
+      // It is method call
+      if (node.parent?.type === AST_NODE_TYPES.CallExpression) {
+        return declarations;
+      }
+      return [];
+    }
+    case AST_NODE_TYPES.CallExpression:
+      return declarations;
+    default:
+      return [];
+  }
+};
+
+/**
  * @public
  * @param {import('typescript').Node} node
  * @returns {Readonly<import('typescript').JSDocThrowsTag[]>}
@@ -795,6 +870,7 @@ module.exports = {
   findParent,
   getCallee,
   getCalleeDeclaration,
+  getCalleeDeclarations,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
   toFlattenedTypeArray,
