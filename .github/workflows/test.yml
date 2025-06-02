@@ -29,7 +29,7 @@ jobs:
         pnpm test --experimental-test-coverage --test-coverage-exclude='**/*.test.js' --test-coverage-exclude='test-setup.js' --test-reporter=spec --test-reporter=spec --test-reporter-destination=stdout --test-reporter-destination=coverage.txt
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        node <<EOF
+        node <<'EOF'
         const fs = require('fs');
         const content = fs.readFileSync("./coverage.txt", "utf8");
         const percent = content
@@ -46,10 +46,10 @@ jobs:
         EOF
         rm -rf ./coverage.txt
         git switch --orphan _tmp
-        git add coverage.svg
-        if git diff --quiet --cached --exit-code -- coverage.svg; then
+        if git diff --quiet --exit-code -- coverage.svg; then
           true
         else
+          git add coverage.svg
           git commit -m 'Update metadata'
           git add .
           git stash -u
