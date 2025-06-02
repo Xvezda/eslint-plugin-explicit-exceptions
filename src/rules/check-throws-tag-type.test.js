@@ -58,6 +58,37 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          function foo(resolve, reject) {
+            reject(new Error());
+          }
+
+          /**
+           * @throws {Promise<Error>}
+           */
+          function bar() {
+            return new Promise(foo);
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function foo(resolve, reject) {
+            throw new Error();
+          }
+
+          /**
+           * @throws {Promise<Error>}
+           */
+          function bar() {
+            return new Promise(foo);
+          }
+        `,
+      },
     ],
     invalid: [
       {
