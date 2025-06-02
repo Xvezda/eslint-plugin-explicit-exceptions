@@ -1,6 +1,6 @@
 // @ts-check
 const { RuleTester } = require('@typescript-eslint/rule-tester');
-const rule = require('./no-undocumented-throws');
+const rule = require('../../src/rules/no-undocumented-throws');
 
 const ruleTester = new RuleTester({
   languageOptions: {

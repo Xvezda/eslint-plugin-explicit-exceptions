@@ -1,5 +1,5 @@
 examples/
-**/*.test.js 
+tests/
 test-setup.js
 .*
 coverage*
