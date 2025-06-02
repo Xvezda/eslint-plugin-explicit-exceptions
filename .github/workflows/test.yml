@@ -46,16 +46,13 @@ jobs:
         EOF
         rm -rf ./coverage.txt
         git switch --orphan _tmp
-        if git diff --quiet --exit-code -- coverage.svg; then
+        git add coverage.svg
+        git commit -m 'Update metadata'
+        git fetch origin _meta
+        if git diff origin/_meta _tmp --quiet --exit-code; then
           true
         else
-          git add coverage.svg
-          git commit -m 'Update metadata'
-          git add .
-          git stash -u
-          git fetch origin _meta
           git switch _meta
-          git reset --hard
           git cherry-pick -Xtheirs _tmp
           git push origin _meta
         fi
