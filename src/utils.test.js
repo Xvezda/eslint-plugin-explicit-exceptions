@@ -33,7 +33,9 @@ const {
   findNodeToComment,
   findIdentifierDeclaration,
   isInHandledContext,
+  isInAsyncHandledContext,
 } = require('./utils');
+const { find } = require('../eslint.config');
 
 describe('utils', () => {
   test('TypeMap', (t) => {
@@ -1069,6 +1071,69 @@ try {
       t.assert.equal(isInHandledContext(debuggerStatement), true);
     });
   });
+
+  describe('isInAsyncHandledContext', () => {
+    test('in try with catch clause', (t) => {
+      const { ast, sourceCode } = parse(`
+try {
+  await foo();
+} catch (e) {}
+      `);
+
+      const foo = getFirstFoundIdentifier(ast, 'foo');
+      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
+    });
+
+    test('in try without catch clause', (t) => {
+      const { ast, sourceCode } = parse(`
+try {
+  await foo();
+} finally {}
+      `);
+
+      const foo = getFirstFoundIdentifier(ast, 'foo');
+      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
+    });
+
+    test('in catch clause', (t) => {
+      const { ast, sourceCode } = parse(`
+try {
+} catch {
+  await foo();
+}
+      `);
+
+      const foo = getFirstFoundIdentifier(ast, 'foo');
+      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
+    });
+
+    test('in finally block', (t) => {
+      const { ast, sourceCode } = parse(`
+try {
+} catch {
+} finally {
+  await foo();
+}
+      `);
+
+      const foo = getFirstFoundIdentifier(ast, 'foo');
+      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
+    });
+
+    test('in nested context', (t) => {
+      const { ast, sourceCode } = parse(`
+try {
+  try {
+  } finally {
+    await foo();
+  }
+} catch {}
+      `);
+
+      const foo = getFirstFoundIdentifier(ast, 'foo');
+      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
+    });
+  });
 });
 
 const tsconfigRootDir = path.resolve(path.join(__dirname, '..'));
@@ -1142,6 +1207,38 @@ const findDebuggerStatement = (ast) => {
   }, true);
 
   return found;
+};
+
+/**
+ * @param {import('@typescript-eslint/typescript-estree').AST} ast
+ * @param {string} name
+ * @returns {import('@typescript-eslint/typescript-estree').TSESTree.Identifier[]}
+ */
+const findIdentifiers = (ast, name) => {
+  /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier[]} */
+  const ids = [];
+  simpleTraverse(ast, {
+    visitors: {
+      [AST_NODE_TYPES.Identifier](node) {
+        if (node.name === name) {
+          ids.push(node);
+        }
+      },
+    },
+  }, true);
+
+  return ids;
+};
+
+/**
+ * @param {import('@typescript-eslint/typescript-estree').AST} ast
+ * @param {string} name
+ * @returns {import('@typescript-eslint/typescript-estree').TSESTree.Identifier[]}
+ */
+const getFirstFoundIdentifier = (ast, name) => {
+  /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier[]} */
+  const ids = findIdentifiers(ast, name);
+  return ids[0] ?? null;
 };
 
 /**
