@@ -58,6 +58,37 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          function foo(resolve, reject) {
+            reject(new Error());
+          }
+
+          /**
+           * @throws {Promise<Error>}
+           */
+          function bar() {
+            return new Promise(foo);
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function foo(resolve, reject) {
+            throw new Error();
+          }
+
+          /**
+           * @throws {Promise<Error>}
+           */
+          function bar() {
+            return new Promise(foo);
+          }
+        `,
+      },
     ],
     invalid: [
       {
@@ -784,6 +815,98 @@ ruleTester.run(
                 reject(new TypeError());
               });
             });
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
+      {
+        code: `
+          function foo(resolve, reject) {
+            reject(new RangeError());
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function bar() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {Promise<RangeError>}
+           */
+          function baz() {
+            return new Promise(foo)
+              .then(bar);
+          }
+        `,
+        output: `
+          function foo(resolve, reject) {
+            reject(new RangeError());
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function bar() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {Promise<RangeError | TypeError>}
+           */
+          function baz() {
+            return new Promise(foo)
+              .then(bar);
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
+      {
+        code: `
+          function foo(resolve, reject) {
+            reject(new RangeError());
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function bar() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {Promise<RangeError>}
+           */
+          function baz() {
+            return new Promise(foo)
+              .catch(console.error)
+              .then(bar);
+          }
+        `,
+        output: `
+          function foo(resolve, reject) {
+            reject(new RangeError());
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function bar() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          function baz() {
+            return new Promise(foo)
+              .catch(console.error)
+              .then(bar);
           }
         `,
         errors: [
