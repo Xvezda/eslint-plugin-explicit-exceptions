@@ -30,6 +30,7 @@ jobs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         node <<EOF
+        const fs = require('fs');
         const content = fs.readFileSync("./coverage.txt", "utf8");
         const percent = content
           .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
@@ -41,7 +42,7 @@ jobs:
               "./coverage.svg",
               t.replace(new RegExp("X".repeat(percent.length), "g"), percent)
             )
-          )
+          );
         EOF
         rm -rf ./coverage.txt
         git switch --orphan _tmp
