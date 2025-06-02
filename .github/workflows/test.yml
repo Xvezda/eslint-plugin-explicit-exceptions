@@ -22,20 +22,34 @@ jobs:
     - run: pnpm run --if-present build
     - name: Run test
       if: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/main' }}
-      run: pnpm test --experimental-test-coverage --test-coverage-exclude='**/*.test.js' --test-coverage-exclude='test-setup.js'
-    - name: Generate coverage badge
-      if: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' }}
+      run: pnpm test
+    - name: Test coverage
+      # if: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' }}
       run: |
         pnpm test --experimental-test-coverage --test-coverage-exclude='**/*.test.js' --test-coverage-exclude='test-setup.js' --test-reporter=spec --test-reporter=spec --test-reporter-destination=stdout --test-reporter-destination=coverage.txt
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        node -e 'r=fs.readFileSync("./coverage.txt", "utf8").toString().replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "").match(/all files\s+[^\d]+(\d{0,3}\.\d{0,2})/)[1] + "%";fetch("https://img.shields.io/badge/coverage-"+"X".repeat(r.length)+"-blue").then(r => r.text()).then(t => fs.writeFileSync("./coverage.svg", t.replace(new RegExp("X".repeat(r.length), "g"), r)))'
+        node <<'EOF'
+        const fs = require('fs');
+        const content = fs.readFileSync("./coverage.txt", "utf8");
+        const percent = content
+          .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
+          .match(/all files\s+[^\d]+(\d{0,3}\.\d{0,2})/)[1] + "%";
+        fetch("https://img.shields.io/badge/coverage-"+"X".repeat(percent.length)+"-blue")
+          .then(r => r.text())
+          .then(t =>
+            fs.writeFileSync(
+              "./coverage.svg",
+              t.replace(new RegExp("X".repeat(percent.length), "g"), percent)
+            )
+          );
+        EOF
         rm -rf ./coverage.txt
         git switch --orphan _tmp
-        git add coverage.svg
-        if git diff --quiet --cached --exit-code -- coverage.svg; then
+        if git diff --quiet --exit-code -- coverage.svg; then
           true
         else
+          git add coverage.svg
           git commit -m 'Update metadata'
           git add .
           git stash -u
