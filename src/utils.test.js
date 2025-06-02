@@ -34,8 +34,8 @@ const {
   findIdentifierDeclaration,
   isInHandledContext,
   isInAsyncHandledContext,
+  isNodeReturned,
 } = require('./utils');
-const { find } = require('../eslint.config');
 
 describe('utils', () => {
   test('TypeMap', (t) => {
@@ -1073,10 +1073,79 @@ try {
   });
 
   describe('isInAsyncHandledContext', () => {
+    test('using catch method', (t) => {
+      const { ast, sourceCode } = parse(`
+foo().catch(console.error);
+      `);
+
+      const foo = getFirstFoundIdentifier(ast, 'foo');
+      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
+    });
+
+    test('using then reject handler', (t) => {
+      const { ast, sourceCode } = parse(`
+foo().then(() => {}, console.error);
+      `);
+
+      const foo = getFirstFoundIdentifier(ast, 'foo');
+      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
+    });
+
+    test('without then reject handler', (t) => {
+      const { ast, sourceCode } = parse(`
+foo().then(() => {});
+      `);
+
+      const foo = getFirstFoundIdentifier(ast, 'foo');
+      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
+    });
+
+    test('catch method after then method', (t) => {
+      const { ast, sourceCode } = parse(`
+foo().then(() => {}).catch(console.error);
+      `);
+
+      const foo = getFirstFoundIdentifier(ast, 'foo');
+      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
+    });
+
     test('in try with catch clause', (t) => {
       const { ast, sourceCode } = parse(`
 try {
   await foo();
+} catch (e) {}
+      `);
+
+      const foo = getFirstFoundIdentifier(ast, 'foo');
+      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
+    });
+
+    test('in try with catch clause without await', (t) => {
+      const { ast, sourceCode } = parse(`
+try {
+  foo();
+} catch (e) {}
+      `);
+
+      const foo = getFirstFoundIdentifier(ast, 'foo');
+      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
+    });
+
+    test('in try with catch clause without await, with catch method', (t) => {
+      const { ast, sourceCode } = parse(`
+try {
+  foo().catch(console.error);
+} catch (e) {}
+      `);
+
+      const foo = getFirstFoundIdentifier(ast, 'foo');
+      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
+    });
+
+    test('in try with catch clause with await, with catch method', (t) => {
+      const { ast, sourceCode } = parse(`
+try {
+  await foo().catch(console.error);
 } catch (e) {}
       `);
 
@@ -1132,6 +1201,76 @@ try {
 
       const foo = getFirstFoundIdentifier(ast, 'foo');
       t.assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
+    });
+
+    test('in nested context without await', (t) => {
+      const { ast, sourceCode } = parse(`
+try {
+  try {
+  } finally {
+    foo();
+  }
+} catch {}
+      `);
+
+      const foo = getFirstFoundIdentifier(ast, 'foo');
+      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
+    });
+  });
+
+  describe('isNodeReturned', () => {
+    test('return inside function', (t) => {
+      const { ast } = parse(`
+function foo() {
+  return bar;
+}
+      `);
+
+      const bar = getFirstFoundIdentifier(ast, 'bar');
+      t.assert.equal(isNodeReturned(bar), true);
+    });
+
+    test('after return statement', (t) => {
+      const { ast } = parse(`
+function foo() {
+  return;
+  bar;
+}
+      `);
+
+      const bar = getFirstFoundIdentifier(ast, 'bar');
+      t.assert.equal(isNodeReturned(bar), false);
+    });
+
+    test('arrow function with no block statement', (t) => {
+      const { ast } = parse(`
+const foo = () => bar;
+      `);
+
+      const bar = getFirstFoundIdentifier(ast, 'bar');
+      t.assert.equal(isNodeReturned(bar), true);
+    });
+
+    test('arrow function with block statement, no return', (t) => {
+      const { ast } = parse(`
+const foo = () => {
+  bar;
+}
+      `);
+
+      const bar = getFirstFoundIdentifier(ast, 'bar');
+      t.assert.equal(isNodeReturned(bar), false);
+    });
+
+    test('arrow function with block statement, with return', (t) => {
+      const { ast } = parse(`
+const foo = () => {
+  return bar;
+}
+      `);
+
+      const bar = getFirstFoundIdentifier(ast, 'bar');
+      t.assert.equal(isNodeReturned(bar), true);
     });
   });
 });
