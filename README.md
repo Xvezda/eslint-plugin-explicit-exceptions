@@ -174,5 +174,18 @@ This project uses [TypeScript](https://www.typescriptlang.org/) and [typescript-
 
 Check out [`typescript-eslint`](https://typescript-eslint.io/getting-started/) for more information if you having an issue with configuring.
 
+> [!NOTE]
+> I'm currently planning documentation for commonly used APIs.
+> Until then, you can apply a temporary workaround by directly extending the type interfaces.
+> ```js
+> // e.g. Promise.reject()
+> interface PromiseConstructor {
+>   /**
+>    * @throws {Promise<unknown>}
+>    */
+>   reject(reason?: any): Promise<unknown>;
+> }
+> ```
+
 ## License
 [MIT License](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/LICENSE)
