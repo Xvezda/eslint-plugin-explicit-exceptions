@@ -91,6 +91,25 @@ module.exports = createRule({
     const rejectTypes = new TypeMap();
 
     /**
+     * @typedef {import('@typescript-eslint/utils').TSESTree.Node | import('typescript').Type} MetadataKey
+     * @type {WeakMap<MetadataKey, { pos: number }>}
+     */
+    const metadata = new WeakMap();
+
+    /**
+     * @template {MetadataKey[]} T
+     * @param {T} items
+     */
+    const toSortedByMetadata = (items) => {
+      return [...items]
+        .sort((a, b) => {
+          const aPos = metadata.get(a)?.pos ?? 0;
+          const bPos = metadata.get(b)?.pos ?? 0;
+          return aPos - bPos;
+        });
+    };
+
+    /**
      * Visit function call node and collect types.
      * Since JavaScript has implicit function call via getters and setters,
      * this function handles those cases too.
@@ -111,10 +130,21 @@ module.exports = createRule({
         for (const type of calleeThrowsTypes) {
           if (isPromiseType(services, type)) {
             if (isInAsyncHandledContext(sourceCode, node)) continue;
-            rejectTypes.add(callerDeclaration, [type]);
+            const flattened =
+              toFlattenedTypeArray([checker.getAwaitedType(type) ?? type]);
+
+            rejectTypes.add(callerDeclaration, flattened);
+
+            flattened
+              .forEach(t => metadata.set(t, { pos: node.range[0] }));
           } else {
             if (isInHandledContext(node)) continue;
-            throwTypes.add(callerDeclaration, [type]);
+            const flattened = toFlattenedTypeArray([type]);
+
+            throwTypes.add(callerDeclaration, flattened);
+
+            flattened
+              .forEach(t => metadata.set(t, { pos: node.range[0] }));
           }
         };
       }
@@ -154,23 +184,13 @@ module.exports = createRule({
           .map(t => checker.getAwaitedType(t) ?? t);
 
         throwTypes.add(node, awaitedTypes);
+
+        awaitedTypes
+          .forEach(t => metadata.set(t, { pos: nodeToComment.range[0] }));
       }
 
-      const throwableTypes =
-        toFlattenedTypeArray(
-          /** @type {import('typescript').Type[]} */(
-          throwTypes.get(node)
-            ?.map(t => checker.getAwaitedType(t) ?? t)
-          )
-        );
-
-      const rejectableTypes =
-        toFlattenedTypeArray(
-          /** @type {import('typescript').Type[]} */(
-          rejectTypes.get(node)
-            ?.map(t => checker.getAwaitedType(t) ?? t)
-          )
-        );
+      const throwableTypes = throwTypes.get(node) ?? [];
+      const rejectableTypes = rejectTypes.get(node) ?? [];
 
       if (
         !throwableTypes.length &&
@@ -187,16 +207,33 @@ module.exports = createRule({
 
           const newType = 
             node.async
-              ? `Promise<${typesToUnionString(checker, [
-                ...throwableTypes,
-                ...rejectableTypes,
-              ])}>`
+              ? `Promise<${
+                typesToUnionString(
+                  checker,
+                  toSortedByMetadata([
+                    ...throwableTypes,
+                    ...rejectableTypes,
+                  ])
+                )
+              }>`
               : typeStringsToUnionString([
                 ...throwableTypes.length
-                  ? [typesToUnionString(checker, throwableTypes)]
+                  ? [
+                    typesToUnionString(
+                      checker,
+                      toSortedByMetadata(throwableTypes)
+                    )
+                  ]
                   : [],
                 ...rejectableTypes.length
-                  ? [`Promise<${typesToUnionString(checker, rejectableTypes)}>`]
+                  ? [
+                    `Promise<${
+                      typesToUnionString(
+                        checker,
+                        toSortedByMetadata(rejectableTypes)
+                      )
+                    }>`
+                  ]
                   : [],
               ]);
 
@@ -335,10 +372,15 @@ module.exports = createRule({
             .filter(expr => expr.arguments.length > 0)
             .map(expr => services.getTypeAtLocation(expr.arguments[0]));
 
+        const flattened = toFlattenedTypeArray(argumentTypes);
+
         rejectTypes.add(
           promiseReturningFunction,
-          toFlattenedTypeArray(argumentTypes)
+          flattened
         );
+
+        flattened
+          .forEach(t => metadata.set(t, { pos: callbackNode.range[0] }));
       }
 
       if (throwStatementsInFunction.has(getNodeID(callbackNode))) {
@@ -347,10 +389,16 @@ module.exports = createRule({
           ?.map(n => services.getTypeAtLocation(n.argument));
 
         if (throwStatementTypes) {
+          const flattened = 
+            toFlattenedTypeArray(throwStatementTypes);
+
           rejectTypes.add(
             promiseReturningFunction,
-            toFlattenedTypeArray(throwStatementTypes)
+            flattened,
           );
+
+          flattened
+            .forEach(t => metadata.set(t, { pos: callbackNode.range[0] }));
         }
       }
 
@@ -360,10 +408,16 @@ module.exports = createRule({
       );
 
       if (callbackThrowsTagTypes.length) {
+        const flattened =
+          toFlattenedTypeArray(callbackThrowsTagTypes);
+
         rejectTypes.add(
           promiseReturningFunction,
-          toFlattenedTypeArray(callbackThrowsTagTypes)
+          flattened,
         );
+
+        flattened
+          .forEach(t => metadata.set(t, { pos: callbackNode.range[0] }));
       }
     };
 
