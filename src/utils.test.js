@@ -966,7 +966,7 @@ export const foo = () => {
     });
   });
 
-  test('findIdentifierDeclaration', () => {
+  describe('findIdentifierDeclaration', () => {
     test('reference function declaration', (t) => {
       const { ast, sourceCode } = parse(`
 function foo() {}
