@@ -320,6 +320,8 @@ const obj = {
 foo();
 const qux = obj.bar;
 obj.baz = 42;
+
+debugger;
     `);
 
     /** @type {Map<string, import('@typescript-eslint/typescript-estree').TSESTree.Node>} */
@@ -367,6 +369,17 @@ obj.baz = 42;
       /** @type {import('@typescript-eslint/typescript-estree').TSESTree.MemberExpression} */
       (getCallee(assignmentExpression)).property.name === 'baz',
       'assignment to member expression returns setter must be named "baz"'
+    );
+
+    // Identifier of expression should be handled as well.
+    t.assert.ok(getCallee(callExpression.callee));
+    t.assert.ok(getCallee(memberExpression.property));
+
+    const debuggerStatement = findDebuggerStatement(ast);
+    t.assert.equal(
+      getCallee(debuggerStatement),
+      null,
+      'non callable node should return null',
     );
   });
 
@@ -486,6 +499,20 @@ obj.baz = 42;
       t.assert.equal(
         getCalleeDeclaration(services, assignmentExpression),
         null
+      );
+    });
+
+    test('non-callable node should return null', (t) => {
+      const { ast, services } = parse(`
+const a = 42;
+a;
+      `);
+
+      const identifier = getFirstFoundIdentifier(ast, 'a');
+      t.assert.equal(
+        getCalleeDeclaration(services, identifier),
+        null,
+        'non-callable node should return null',
       );
     });
   });
