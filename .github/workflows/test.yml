@@ -33,11 +33,14 @@ jobs:
         rm -rf ./coverage.txt
         git switch --orphan _tmp
         git add coverage.svg
-        git diff --cached --quiet && exit 0 || git commit -m 'Update metadata'
-        git add .
-        git stash -u
-        git fetch origin _meta
-        git switch _meta
-        git reset --hard
-        git cherry-pick -Xtheirs _tmp
-        git push origin _meta
+        git diff --cached --quiet
+        if [ $? -eq 1 ]; then
+          git commit -m 'Update metadata'
+          git add .
+          git stash -u
+          git fetch origin _meta
+          git switch _meta
+          git reset --hard
+          git cherry-pick -Xtheirs _tmp
+          git push origin _meta
+        fi
