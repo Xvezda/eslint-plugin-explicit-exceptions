@@ -237,9 +237,8 @@ const getCallee = (node) => {
     case AST_NODE_TYPES.Identifier:
       return getCallee(node.parent);
     default:
-      break;
+      return null;
   }
-  return null;
 };
 
 /**
@@ -313,9 +312,8 @@ const getCalleeDeclaration = (services, node) => {
     case AST_NODE_TYPES.CallExpression:
       return declarations[0];
     default:
-      break;
+      return null;
   }
-  return null;
 };
 
 /**
@@ -598,9 +596,8 @@ const findNodeToComment = (node) => {
       );
     }
     default:
-      break;
+      return null;
   }
-  return null;
 };
 
 /**
