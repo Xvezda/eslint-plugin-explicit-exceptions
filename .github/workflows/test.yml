@@ -31,7 +31,7 @@ jobs:
         git config user.email "github-actions[bot]@users.noreply.github.com"
         node <<EOF
         const content = fs.readFileSync("./coverage.txt", "utf8");
-        const percent =
+        const percent = content
           .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
           .match(/all files\s+[^\d]+(\d{0,3}\.\d{0,2})/)[1] + "%";
         fetch("https://img.shields.io/badge/coverage-"+"X".repeat(percent.length)+"-blue")
