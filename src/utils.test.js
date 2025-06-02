@@ -32,6 +32,7 @@ const {
   isThenableCallbackNode,
   findNodeToComment,
   findIdentifierDeclaration,
+  isInHandledContext,
 } = require('./utils');
 
 describe('utils', () => {
@@ -965,24 +966,108 @@ export const foo = () => {
     });
   });
 
-  test('findIdentifierDeclaration', (t) => {
-    const { ast, sourceCode } = parse(`
+  test('findIdentifierDeclaration', () => {
+    test('reference function declaration', (t) => {
+      const { ast, sourceCode } = parse(`
 function foo() {}
 
 debugger;
 foo;
     `);
 
-    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
-    const identifier = getNodeNextToDebugger(ast);
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+      const identifier = getNodeNextToDebugger(ast);
 
-    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration | null} */
-    const declaration =
-      findIdentifierDeclaration(sourceCode, identifier);
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration | null} */
+      const declaration =
+        findIdentifierDeclaration(sourceCode, identifier);
 
-    t.assert.ok(declaration);
-    t.assert.equal(declaration.type, AST_NODE_TYPES.FunctionDeclaration);
-    t.assert.equal(declaration.id.name, 'foo');
+      t.assert.ok(declaration);
+      t.assert.equal(declaration.type, AST_NODE_TYPES.FunctionDeclaration);
+      t.assert.equal(declaration.id.name, 'foo');
+    });
+
+    test('reference variable', (t) => {
+      const { ast, sourceCode } = parse(`
+const foo = function () {};
+
+debugger;
+foo;
+    `);
+
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+      const identifier = getNodeNextToDebugger(ast);
+
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration | null} */
+      const declaration =
+        findIdentifierDeclaration(sourceCode, identifier);
+
+      t.assert.ok(declaration);
+      t.assert.equal(declaration.type, AST_NODE_TYPES.FunctionExpression);
+    });
+  });
+
+  describe('isInHandledContext', () => {
+    test('in try with catch clause', (t) => {
+      const { ast } = parse(`
+try {
+  debugger;
+} catch (e) {}
+      `);
+
+      const debuggerStatement = findDebuggerStatement(ast);
+      t.assert.equal(isInHandledContext(debuggerStatement), true);
+    });
+
+    test('in try without catch clause', (t) => {
+      const { ast } = parse(`
+try {
+  debugger;
+} finally {}
+      `);
+
+      const debuggerStatement = findDebuggerStatement(ast);
+      t.assert.equal(isInHandledContext(debuggerStatement), false);
+    });
+
+    test('in catch clause', (t) => {
+      const { ast } = parse(`
+try {
+} catch {
+  debugger;
+}
+      `);
+
+      const debuggerStatement = findDebuggerStatement(ast);
+      t.assert.equal(isInHandledContext(debuggerStatement), false);
+    });
+
+    test('in finally block', (t) => {
+      const { ast } = parse(`
+try {
+} catch {
+} finally {
+  debugger;
+}
+      `);
+
+      const debuggerStatement = findDebuggerStatement(ast);
+      t.assert.equal(isInHandledContext(debuggerStatement), false);
+    });
+
+    test('in nested context', (t) => {
+      const { ast } = parse(`
+try {
+  try {
+  } finally {
+    debugger;
+  }
+} catch {}
+      `);
+
+      const debuggerStatement = findDebuggerStatement(ast);
+      t.assert.equal(isInHandledContext(debuggerStatement), true);
+    });
   });
 });
 
@@ -1043,18 +1128,31 @@ const getNodeNextTo = (node) => {
 
 /**
  * @param {import('@typescript-eslint/typescript-estree').AST} ast
- * @returns {import('@typescript-eslint/typescript-estree').TSESTree.Node | null}
+ * @returns {import('@typescript-eslint/typescript-estree').TSESTree.DebuggerStatement | null}
  */
-const getNodeNextToDebugger = (ast) => {
-  /** @type {import('@typescript-eslint/typescript-estree').TSESTree.ExpressionStatement} */
+const findDebuggerStatement = (ast) => {
+  /** @type {import('@typescript-eslint/typescript-estree').TSESTree.DebuggerStatement | null} */
   let found = null;
   simpleTraverse(ast, {
     visitors: {
       [AST_NODE_TYPES.DebuggerStatement](node) {
-        found = getNodeNextTo(node);
+        found = node;
       },
     },
   }, true);
+
+  return found;
+};
+
+/**
+ * @param {import('@typescript-eslint/typescript-estree').AST} ast
+ * @returns {import('@typescript-eslint/typescript-estree').TSESTree.Node | null}
+ */
+const getNodeNextToDebugger = (ast) => {
+  /** @type {import('@typescript-eslint/typescript-estree').TSESTree.DebuggerStatement} */
+  const debuggerStatement = findDebuggerStatement(ast);
+  /** @type {import('@typescript-eslint/typescript-estree').TSESTree.ExpressionStatement} */
+  const found = getNodeNextTo(debuggerStatement);
 
   return found.expression;
 };
