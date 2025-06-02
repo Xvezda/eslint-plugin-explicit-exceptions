@@ -2,3 +2,5 @@ examples/
 **/*.test.js 
 test-setup.js
 .*
+coverage*
+*config*.*
