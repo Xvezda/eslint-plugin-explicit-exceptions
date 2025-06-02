@@ -144,7 +144,7 @@ import explicitExceptionsLint from 'eslint-plugin-explicit-exceptions';
 export default tseslint.config(
   eslint.configs.recommended,
   tseslint.configs.recommended,
-  explicitExceptionsLint.configs.recommendTypeChecked,
+  explicitExceptionsLint.configs.recommendedTypeChecked,
   {
     languageOptions: {
       parserOptions: {
