@@ -845,7 +845,7 @@ function foo() {
   });
 
   describe('findNodeToComment', () => {
-    test('declared function', (t) => {
+    test('comment to declared function', (t) => {
       const { ast, sourceCode } = parseCode(`
 // here
 function foo() {}
@@ -870,7 +870,7 @@ function foo() {}
       );
     });
 
-    test('assigned arrow function', (t) => {
+    test('comment to assigned arrow function', (t) => {
       const { ast, sourceCode } = parseCode(`
 // here
 const foo = () => {};
@@ -900,7 +900,7 @@ const foo = () => {};
       );
     });
 
-    test('exported assigned arrow function', (t) => {
+    test('comment to exported assigned arrow function', (t) => {
       const { ast, sourceCode } = parseCode(`
 // here
 export const foo = () => {};
@@ -916,6 +916,76 @@ export const foo = () => {};
       }, true);
 
       const arrowFunction = map.get(AST_NODE_TYPES.ArrowFunctionExpression);
+
+      t.assert.equal(
+        sourceCode.getCommentsBefore(arrowFunction).length,
+        0,
+      );
+
+      t.assert.equal(
+        sourceCode
+          .getCommentsBefore(findNodeToComment(arrowFunction))
+          .some((comment) => comment.value.includes('here')),
+        true,
+      );
+    });
+
+    test('find node to comment from promise constructor', (t) => {
+      const { ast, sourceCode } = parseCode(`
+// here
+export const foo = () => {
+  return new Promise((resolve) => {});
+  //                 ^ node
+};
+    `);
+
+      /** @type {Map<string, import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+      const map = new Map();
+      simpleTraverse(ast, {
+        visitors: {
+          [AST_NODE_TYPES.Identifier](node) {
+            map.set(node.name, node);
+          },
+        },
+      }, true);
+
+      const resolveIdentifier = map.get('resolve');
+      const arrowFunction = resolveIdentifier?.parent;
+
+      t.assert.equal(
+        sourceCode.getCommentsBefore(arrowFunction).length,
+        0,
+      );
+
+      t.assert.equal(
+        sourceCode
+          .getCommentsBefore(findNodeToComment(arrowFunction))
+          .some((comment) => comment.value.includes('here')),
+        true,
+      );
+    });
+
+    test('find node to comment from promise chain method', (t) => {
+      const { ast, sourceCode } = parseCode(`
+// here
+export const foo = () => {
+  return Promise.resolve()
+    .then((value) => {});
+};
+    `);
+
+      /** @type {Map<string, import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+      const map = new Map();
+      simpleTraverse(ast, {
+        visitors: {
+          [AST_NODE_TYPES.Identifier](node) {
+            map.set(node.name, node);
+          },
+        },
+      }, true);
+
+      const identifier = map.get('value');
+      const arrowFunction = identifier?.parent;
 
       t.assert.equal(
         sourceCode.getCommentsBefore(arrowFunction).length,
