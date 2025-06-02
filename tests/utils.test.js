@@ -35,7 +35,7 @@ const {
   isInHandledContext,
   isInAsyncHandledContext,
   isNodeReturned,
-} = require('./utils');
+} = require('../src/utils');
 
 describe('utils', () => {
   test('TypeMap', (t) => {

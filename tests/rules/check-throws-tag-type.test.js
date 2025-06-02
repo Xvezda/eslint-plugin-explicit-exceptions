@@ -1,6 +1,6 @@
 // @ts-check
 const { RuleTester } = require('@typescript-eslint/rule-tester');
-const rule = require('./check-throws-tag-type');
+const rule = require('../../src/rules/check-throws-tag-type');
 
 const ruleTester = new RuleTester({
   languageOptions: {
