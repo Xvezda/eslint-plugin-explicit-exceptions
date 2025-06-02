@@ -176,7 +176,7 @@ Check out [`typescript-eslint`](https://typescript-eslint.io/getting-started/) f
 
 > [!NOTE]
 > I'm currently planning documentation for commonly used APIs.
-> Until then, you can apply a temporary workaround by directly extending the type interfaces.
+> Until then, you can apply a temporary workaround by extending the type interfaces.
 > ```js
 > // e.g. Promise.reject()
 > interface PromiseConstructor {
