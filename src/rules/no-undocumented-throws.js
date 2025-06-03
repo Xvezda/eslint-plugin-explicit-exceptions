@@ -19,6 +19,7 @@ const {
   isThenableCallbackNode,
   isAccessorNode,
   getCalleeDeclarations,
+  getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
   findParent,
   findClosest,
@@ -91,6 +92,11 @@ module.exports = createRule({
     const rejectTypes = new TypeMap();
 
     /**
+     * @type {Map<string, import('typescript').JSDocThrowsTag[]>}
+     */
+    const throwsComments = new Map();
+
+    /**
      * @typedef {import('@typescript-eslint/utils').TSESTree.Node | import('typescript').Type} MetadataKey
      * @type {WeakMap<MetadataKey, { pos: number }>}
      */
@@ -123,7 +129,11 @@ module.exports = createRule({
       const calleeDeclarations = getCalleeDeclarations(services, node);
       if (!calleeDeclarations.length) return;
 
+      /** @type {import('typescript').JSDocThrowsTag[]} */
+      const comments = [];
       for (const calleeDeclaration of calleeDeclarations) {
+        comments.push(...getJSDocThrowsTags(calleeDeclaration));
+
         const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
         if (!calleeThrowsTypes.length) continue;
 
@@ -158,6 +168,7 @@ module.exports = createRule({
           }
         };
       }
+      throwsComments.set(getNodeID(callerDeclaration), comments);
     };
 
     /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */
@@ -202,12 +213,36 @@ module.exports = createRule({
       const throwableTypes = throwTypes.get(node) ?? [];
       const rejectableTypes = rejectTypes.get(node) ?? [];
 
+      if (hasJSDocThrowsTag(sourceCode, nodeToComment)) return;
+
       if (
         !throwableTypes.length &&
         !rejectableTypes.length
-      ) return;
+      ) {
+        // At least there is untyped throws tag
+        const untypedThrowsTags = (throwsComments.get(getNodeID(node)) ?? [])
+          .filter(tag => !tag.typeExpression?.type);
 
-      if (hasJSDocThrowsTag(sourceCode, nodeToComment)) return;
+        if (untypedThrowsTags.length) {
+          context.report({
+            node: nodeToComment,
+            messageId: 'missingThrowsTag',
+            fix(fixer) {
+              const indent = getNodeIndent(sourceCode, node);
+
+              return fixer
+                .insertTextBefore(
+                  nodeToComment,
+                  `/**\n` +
+                  `${indent} * @throws\n` +
+                  `${indent} */\n` +
+                  `${indent}`
+                );
+            }
+          });
+        }
+        return;
+      }
 
       context.report({
         node: nodeToComment,

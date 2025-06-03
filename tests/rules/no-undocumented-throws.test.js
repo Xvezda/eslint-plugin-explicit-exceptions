@@ -31,6 +31,23 @@ ruleTester.run(
       {
         code: `
           /**
+           * @throws
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+
+          /**
+           * @throws
+           */
+          function bar() {
+            foo();
+          }
+        `,
+      },
+      {
+        code: `
+          /**
            * @throws {Error}
            */
           function foo() {
@@ -771,6 +788,36 @@ ruleTester.run(
            */
           function foo() {
             throw new Error("foo");
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          /**
+           * @throws Will throw something
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+
+          function bar() {
+            foo();
+          }
+        `,
+        output: `
+          /**
+           * @throws Will throw something
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+
+          /**
+           * @throws
+           */
+          function bar() {
+            foo();
           }
         `,
         errors: [{ messageId: 'missingThrowsTag' }],
