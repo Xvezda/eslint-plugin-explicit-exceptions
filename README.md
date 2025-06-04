@@ -178,7 +178,7 @@ Check out [`typescript-eslint`](https://typescript-eslint.io/getting-started/) f
 > I'm working on documentation for frequently used APIs.  
 > https://github.com/Xvezda/types-with-exceptions  
 > However, it's still not usable. As a temporary workaround, you can extend the type interfaces in your own type definitions.
-> ```js
+> ```typescript
 > // e.g. Promise.reject()
 > interface PromiseConstructor {
 >   /**
