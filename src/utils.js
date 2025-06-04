@@ -218,6 +218,31 @@ const getDeclarationsByNode = (services, node) => {
 };
 
 /**
+ * Get call expression node's declaration type.
+ *
+ * @public
+ * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
+ * @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node
+ * @return {import('typescript').Declaration | null}
+ */
+const getCallSignatureDeclaration = (services, node) => {
+  const checker = services.program.getTypeChecker();
+
+  const calleeTSNode = services.esTreeNodeToTSNodeMap
+    .get(node?.parent.type === AST_NODE_TYPES.CallExpression
+      ? node.parent
+      : /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
+      (node));
+
+  if (!calleeTSNode) return null;
+
+  const signature = checker.getResolvedSignature(calleeTSNode);
+  if (!signature?.declaration) return null;
+
+  return signature.declaration;
+};
+
+/**
  * Get callee node from given node's type.
  *
  * @public
@@ -241,6 +266,106 @@ const getCallee = (node) => {
   }
 };
 
+/**
+ * Get all declaration nodes of the callee from the given node's type.
+ *
+ * @public
+ * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
+ * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
+ * @return {import('typescript').Declaration | null}
+ */
+const getCalleeDeclaration = (services, node) => {
+  const checker = services.program.getTypeChecker();
+
+  /** @type {import('typescript').Declaration | null} */
+  let declaration = null;
+  if (
+    node.type === AST_NODE_TYPES.CallExpression ||
+    node.type === AST_NODE_TYPES.MemberExpression &&
+    node.parent?.type === AST_NODE_TYPES.CallExpression
+  ) {
+    const calleeTSNode = services.esTreeNodeToTSNodeMap
+      .get(node?.parent.type === AST_NODE_TYPES.CallExpression
+        ? node.parent
+        : /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
+          (node));
+
+    if (!calleeTSNode) return null;
+
+    const signature = checker.getResolvedSignature(calleeTSNode);
+    if (!signature?.declaration) return null;
+
+    declaration = signature.declaration;
+  } else {
+    /** @type {import('@typescript-eslint/utils').TSESTree.Node | null} */
+    const calleeNode = getCallee(node);
+    if (!calleeNode) return null;
+
+    const symbol = services
+      .getTypeAtLocation(calleeNode)
+      .symbol;
+
+    if (!symbol || !symbol.valueDeclaration) return null;
+
+    declaration = symbol.valueDeclaration;
+  }
+  if (!declaration) return null;
+
+
+  if (!declaration) {
+    return null;
+  }
+
+  switch (node.type) {
+    /**
+     * Return type of setter when assigning
+     *
+     * @example
+     * ```
+     * foo.bar = 'baz';
+     * //  ^ This can be a setter
+     * ```
+     */
+    case AST_NODE_TYPES.AssignmentExpression: {
+      const declarationNode =
+        services.tsNodeToESTreeNodeMap.get(declaration);
+
+      const isSetter = isAccessorNode(declarationNode) &&
+        declarationNode.kind === 'set';
+
+      return isSetter ? declaration : null;
+    }
+    /**
+     * Return type of getter when accessing
+     *
+     * @example
+     * ```
+     * const baz = foo.bar;
+     * //              ^ This can be a getter
+     * ```
+     */
+    case AST_NODE_TYPES.MemberExpression: {
+      const declarationNode =
+        services.tsNodeToESTreeNodeMap.get(declaration);
+
+      const isGetter = isAccessorNode(declarationNode) &&
+        declarationNode.kind === 'get';
+
+      if (
+        isGetter ||
+        // It is method call
+        node.parent?.type === AST_NODE_TYPES.CallExpression
+      ) {
+        return declaration;
+      }
+      return null;
+    }
+    case AST_NODE_TYPES.CallExpression:
+      return declaration;
+    default:
+      return null;
+  }
+};
 /**
  * Get all declaration nodes of the callee from the given node's type.
  *
@@ -793,7 +918,9 @@ module.exports = {
   typesToUnionString,
   findClosest,
   findParent,
+  getCallSignatureDeclaration,
   getCallee,
+  getCalleeDeclaration,
   getCalleeDeclarations,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,

@@ -6,6 +6,7 @@ const path = require('node:path');
 const { TSESLint, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const { simpleTraverse } = require('@typescript-eslint/typescript-estree');
 const { parseForESLint, createProgram } = require('@typescript-eslint/parser');
+const ts = require('typescript');
 
 const {
   TypeMap,
@@ -19,6 +20,7 @@ const {
   typesToUnionString,
   findClosest,
   findParent,
+  getCallSignatureDeclaration,
   getCallee,
   getCalleeDeclarations,
   getJSDocThrowsTags,
@@ -305,6 +307,44 @@ function foo() {
     t.assert.ok(
       closest?.type === AST_NODE_TYPES.FunctionDeclaration &&
       closest.id.name === 'foo'
+    );
+  });
+
+  test('getCallSignatureDeclaration', (t) => {
+    const { ast, services } = parse(`
+/**
+ * @throws {number}
+ */
+function foo(value: number);
+/**
+ * @throws {string}
+ */
+function foo(value: string);
+function foo(value: number | string) {}
+
+const value = 42;
+if (typeof value === 'number') {
+  debugger;
+  foo(value);
+}
+    `);
+
+    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+    const callExpression = getNodeNextToDebugger(ast);
+
+    const declaration = getCallSignatureDeclaration(services, callExpression);
+
+    const tags = getJSDocThrowsTags(declaration);
+
+    t.assert.equal(
+      tags.every(tag => {
+        const text = tag.getFullText();
+        return (
+          text.includes('@throws {number}') &&
+          !text.includes('@throws {string}')
+        );
+      }),
+      true
     );
   });
 
