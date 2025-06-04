@@ -19,6 +19,7 @@ const {
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
   getCalleeDeclaration,
+  getCallSignatureDeclaration,
   findParent,
   findClosest,
   findClosestFunctionNode,
@@ -204,7 +205,13 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node.parent);
       if (!callerDeclaration) return;
 
-      const calleeDeclaration = getCalleeDeclaration(services, node);
+      const calleeDeclaration =
+        node.type === AST_NODE_TYPES.CallExpression
+          ? getCallSignatureDeclaration(services, node)
+          : node.parent?.type === AST_NODE_TYPES.CallExpression
+          ? getCallSignatureDeclaration(services, node.parent)
+          : getCalleeDeclaration(services, node);
+
       if (!calleeDeclaration) return;
 
       const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
