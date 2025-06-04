@@ -7,6 +7,7 @@ const {
   getNodeID,
   getNodeIndent,
   getFirst,
+  getLast,
   createRule,
   hasJSDocThrowsTag,
   typesToUnionString,
@@ -18,7 +19,7 @@ const {
   isPromiseConstructorCallbackNode,
   isThenableCallbackNode,
   isAccessorNode,
-  getCalleeDeclarations,
+  getCalleeDeclaration,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
   findParent,
@@ -126,48 +127,44 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
-      const calleeDeclarations = getCalleeDeclarations(services, node);
-      if (!calleeDeclarations.length) return;
+      const calleeDeclaration = getCalleeDeclaration(services, node);
+      if (!calleeDeclaration) return;
 
       /** @type {import('typescript').JSDocThrowsTag[]} */
       const comments = [];
-      for (const calleeDeclaration of calleeDeclarations) {
-        comments.push(...getJSDocThrowsTags(calleeDeclaration));
+      comments.push(...getJSDocThrowsTags(calleeDeclaration));
 
-        const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
-        if (!calleeThrowsTypes.length) continue;
+      const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
+      for (const type of calleeThrowsTypes) {
+        if (isPromiseType(services, type)) {
+          if (isInAsyncHandledContext(sourceCode, node)) continue;
 
-        for (const type of calleeThrowsTypes) {
-          if (isPromiseType(services, type)) {
-            if (isInAsyncHandledContext(sourceCode, node)) continue;
+          const isPromiseReturned =
+            // Promise is assigned and returned
+            sourceCode.getScope(node.parent)
+            ?.references
+            .map(ref => ref.identifier)
+            .some(n => findClosest(n, isNodeReturned));
 
-            const isPromiseReturned =
-              // Promise is assigned and returned
-              sourceCode.getScope(node.parent)
-                ?.references
-                .map(ref => ref.identifier)
-                .some(n => findClosest(n, isNodeReturned));
+          if (!isPromiseReturned) continue;
 
-            if (!isPromiseReturned) continue;
+          const flattened =
+            toFlattenedTypeArray([checker.getAwaitedType(type) ?? type]);
 
-            const flattened =
-              toFlattenedTypeArray([checker.getAwaitedType(type) ?? type]);
+          rejectTypes.add(callerDeclaration, flattened);
 
-            rejectTypes.add(callerDeclaration, flattened);
+          flattened
+            .forEach(t => metadata.set(t, { pos: node.range[0] }));
+        } else {
+          if (isInHandledContext(node)) continue;
+          const flattened = toFlattenedTypeArray([type]);
 
-            flattened
-              .forEach(t => metadata.set(t, { pos: node.range[0] }));
-          } else {
-            if (isInHandledContext(node)) continue;
-            const flattened = toFlattenedTypeArray([type]);
+          throwTypes.add(callerDeclaration, flattened);
 
-            throwTypes.add(callerDeclaration, flattened);
-
-            flattened
-              .forEach(t => metadata.set(t, { pos: node.range[0] }));
-          }
-        };
-      }
+          flattened
+            .forEach(t => metadata.set(t, { pos: node.range[0] }));
+        }
+      };
       throwsComments.set(getNodeID(callerDeclaration), comments);
     };
 
@@ -487,8 +484,8 @@ module.exports = createRule({
 
         throwStatementNodes.push(node);
       },
-      ':function MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
       ':function CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
+      ':function MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
       ':function AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
 
       /**

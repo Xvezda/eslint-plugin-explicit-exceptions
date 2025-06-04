@@ -247,6 +247,106 @@ const getCallee = (node) => {
  * @public
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
  * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
+ * @return {import('typescript').Node | null}
+ */
+const getCalleeDeclaration = (services, node) => {
+  const checker = services.program.getTypeChecker();
+
+  /** @type {import('typescript').Declaration | null} */
+  let declaration = null;
+  if (
+    node.type === AST_NODE_TYPES.CallExpression ||
+    node.type === AST_NODE_TYPES.MemberExpression &&
+    node.parent?.type === AST_NODE_TYPES.CallExpression
+  ) {
+    const calleeTSNode = services.esTreeNodeToTSNodeMap
+      .get(node?.parent.type === AST_NODE_TYPES.CallExpression
+        ? node.parent
+        : /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
+          (node));
+
+    if (!calleeTSNode) return null;
+
+    const signature = checker.getResolvedSignature(calleeTSNode);
+    if (!signature?.declaration) return null;
+
+    declaration = signature.declaration;
+  } else {
+    /** @type {import('@typescript-eslint/utils').TSESTree.Node | null} */
+    const calleeNode = getCallee(node);
+    if (!calleeNode) return null;
+
+    const symbol = services
+      .getTypeAtLocation(calleeNode)
+      .symbol;
+
+    if (!symbol || !symbol.valueDeclaration) return null;
+
+    declaration = symbol.valueDeclaration;
+  }
+  if (!declaration) return null;
+
+
+  if (!declaration) {
+    return null;
+  }
+
+  switch (node.type) {
+    /**
+     * Return type of setter when assigning
+     *
+     * @example
+     * ```
+     * foo.bar = 'baz';
+     * //  ^ This can be a setter
+     * ```
+     */
+    case AST_NODE_TYPES.AssignmentExpression: {
+      const declarationNode =
+        services.tsNodeToESTreeNodeMap.get(declaration);
+
+      const isSetter = isAccessorNode(declarationNode) &&
+        declarationNode.kind === 'set';
+
+      return isSetter ? declaration : null;
+    }
+    /**
+     * Return type of getter when accessing
+     *
+     * @example
+     * ```
+     * const baz = foo.bar;
+     * //              ^ This can be a getter
+     * ```
+     */
+    case AST_NODE_TYPES.MemberExpression: {
+      const declarationNode =
+        services.tsNodeToESTreeNodeMap.get(declaration);
+
+      const isGetter = isAccessorNode(declarationNode) &&
+        declarationNode.kind === 'get';
+
+      if (
+        isGetter ||
+        // It is method call
+        node.parent?.type === AST_NODE_TYPES.CallExpression
+      ) {
+        return declaration;
+      }
+      return null;
+    }
+    case AST_NODE_TYPES.CallExpression:
+      return declaration;
+    default:
+      return null;
+  }
+};
+/**
+ * Get all declaration nodes of the callee from the given node's type.
+ *
+ * @public
+ * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
+ * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
  * @return {import('typescript').Node[]}
  */
 const getCalleeDeclarations = (services, node) => {
@@ -794,6 +894,7 @@ module.exports = {
   findClosest,
   findParent,
   getCallee,
+  getCalleeDeclaration,
   getCalleeDeclarations,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
