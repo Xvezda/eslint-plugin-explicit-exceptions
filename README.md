@@ -175,9 +175,10 @@ This project uses [TypeScript](https://www.typescriptlang.org/) and [typescript-
 Check out [`typescript-eslint`](https://typescript-eslint.io/getting-started/) for more information if you having an issue with configuring.
 
 > [!NOTE]
-> I'm currently planning documentation for commonly used APIs.
-> Until then, you can apply a temporary workaround by extending the type interfaces.
-> ```js
+> I'm working on documentation for frequently used APIs.  
+> https://github.com/Xvezda/types-with-exceptions  
+> However, it's still not usable. As a temporary workaround, you can extend the type interfaces in your own type definitions.
+> ```typescript
 > // e.g. Promise.reject()
 > interface PromiseConstructor {
 >   /**
