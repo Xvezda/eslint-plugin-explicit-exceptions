@@ -218,6 +218,31 @@ const getDeclarationsByNode = (services, node) => {
 };
 
 /**
+ * Get call expression node's declaration type.
+ *
+ * @public
+ * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
+ * @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node
+ * @return {import('typescript').Declaration | null}
+ */
+const getCallSignatureDeclaration = (services, node) => {
+  const checker = services.program.getTypeChecker();
+
+  const calleeTSNode = services.esTreeNodeToTSNodeMap
+    .get(node?.parent.type === AST_NODE_TYPES.CallExpression
+      ? node.parent
+      : /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
+      (node));
+
+  if (!calleeTSNode) return null;
+
+  const signature = checker.getResolvedSignature(calleeTSNode);
+  if (!signature?.declaration) return null;
+
+  return signature.declaration;
+};
+
+/**
  * Get callee node from given node's type.
  *
  * @public
@@ -247,7 +272,7 @@ const getCallee = (node) => {
  * @public
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
  * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
- * @return {import('typescript').Node | null}
+ * @return {import('typescript').Declaration | null}
  */
 const getCalleeDeclaration = (services, node) => {
   const checker = services.program.getTypeChecker();
@@ -893,6 +918,7 @@ module.exports = {
   typesToUnionString,
   findClosest,
   findParent,
+  getCallSignatureDeclaration,
   getCallee,
   getCalleeDeclaration,
   getCalleeDeclarations,

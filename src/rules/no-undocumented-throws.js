@@ -7,7 +7,6 @@ const {
   getNodeID,
   getNodeIndent,
   getFirst,
-  getLast,
   createRule,
   hasJSDocThrowsTag,
   typesToUnionString,
@@ -19,6 +18,7 @@ const {
   isPromiseConstructorCallbackNode,
   isThenableCallbackNode,
   isAccessorNode,
+  getCallSignatureDeclaration,
   getCalleeDeclaration,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
@@ -127,7 +127,13 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
-      const calleeDeclaration = getCalleeDeclaration(services, node);
+      const calleeDeclaration =
+        node.type === AST_NODE_TYPES.CallExpression
+          ? getCallSignatureDeclaration(services, node)
+          : node.parent?.type === AST_NODE_TYPES.CallExpression
+          ? getCallSignatureDeclaration(services, node.parent)
+          : getCalleeDeclaration(services, node);
+
       if (!calleeDeclaration) return;
 
       /** @type {import('typescript').JSDocThrowsTag[]} */
