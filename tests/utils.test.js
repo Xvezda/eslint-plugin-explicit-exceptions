@@ -1,12 +1,10 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
 const { test, describe } = require('node:test');
-const path = require('node:path');
 
 const { TSESLint, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const { simpleTraverse } = require('@typescript-eslint/typescript-estree');
 const { parseForESLint, createProgram } = require('@typescript-eslint/parser');
-const ts = require('typescript');
 
 const {
   TypeMap,
@@ -1361,8 +1359,8 @@ const foo = () => {
   });
 });
 
-const tsconfigRootDir = path.resolve(path.join(__dirname, '..'));
-const program = createProgram('tsconfig-test.json', tsconfigRootDir);
+const tsconfigRootDir = __dirname;
+const program = createProgram('tsconfig.json', tsconfigRootDir);
 
 /**
  * @param {string} code
@@ -1372,9 +1370,7 @@ function parse(code) {
     tsconfigRootDir,
     filePath: __filename,
     programs: [program],
-    projectService: {
-      allowDefaultProject: ['*.js', '*.ts*'],
-    },
+    projectService: true,
     errorOnUnknownASTType: true,
     project: true,
     comment: true,
