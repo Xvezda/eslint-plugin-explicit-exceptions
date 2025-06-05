@@ -1,12 +1,17 @@
 // @ts-check
+const path = require('node:path');
 const { RuleTester } = require('@typescript-eslint/rule-tester');
 const rule = require('../../src/rules/check-throws-tag-type');
 
 const ruleTester = new RuleTester({
   languageOptions: {
     parserOptions: {
+      tsconfigRootDir: path.resolve(path.join(__dirname, '..')),
       projectService: {
-        allowDefaultProject: ['*.ts*'],
+        allowDefaultProject: [
+          '*.ts',
+          '*.js',
+        ],
       },
       JSDocParsingMode: 'all',
     },
