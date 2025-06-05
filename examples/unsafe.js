@@ -51,5 +51,16 @@ function promised() {
 }
 promised().catch(() => {});
 
+/**
+ * @param {string} path
+ * @param {AbortController} controller
+ */
+async function fetchAPI(path, controller) {
+  return await fetch(path, {
+    signal: controller.signal,
+  });
+}
+const controller = new AbortController();
+fetchAPI('/test', controller).catch(console.error);
 
 export {};

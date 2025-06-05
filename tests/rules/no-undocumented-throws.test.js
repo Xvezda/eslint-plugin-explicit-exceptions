@@ -1,12 +1,17 @@
 // @ts-check
+const path = require('node:path');
 const { RuleTester } = require('@typescript-eslint/rule-tester');
 const rule = require('../../src/rules/no-undocumented-throws');
 
 const ruleTester = new RuleTester({
   languageOptions: {
     parserOptions: {
+      tsconfigRootDir: path.resolve(path.join(__dirname, '..')),
       projectService: {
-        allowDefaultProject: ['*.ts*'],
+        allowDefaultProject: [
+          '*.ts',
+          '*.js',
+        ],
       },
       JSDocParsingMode: 'all',
     },
@@ -2507,6 +2512,286 @@ ruleTester.run(
         errors: [
           { messageId: 'missingThrowsTag' },
         ],
+      },
+      {
+        code: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          /**
+           * @param {any} value
+           */
+          function foo(value) {
+            return Promise.reject(value)
+              .then(console.log);
+          }
+        `,
+        output: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          /**
+           * @param {any} value
+           * @throws {Promise<unknown>}
+           */
+          function foo(value) {
+            return Promise.reject(value)
+              .then(console.log);
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          /** @param {any} value */
+          function foo(value) {
+            return Promise.reject(value)
+              .then(console.log);
+          }
+        `,
+        output: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          /**
+           * @param {any} value
+           * @throws {Promise<unknown>}
+           */
+          function foo(value) {
+            return Promise.reject(value)
+              .then(console.log);
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          /** @param {any} value
+           */
+          function foo(value) {
+            return Promise.reject(value)
+              .then(console.log);
+          }
+        `,
+        output: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          /**
+           * @param {any} value
+           * @throws {Promise<unknown>}
+           */
+          function foo(value) {
+            return Promise.reject(value)
+              .then(console.log);
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          /** foo */
+          function foo(value) {
+            return Promise.reject(value)
+              .then(console.log);
+          }
+        `,
+        output: `
+          interface PromiseConstructor {
+            /**
+             * @throws {Promise<unknown>}
+             */
+            reject(reason?: any): Promise<unknown>;
+          }
+
+          /**
+           * foo
+           * @throws {Promise<unknown>}
+           */
+          function foo(value) {
+            return Promise.reject(value)
+              .then(console.log);
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws Will throw something
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+
+          /** foo */
+          function bar() {
+            foo();
+          }
+        `,
+        output: `
+          /**
+           * @throws Will throw something
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+
+          /**
+           * foo
+           * @throws
+           */
+          function bar() {
+            foo();
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          /**
+           * @throws Will throw something
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+
+          /** foo
+           */
+          function bar() {
+            foo();
+          }
+        `,
+        output: `
+          /**
+           * @throws Will throw something
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+
+          /**
+           * foo
+           * @throws
+           */
+          function bar() {
+            foo();
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          /**
+           * @throws Will throw something
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+
+          /**
+           * @deprecated
+           */
+          function bar() {
+            foo();
+          }
+        `,
+        output: `
+          /**
+           * @throws Will throw something
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+
+          /**
+           * @deprecated
+           * @throws
+           */
+          function bar() {
+            foo();
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          /**
+           * @throws Will throw something
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+
+          // blah blah
+          // haha
+          function bar() {
+            foo();
+          }
+        `,
+        output: `
+          /**
+           * @throws Will throw something
+           */
+          function foo() {
+            throw new Error('foo');
+          }
+
+          // blah blah
+          // haha
+          /**
+           * @throws
+           */
+          function bar() {
+            foo();
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
       },
     ],
   },

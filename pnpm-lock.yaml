@@ -15,9 +15,9 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
     devDependencies:
-      '@types/node':
-        specifier: ^22.15.21
-        version: 22.15.21
+      '@types-with-exceptions/node':
+        specifier: 22.15.29-dev.0
+        version: 22.15.29-dev.0
       '@typescript-eslint/parser':
         specifier: ^8.32.1
         version: 8.32.1(eslint@9.27.0)(typescript@5.8.3)
@@ -109,14 +109,14 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
+  '@types-with-exceptions/node@22.15.29-dev.0':
+    resolution: {integrity: sha512-OtLuYLsUMZF6Nqq+qDhBfvgHGtQ4QB2T6Mu8JQhL4Oc4F2z61pOfygs3lche1LJnPTol+luxCaGCPXVznsm2NQ==}
+
   '@types/estree@1.0.7':
     resolution: {integrity: sha512-w28IoSUCJpidD/TGviZwwMJckNESJZXFu7NBZ5YJ4mEUnNraUn9Pm8HSZm/jDF1pDWYKspWE7oVphigUPRakIQ==}
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
-
-  '@types/node@22.15.21':
-    resolution: {integrity: sha512-EV/37Td6c+MgKAbkcLG6vqZ2zEYHD7bvSrzqqs2RIhbA6w3x+Dqz8MZM3sP6kGTeLrdoOgKZe+Xja7tUB2DNkQ==}
 
   '@typescript-eslint/eslint-plugin@8.32.1':
     resolution: {integrity: sha512-6u6Plg9nP/J1GRpe/vcjjabo6Uc5YQPAMxsgQyGC/I0RuukiG1wIe3+Vtg3IrSCVJDmqK3j8adrtzXSENRtFgg==}
@@ -628,13 +628,13 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.19.1
 
+  '@types-with-exceptions/node@22.15.29-dev.0':
+    dependencies:
+      undici-types: 6.21.0
+
   '@types/estree@1.0.7': {}
 
   '@types/json-schema@7.0.15': {}
-
-  '@types/node@22.15.21':
-    dependencies:
-      undici-types: 6.21.0
 
   '@typescript-eslint/eslint-plugin@8.32.1(@typescript-eslint/parser@8.32.1(eslint@9.27.0)(typescript@5.8.3))(eslint@9.27.0)(typescript@5.8.3)':
     dependencies:

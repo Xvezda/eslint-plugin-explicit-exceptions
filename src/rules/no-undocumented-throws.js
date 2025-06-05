@@ -8,6 +8,8 @@ const {
   getNodeIndent,
   getFirst,
   createRule,
+  appendThrowsTags,
+  hasJSDoc,
   hasJSDocThrowsTag,
   typesToUnionString,
   typeStringsToUnionString,
@@ -233,6 +235,30 @@ module.exports = createRule({
             fix(fixer) {
               const indent = getNodeIndent(sourceCode, node);
 
+              if (hasJSDoc(sourceCode, nodeToComment)) {
+                const comments = sourceCode.getCommentsBefore(nodeToComment);
+                const comment = comments
+                  .find(({ value }) => value.trim().startsWith('*'));
+
+                if (comment) {
+                  let newCommentText = sourceCode.getText(comment);
+                  if (!/^\/\*\*[ \t]*\n/.test(newCommentText)) {
+                    newCommentText = newCommentText
+                      .replace(/^\/\*\*\s*/, `/**\n${indent} * `)
+                      .replace(/\s*\*\/$/, `\n${indent} * @throws\n${indent} */`)
+                  } else {
+                    newCommentText = newCommentText.replace(
+                      /([^*\n]+)(\*+[/])/,
+                      `$1* @throws\n$1$2`
+                    );
+                  }
+                  return fixer.replaceTextRange(
+                    comment.range,
+                    newCommentText,
+                  );
+                }
+              }
+
               return fixer
                 .insertTextBefore(
                   nodeToComment,
@@ -251,8 +277,6 @@ module.exports = createRule({
         node: nodeToComment,
         messageId: 'missingThrowsTag',
         fix(fixer) {
-          const indent = getNodeIndent(sourceCode, node);
-
           const newType = 
             node.async
               ? `Promise<${
@@ -284,6 +308,32 @@ module.exports = createRule({
                   ]
                   : [],
               ]);
+
+          const indent = getNodeIndent(sourceCode, node);
+
+          if (hasJSDoc(sourceCode, nodeToComment)) {
+            const comments = sourceCode.getCommentsBefore(nodeToComment);
+            const comment = comments
+              .find(({ value }) => value.startsWith('*'));
+
+            if (comment) {
+              let newCommentText = sourceCode.getText(comment);
+              if (!/^\/\*\*[ \t]*\n/.test(newCommentText)) {
+                newCommentText = newCommentText
+                  .replace(/^\/\*\*\s*/, `/**\n${indent} * `)
+                  .replace(/\s*\*\/$/, `\n${indent} * @throws {${newType}}\n${indent} */`)
+              } else {
+                newCommentText = appendThrowsTags(
+                  newCommentText,
+                  [newType],
+                );
+              }
+              return fixer.replaceTextRange(
+                comment.range,
+                newCommentText,
+              );
+            }
+          }
 
           return fixer
             .insertTextBefore(

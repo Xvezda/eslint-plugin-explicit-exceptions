@@ -107,6 +107,36 @@ const getNodeIndent = (sourceCode, node) => {
 };
 
 /**
+ * @public
+ * @param {string} jsdocString
+ * @param {string[]} typeStrings
+ * @returns {string}
+ */
+const appendThrowsTags = (jsdocString, typeStrings) =>
+  typeStrings.reduce((acc, typeString) =>
+    acc.replace(
+      /([^*\n]+)(\*+[/])/,
+      `$1* @throws {${typeString}}\n$1$2`
+    ),
+    jsdocString
+  );
+
+/**
+ * Check if node has any valid JSDoc.
+ *
+ * @public
+ * @param {Readonly<import('@typescript-eslint/utils').TSESLint.SourceCode>} sourceCode
+ * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+ * @return {boolean}
+ */
+const hasJSDoc = (sourceCode, node) => {
+  const comments = sourceCode.getCommentsBefore(node);
+  if (!comments.length) return false;
+
+  return comments.some(comment => comment.value.startsWith('*'));
+};
+
+/**
  * Check if node has JSDoc comment with @throws or @exception tag.
  *
  * @public
@@ -912,7 +942,9 @@ module.exports = {
   getNodeID,
   getNodeIndent,
   createRule,
+  appendThrowsTags,
   hasThrowsTag,
+  hasJSDoc,
   hasJSDocThrowsTag,
   typeStringsToUnionString,
   typesToUnionString,

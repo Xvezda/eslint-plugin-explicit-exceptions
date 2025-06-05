@@ -15,6 +15,7 @@ const {
   isPromiseConstructorCallbackNode,
   isThenableCallbackNode,
   isAccessorNode,
+  appendThrowsTags,
   hasJSDocThrowsTag,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
@@ -401,20 +402,6 @@ module.exports = createRule({
 
       if (documentedThrowsTags.length > 1) {
         const callerJSDocTSNode = lastThrowsTag.parent;
-        /**
-         * @param {string} jsdocString
-         * @param {string[]} typeStrings
-         * @returns {string}
-         */
-        const appendThrowsTags = (jsdocString, typeStrings) =>
-          typeStrings.reduce((acc, typeString) =>
-            acc.replace(
-              /([^*\n]+)(\*+[/])/,
-              `$1* @throws {${typeString}}\n$1$2`
-            ),
-            jsdocString
-          );
-
         context.report({
           node,
           messageId: 'throwTypeMismatch',
