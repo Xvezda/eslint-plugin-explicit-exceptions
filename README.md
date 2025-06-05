@@ -130,6 +130,44 @@ Install plugin
 npm install --save-dev eslint-plugin-explicit-exceptions
 ```
 
+> [!WARNING]
+> > These packages are experimental.
+> 
+> Install custom types for better built-in, libraries lint support.
+> ```sh
+> # For @types/*, i.e. @types/node
+> npm install --save-dev @types-with-exceptions/node
+> # For built-in lib replacement
+> npm install --save-dev @types-with-exceptions/lib
+> ```
+> `tsconfig.json`
+> ```diff
+>  {
+>     // ...
+> +   "typeRoots": [
+> +     "node_modules/@types",
+> +     "node_modules/@types-with-exceptions"
+> +   ],
+> +   "libReplacement": true,
+>     // ...
+>  }
+> ```
+> Visit https://github.com/Xvezda/types-with-exceptions to see more.
+
+> [!NOTE]
+> I'm working on documentation for frequently used APIs.  
+> https://github.com/Xvezda/types-with-exceptions  
+> However, it's still not usable. As a temporary workaround, you can extend the type interfaces in your own type definitions.
+> ```typescript
+> // e.g. Promise.reject()
+> interface PromiseConstructor {
+>   /**
+>    * @throws {Promise<unknown>}
+>    */
+>   reject(reason?: any): Promise<unknown>;
+> }
+> ```
+
 Create `eslint.config.mjs`
 
 ```javascript
@@ -173,20 +211,6 @@ For legacy, `.eslintrc.json`
 This project uses [TypeScript](https://www.typescriptlang.org/) and [typescript-eslint](https://typescript-eslint.io/) to leverage type information. To prevent errors or bugs caused by incorrect type data, it is recommended to [set the `tsconfig.json` `"strict"` option to `true`](https://www.typescriptlang.org/tsconfig/#strict).
 
 Check out [`typescript-eslint`](https://typescript-eslint.io/getting-started/) for more information if you having an issue with configuring.
-
-> [!NOTE]
-> I'm working on documentation for frequently used APIs.  
-> https://github.com/Xvezda/types-with-exceptions  
-> However, it's still not usable. As a temporary workaround, you can extend the type interfaces in your own type definitions.
-> ```typescript
-> // e.g. Promise.reject()
-> interface PromiseConstructor {
->   /**
->    * @throws {Promise<unknown>}
->    */
->   reject(reason?: any): Promise<unknown>;
-> }
-> ```
 
 ## License
 [MIT License](https://github.com/Xvezda/eslint-plugin-explicit-exceptions/blob/master/LICENSE)
