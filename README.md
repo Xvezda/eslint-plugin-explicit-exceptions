@@ -131,7 +131,7 @@ npm install --save-dev eslint-plugin-explicit-exceptions
 ```
 
 > [!WARNING]
-> > This packages are yet experimental.
+> > These packages are experimental.
 > 
 > Install custom types for better built-in, libraries lint support.
 > ```sh
