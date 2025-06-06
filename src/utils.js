@@ -252,7 +252,7 @@ const getDeclarationsByNode = (services, node) => {
  *
  * @public
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
- * @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node
+ * @param {import('@typescript-eslint/utils').TSESTree.CallExpression | import('@typescript-eslint/utils').TSESTree.NewExpression} node
  * @return {import('typescript').Declaration | null}
  */
 const getCallSignatureDeclaration = (services, node) => {

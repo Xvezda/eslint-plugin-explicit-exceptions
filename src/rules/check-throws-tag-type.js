@@ -207,7 +207,8 @@ module.exports = createRule({
       if (!callerDeclaration) return;
 
       const calleeDeclaration =
-        node.type === AST_NODE_TYPES.CallExpression
+        (node.type === AST_NODE_TYPES.CallExpression ||
+         node.type === AST_NODE_TYPES.NewExpression)
           ? getCallSignatureDeclaration(services, node)
           : node.parent?.type === AST_NODE_TYPES.CallExpression
           ? getCallSignatureDeclaration(services, node.parent)
