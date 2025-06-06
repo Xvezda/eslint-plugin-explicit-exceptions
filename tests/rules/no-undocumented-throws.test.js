@@ -1078,6 +1078,7 @@ ruleTester.run(
           }
         `,
         errors: [{ messageId: 'missingThrowsTag' }],
+        options: [{ useBaseTypeOfLiteral: true }],
       },
       {
         code: `

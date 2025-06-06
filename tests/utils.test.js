@@ -244,6 +244,39 @@ const f: number = 456;
     );
   });
 
+  test('typesToUnionString preserves namespaces', (t) => {
+    const { ast, services } = parse(`
+declare namespace NodeJS {
+  interface ErrnoException extends Error {
+    errno?: number;
+    code?: string;
+    path?: string;
+  }
+}
+
+const error: NodeJS.ErrnoException = new Error() as NodeJS.ErrnoException;
+    `);
+
+    const checker = services.program.getTypeChecker();
+
+    const types = [];
+    simpleTraverse(ast, {
+      visitors: {
+        Identifier(node) {
+          if (node.name === 'error') {
+            types.push(services.getTypeAtLocation(node));
+          }
+        },
+      },
+    }, true);
+
+    const result = typesToUnionString(checker, types);
+    t.assert.ok(
+      result.includes('NodeJS.ErrnoException'),
+      `Expected fully qualified name 'NodeJS.ErrnoException' in type string, got: ${result}`
+    );
+  });
+
   test('findClosest', (t) => {
     const { ast } = parse(`
 function foo() {
@@ -1464,7 +1497,7 @@ const getFirstFoundIdentifier = (ast, name) => {
 
 /**
  * @param {import('@typescript-eslint/typescript-estree').AST} ast
- * @returns {import('@typescript-eslint/typescript-estree').TSESTree.Node | null}
+ * @returns {import('@typescript-eslint/typescript-estree').Node | null}
  */
 const getNodeNextToDebugger = (ast) => {
   /** @type {import('@typescript-eslint/typescript-estree').TSESTree.DebuggerStatement} */
