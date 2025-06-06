@@ -37,6 +37,7 @@
   "license": "MIT",
   "packageManager": "pnpm@10.10.0",
   "devDependencies": {
+    "@typescript/lib-es5": "npm:@types-with-exceptions/lib-es5@5.8.3-dev.1",
     "@types-with-exceptions/node": "22.15.29-dev.0",
     "@typescript-eslint/parser": "^8.32.1",
     "@typescript-eslint/rule-tester": "^8.32.1",

@@ -281,6 +281,7 @@ const getCallSignatureDeclaration = (services, node) => {
  */
 const getCallee = (node) => {
   switch (node.type) {
+    case AST_NODE_TYPES.NewExpression:
     case AST_NODE_TYPES.CallExpression:
       return node.callee;
     // Setter
@@ -310,6 +311,7 @@ const getCalleeDeclaration = (services, node) => {
   /** @type {import('typescript').Declaration | null} */
   let declaration = null;
   if (
+    node.type === AST_NODE_TYPES.NewExpression ||
     node.type === AST_NODE_TYPES.CallExpression ||
     node.type === AST_NODE_TYPES.MemberExpression &&
     node.parent?.type === AST_NODE_TYPES.CallExpression
@@ -390,6 +392,7 @@ const getCalleeDeclaration = (services, node) => {
       }
       return null;
     }
+    case AST_NODE_TYPES.NewExpression:
     case AST_NODE_TYPES.CallExpression:
       return declaration;
     default:

@@ -33,6 +33,9 @@ importers:
       '@typescript-eslint/utils':
         specifier: ^8.32.1
         version: 8.32.1(eslint@9.27.0)(typescript@5.8.3)
+      '@typescript/lib-es5':
+        specifier: npm:@types-with-exceptions/lib-es5@5.8.3-dev.1
+        version: '@types-with-exceptions/lib-es5@5.8.3-dev.1'
       typescript-eslint:
         specifier: ^8.32.1
         version: 8.32.1(eslint@9.27.0)(typescript@5.8.3)
@@ -108,6 +111,10 @@ packages:
   '@nodelib/fs.walk@1.2.8':
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
+
+  '@types-with-exceptions/lib-es5@5.8.3-dev.1':
+    resolution: {integrity: sha512-XXpDcq6RWKiImyw8CiJL1EBsxFCUzgszN/hMzanyi8KgSNLfi0HzFyhTSP3oTIcSwtTlW8ccb2ciARc3Y7kgUg==}
+    engines: {node: '>=14.17'}
 
   '@types-with-exceptions/node@22.15.29-dev.0':
     resolution: {integrity: sha512-OtLuYLsUMZF6Nqq+qDhBfvgHGtQ4QB2T6Mu8JQhL4Oc4F2z61pOfygs3lche1LJnPTol+luxCaGCPXVznsm2NQ==}
@@ -627,6 +634,8 @@ snapshots:
     dependencies:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.19.1
+
+  '@types-with-exceptions/lib-es5@5.8.3-dev.1': {}
 
   '@types-with-exceptions/node@22.15.29-dev.0':
     dependencies:
