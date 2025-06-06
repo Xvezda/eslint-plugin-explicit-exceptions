@@ -658,8 +658,9 @@ module.exports = createRule({
         throwStatementNodes.push(node);
         metadata.set(node, { pos: node.range[0] });
       },
-      ':function MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
+      ':function NewExpression[callee.type="Identifier"]': visitFunctionCallNode,
       ':function CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
+      ':function MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
       ':function AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
 
       /**

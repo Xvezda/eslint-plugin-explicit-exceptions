@@ -2793,6 +2793,26 @@ ruleTester.run(
         `,
         errors: [{ messageId: 'missingThrowsTag' }],
       },
+      {
+        code: `
+          /**
+           * @param {number} value
+           */
+          function foo(value) {
+            new ArrayBuffer(value);
+          }
+        `,
+        output: `
+          /**
+           * @param {number} value
+           * @throws {RangeError}
+           */
+          function foo(value) {
+            new ArrayBuffer(value);
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+      },
     ],
   },
 );
