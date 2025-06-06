@@ -166,15 +166,47 @@ const typeStringsToUnionString = (typeStrings) =>
   [...new Set(typeStrings)].join(' | ');
 
 /**
+ * Get qualified type name that preserves namespace information.
+ *
+ * @public
+ * @param {import('typescript').TypeChecker} checker
+ * @param {import('typescript').Type} type
+ * @param {object} [options]
+ * @param {boolean} [options.useBaseTypeOfLiteral=false]
+ * @return {string}
+ */
+const getQualifiedTypeName = (checker, type, options = {}) => {
+  const { useBaseTypeOfLiteral = false } = options;
+
+  // If useBaseTypeOfLiteral is true and this is a literal type, use the base type
+  let targetType = type;
+  if (useBaseTypeOfLiteral && type.isLiteral?.()) {
+    targetType = checker.getBaseTypeOfLiteralType(type);
+  }
+
+  // Use TypeScript's typeToString with NodeBuilderFlags to preserve namespaces
+  return checker.typeToString(
+    targetType,
+    undefined,
+    ts.TypeFormatFlags.UseFullyQualifiedType |
+    ts.TypeFormatFlags.WriteTypeArgumentsOfSignature |
+    ts.TypeFormatFlags.UseStructuralFallback |
+    ts.TypeFormatFlags.InTypeAlias
+  );
+};
+
+/**
  * Combine multiple types into union type string of given types.
  *
  * @public
  * @param {import('typescript').TypeChecker} checker
  * @param {import('typescript').Type[]} types
+ * @param {object} [options]
+ * @param {boolean} [options.useBaseTypeOfLiteral=false]
  * @return {string}
  */
-const typesToUnionString = (checker, types) =>
-  typeStringsToUnionString(types.map(t => utils.getTypeName(checker, t)))
+const typesToUnionString = (checker, types, options) =>
+  typeStringsToUnionString(types.map(t => getQualifiedTypeName(checker, t, options)))
 
 /**
  * Find closest node that matches the callback predicate.
@@ -951,6 +983,7 @@ module.exports = {
   hasJSDocThrowsTag,
   typeStringsToUnionString,
   typesToUnionString,
+  getQualifiedTypeName,
   findClosest,
   findParent,
   getCallSignatureDeclaration,

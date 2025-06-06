@@ -286,7 +286,8 @@ module.exports = createRule({
                   toSortedByMetadata([
                     ...throwableTypes,
                     ...rejectableTypes,
-                  ])
+                  ]),
+                  { useBaseTypeOfLiteral }
                 )
               }>`
               : typeStringsToUnionString([
@@ -294,7 +295,8 @@ module.exports = createRule({
                   ? [
                     typesToUnionString(
                       checker,
-                      toSortedByMetadata(throwableTypes)
+                      toSortedByMetadata(throwableTypes),
+                      { useBaseTypeOfLiteral }
                     )
                   ]
                   : [],
@@ -303,7 +305,8 @@ module.exports = createRule({
                     `Promise<${
                       typesToUnionString(
                         checker,
-                        toSortedByMetadata(rejectableTypes)
+                        toSortedByMetadata(rejectableTypes),
+                        { useBaseTypeOfLiteral }
                       )
                     }>`
                   ]

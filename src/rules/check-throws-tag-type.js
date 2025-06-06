@@ -29,6 +29,7 @@ const {
   toFlattenedTypeArray,
   typesToUnionString,
   typeStringsToUnionString,
+  getQualifiedTypeName,
   findFunctionCallNodes,
 } = require('../utils');
 
@@ -383,7 +384,8 @@ module.exports = createRule({
                   toSortedByMetadata([
                     ...throwableTypes,
                     ...rejectableTypes,
-                  ])
+                  ]),
+                  { useBaseTypeOfLiteral }
                 )
               }>`);
           },
@@ -413,10 +415,10 @@ module.exports = createRule({
                 appendThrowsTags(
                   callerJSDocTSNode.getFullText(),
                   toSortedByMetadata([...throwTypeGroups.source.incompatible ?? []])
-                    .map(t => utils.getTypeName(checker, t))
+                    .map(t => getQualifiedTypeName(checker, t, { useBaseTypeOfLiteral }))
                 ),
                 toSortedByMetadata([...rejectTypeGroups.source.incompatible ?? []])
-                  .map(t => `Promise<${utils.getTypeName(checker, t)}>`)
+                  .map(t => `Promise<${getQualifiedTypeName(checker, t, { useBaseTypeOfLiteral })}>`)
               )
             );
           },
@@ -435,13 +437,15 @@ module.exports = createRule({
               ? `Promise<${
                 typesToUnionString(
                   checker,
-                  toSortedByMetadata([...throwableTypes, ...rejectableTypes])
+                  toSortedByMetadata([...throwableTypes, ...rejectableTypes]),
+                  { useBaseTypeOfLiteral }
                 )
               }>`
               : typeStringsToUnionString([
                 throwableTypes.length
                   ? typesToUnionString(
                     checker, toSortedByMetadata(throwableTypes),
+                    { useBaseTypeOfLiteral }
                   )
                   : '',
                 rejectableTypes.length
@@ -449,6 +453,7 @@ module.exports = createRule({
                     typesToUnionString(
                       checker,
                       toSortedByMetadata(rejectableTypes),
+                      { useBaseTypeOfLiteral }
                     )}>`
                   : '',
               ].filter(t => !!t))
