@@ -272,8 +272,8 @@ const error: NodeJS.ErrnoException = new Error() as NodeJS.ErrnoException;
 
     const result = typesToUnionString(checker, types);
     t.assert.ok(
-      result.includes('NodeJS.ErrnoException') || result.includes('ErrnoException'),
-      `Expected namespace to be preserved in type string, got: ${result}`
+      result.includes('NodeJS.ErrnoException'),
+      `Expected fully qualified name 'NodeJS.ErrnoException' in type string, got: ${result}`
     );
   });
 
