@@ -8,6 +8,7 @@ const {
   getNodeID,
   getFirst,
   getLast,
+  getNodeIndent,
   isInHandledContext,
   isInAsyncHandledContext,
   isNodeReturned,
@@ -128,7 +129,9 @@ module.exports = createRule({
         properties: {
           useBaseTypeOfLiteral: {
             type: 'boolean',
-            default: false,
+          },
+          preferUnionType: {
+            type: 'boolean',
           },
         },
         additionalProperties: false,
@@ -136,7 +139,11 @@ module.exports = createRule({
     ],
   },
   defaultOptions: [
-    { useBaseTypeOfLiteral: false },
+    /** @type {{ useBaseTypeOfLiteral?: boolean; preferUnionType?: boolean }} */
+    ({
+      useBaseTypeOfLiteral: false,
+      preferUnionType: true
+    }),
   ],
 
   create(context) {
@@ -146,6 +153,7 @@ module.exports = createRule({
 
     const {
       useBaseTypeOfLiteral = false,
+      preferUnionType = true,
     } = context.options[0] ?? {};
 
     /** @type {Set<string>} */
@@ -304,20 +312,31 @@ module.exports = createRule({
       }
 
       const throwableTypes =
-        toFlattenedTypeArray(
-          /** @type {import('typescript').Type[]} */(
-          throwTypes.get(node)
-            ?.map(t => checker.getAwaitedType(t) ?? t)
-          )
-        );
+        node.async
+          ? []
+          : toFlattenedTypeArray(
+            /** @type {import('typescript').Type[]} */(
+            throwTypes.get(node)
+              ?.map(t => checker.getAwaitedType(t) ?? t)
+            )
+          );
 
       const rejectableTypes =
-        toFlattenedTypeArray(
-          /** @type {import('typescript').Type[]} */(
-          rejectTypes.get(node)
-            ?.map(t => checker.getAwaitedType(t) ?? t)
+        node.async
+          ? toFlattenedTypeArray(
+            [
+              ...throwTypes.get(node)
+                ?.map(t => checker.getAwaitedType(t) ?? t),
+              ...rejectTypes.get(node)
+                ?.map(t => checker.getAwaitedType(t) ?? t)
+            ]
           )
-        );
+          : toFlattenedTypeArray(
+            /** @type {import('typescript').Type[]} */(
+              rejectTypes.get(node)
+              ?.map(t => checker.getAwaitedType(t) ?? t)
+            )
+          );
 
       if (
         !throwableTypes.length &&
@@ -366,32 +385,7 @@ module.exports = createRule({
       const lastThrowsTypeNode = getLast(documentedThrowsTypeNodes);
       if (!lastThrowsTypeNode) return;
 
-      // Thrown types inside async function should be wrapped into Promise
-      if (
-        node.async &&
-        !getJSDocThrowsTagTypes(checker, callerDeclarationTSNode)
-          .every(type => isPromiseType(services, type))
-      ) {
-        context.report({
-          node,
-          messageId: 'throwTypeMismatch',
-          fix(fixer) {
-            return fixer.replaceTextRange(
-              [lastThrowsTypeNode.pos, lastThrowsTypeNode.end],
-              `Promise<${
-                typesToUnionString(
-                  checker,
-                  toSortedByMetadata([
-                    ...throwableTypes,
-                    ...rejectableTypes,
-                  ]),
-                  { useBaseTypeOfLiteral }
-                )
-              }>`);
-          },
-        });
-        return;
-      }
+      const indent = getNodeIndent(sourceCode, node);
 
       // If all callee thrown types are compatible with caller's throws tags,
       // we don't need to report anything
@@ -399,6 +393,49 @@ module.exports = createRule({
         !throwTypeGroups.source.incompatible &&
         !rejectTypeGroups.source.incompatible
       ) return;
+
+      // Thrown types inside async function should be wrapped into Promise
+      if (node.async) {
+        if (preferUnionType) {
+          context.report({
+            node,
+            messageId: 'throwTypeMismatch',
+            fix(fixer) {
+              return fixer.replaceTextRange(
+                [lastThrowsTypeNode.getStart(), lastThrowsTypeNode.getEnd()],
+                `Promise<${
+                  typesToUnionString(
+                    checker,
+                    toSortedByMetadata([
+                      ...throwableTypes,
+                      ...rejectableTypes,
+                    ]),
+                    { useBaseTypeOfLiteral }
+                  )
+                }>`);
+            },
+          });
+          return;
+        }
+
+        context.report({
+          node,
+          messageId: 'throwTypeMismatch',
+          fix(fixer) {
+            return fixer.replaceTextRange(
+              [lastThrowsTypeNode.getStart(), lastThrowsTypeNode.getEnd()],
+              toSortedByMetadata([ ...throwableTypes, ...rejectableTypes ])
+                .map(t =>
+                  `Promise<${
+                    getQualifiedTypeName(checker, t, { useBaseTypeOfLiteral })
+                  }>`
+                )
+                .join(`}\n${indent} * @throws {`)
+            );
+          },
+        });
+        return;
+      }
 
       const lastThrowsTag = getLast(documentedThrowsTags);
       if (!lastThrowsTag) return;
@@ -426,37 +463,61 @@ module.exports = createRule({
         return;
       }
 
+      if (preferUnionType) {
+        context.report({
+          node,
+          messageId: 'throwTypeMismatch',
+          fix(fixer) {
+            return fixer.replaceTextRange(
+              [lastThrowsTypeNode.getStart(), lastThrowsTypeNode.getEnd()],
+              node.async
+                ? `Promise<${
+                  typesToUnionString(
+                    checker,
+                    toSortedByMetadata([...throwableTypes, ...rejectableTypes]),
+                    { useBaseTypeOfLiteral }
+                  )
+                }>`
+                : typeStringsToUnionString([
+                  throwableTypes.length
+                    ? typesToUnionString(
+                      checker, toSortedByMetadata(throwableTypes),
+                      { useBaseTypeOfLiteral }
+                    )
+                    : '',
+                  rejectableTypes.length
+                    ? `Promise<${
+                      typesToUnionString(
+                        checker,
+                        toSortedByMetadata(rejectableTypes),
+                        { useBaseTypeOfLiteral }
+                      )}>`
+                    : '',
+                ].filter(t => !!t))
+            );
+          },
+        });
+        return;
+      }
+
       context.report({
         node,
         messageId: 'throwTypeMismatch',
         fix(fixer) {
-          // If there is only one throws tag, make it as a union type
           return fixer.replaceTextRange(
-            [lastThrowsTypeNode.pos, lastThrowsTypeNode.end],
-            node.async
-              ? `Promise<${
-                typesToUnionString(
-                  checker,
-                  toSortedByMetadata([...throwableTypes, ...rejectableTypes]),
-                  { useBaseTypeOfLiteral }
-                )
-              }>`
-              : typeStringsToUnionString([
-                throwableTypes.length
-                  ? typesToUnionString(
-                    checker, toSortedByMetadata(throwableTypes),
-                    { useBaseTypeOfLiteral }
-                  )
-                  : '',
-                rejectableTypes.length
-                  ? `Promise<${
-                    typesToUnionString(
-                      checker,
-                      toSortedByMetadata(rejectableTypes),
-                      { useBaseTypeOfLiteral }
-                    )}>`
-                  : '',
-              ].filter(t => !!t))
+            [lastThrowsTypeNode.getStart(), lastThrowsTypeNode.getEnd()],
+            toSortedByMetadata(throwableTypes)
+              .map(t =>
+                getQualifiedTypeName(checker, t, { useBaseTypeOfLiteral })
+              )
+              .join(`}\n${indent} * @throws {`) +
+            toSortedByMetadata(rejectableTypes)
+              .map(t =>
+                `Promise<${
+                  getQualifiedTypeName(checker, t, { useBaseTypeOfLiteral })
+                }>`
+              )
+              .join(`}\n${indent} * @throws {`)
           );
         },
       });

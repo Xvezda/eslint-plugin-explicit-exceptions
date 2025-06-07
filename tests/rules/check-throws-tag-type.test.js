@@ -133,6 +133,77 @@ ruleTester.run(
           /**
            * foo bar baz
            *
+           * @throws {null}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+        `,
+        output: `
+          /**
+           * foo bar baz
+           *
+           * @throws {"lol"}
+           * @throws {42}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+        `,
+        errors: [{ messageId: 'throwTypeMismatch' }],
+        options: [{ preferUnionType: false }],
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           *
+           * @throws {null}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+        `,
+        output: `
+          /**
+           * foo bar baz
+           *
+           * @throws {string}
+           * @throws {number}
+           */
+          function foo() {
+            if (Math.random() > 0.5) {
+              throw "lol";
+            } else {
+              throw 42;
+            }
+          }
+        `,
+        errors: [{ messageId: 'throwTypeMismatch' }],
+        options: [
+          {
+            preferUnionType: false,
+            useBaseTypeOfLiteral: true,
+          }
+        ],
+      },
+      {
+        code: `
+          /**
+           * foo bar baz
+           *
            * @throws {string}
            */
           function foo() {
@@ -489,6 +560,67 @@ ruleTester.run(
         errors: [
           { messageId: 'throwTypeMismatch' },
         ],
+      },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function foo() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          async function baz() {
+            if (Math.random() > 0.5) {
+              foo();
+            } else {
+              bar();
+            }
+          }
+          baz();
+        `,
+        output: `
+          /**
+           * @throws {TypeError}
+           */
+          function foo() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            throw new RangeError();
+          }
+
+          /**
+           * @throws {Promise<TypeError>}
+           * @throws {Promise<RangeError>}
+           */
+          async function baz() {
+            if (Math.random() > 0.5) {
+              foo();
+            } else {
+              bar();
+            }
+          }
+          baz();
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+        options: [{ preferUnionType: false }],
       },
       {
         code: `
