@@ -2012,6 +2012,168 @@ ruleTester.run(
       },
       {
         code: `
+          const foo = (resolve, reject) => {
+            throw new TypeError();
+          };
+
+          const bar = (resolve, reject) => {
+            throw new RangeError();
+          };
+
+          function baz() {
+            const promise = Promise.resolve();
+
+            return promise
+              .then(foo)
+              .then(bar)
+          }
+        `,
+        output: `
+          /**
+           * @throws {TypeError}
+           */
+          const foo = (resolve, reject) => {
+            throw new TypeError();
+          };
+
+          /**
+           * @throws {RangeError}
+           */
+          const bar = (resolve, reject) => {
+            throw new RangeError();
+          };
+
+          /**
+           * @throws {Promise<TypeError>}
+           * @throws {Promise<RangeError>}
+           */
+          function baz() {
+            const promise = Promise.resolve();
+
+            return promise
+              .then(foo)
+              .then(bar)
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+        options: [{ preferUnionType: false }],
+      },
+      {
+        code: `
+          const foo = (resolve, reject) => {
+            throw new TypeError();
+          };
+
+          const bar = (resolve, reject) => {
+            throw new RangeError();
+          };
+
+          /**
+           * foobar
+           */
+          function baz() {
+            const promise = Promise.resolve();
+
+            return promise
+              .then(foo)
+              .then(bar)
+          }
+        `,
+        output: `
+          /**
+           * @throws {TypeError}
+           */
+          const foo = (resolve, reject) => {
+            throw new TypeError();
+          };
+
+          /**
+           * @throws {RangeError}
+           */
+          const bar = (resolve, reject) => {
+            throw new RangeError();
+          };
+
+          /**
+           * foobar
+           * @throws {Promise<TypeError>}
+           * @throws {Promise<RangeError>}
+           */
+          function baz() {
+            const promise = Promise.resolve();
+
+            return promise
+              .then(foo)
+              .then(bar)
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+        options: [{ preferUnionType: false }],
+      },
+      {
+        code: `
+          const foo = (resolve, reject) => {
+            throw new TypeError();
+          };
+
+          const bar = (resolve, reject) => {
+            throw new RangeError();
+          };
+
+          /** foobar */
+          function baz() {
+            const promise = Promise.resolve();
+
+            return promise
+              .then(foo)
+              .then(bar)
+          }
+        `,
+        output: `
+          /**
+           * @throws {TypeError}
+           */
+          const foo = (resolve, reject) => {
+            throw new TypeError();
+          };
+
+          /**
+           * @throws {RangeError}
+           */
+          const bar = (resolve, reject) => {
+            throw new RangeError();
+          };
+
+          /**
+           * foobar
+           * @throws {Promise<TypeError>}
+           * @throws {Promise<RangeError>}
+           */
+          function baz() {
+            const promise = Promise.resolve();
+
+            return promise
+              .then(foo)
+              .then(bar)
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+        options: [{ preferUnionType: false }],
+      },
+      {
+        code: `
           function baz() {
             async function foo(resolve, reject) {
               throw new TypeError();
@@ -2813,6 +2975,190 @@ ruleTester.run(
           }
         `,
         errors: [{ messageId: 'missingThrowsTag' }],
+      },
+      {
+        code: `
+          /**
+           * foobar
+           */
+          function foo(value) {
+            if (Math.random() > 0.5) {
+              throw new RangeError();
+            } else {
+              return new Promise((resolve, reject) => {
+                if (Math.random() > 0.6) {
+                  reject(new TypeError());
+                } else if (Math.random() > 0.3) {
+                  reject(new SyntaxError());
+                } else {
+                  resolve(true);
+                }
+              });
+            }
+          }
+        `,
+        output: `
+          /**
+           * foobar
+           * @throws {RangeError}
+           * @throws {Promise<TypeError>}
+           * @throws {Promise<SyntaxError>}
+           */
+          function foo(value) {
+            if (Math.random() > 0.5) {
+              throw new RangeError();
+            } else {
+              return new Promise((resolve, reject) => {
+                if (Math.random() > 0.6) {
+                  reject(new TypeError());
+                } else if (Math.random() > 0.3) {
+                  reject(new SyntaxError());
+                } else {
+                  resolve(true);
+                }
+              });
+            }
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+        options: [{ preferUnionType: false }],
+      },
+      {
+        code: `
+          /** foobar */
+          function foo(value) {
+            if (Math.random() > 0.5) {
+              throw new RangeError();
+            } else {
+              return new Promise((resolve, reject) => {
+                if (Math.random() > 0.6) {
+                  reject(new TypeError());
+                } else if (Math.random() > 0.3) {
+                  reject(new SyntaxError());
+                } else {
+                  resolve(true);
+                }
+              });
+            }
+          }
+        `,
+        output: `
+          /**
+           * foobar
+           * @throws {RangeError}
+           * @throws {Promise<TypeError>}
+           * @throws {Promise<SyntaxError>}
+           */
+          function foo(value) {
+            if (Math.random() > 0.5) {
+              throw new RangeError();
+            } else {
+              return new Promise((resolve, reject) => {
+                if (Math.random() > 0.6) {
+                  reject(new TypeError());
+                } else if (Math.random() > 0.3) {
+                  reject(new SyntaxError());
+                } else {
+                  resolve(true);
+                }
+              });
+            }
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+        options: [{ preferUnionType: false }],
+      },
+      {
+        code: `
+          /**
+           * foobar
+           * @param {any} value
+           */
+          function foo(value) {
+            if (Math.random() > 0.5) {
+              throw new RangeError();
+            } else {
+              return new Promise((resolve, reject) => {
+                if (Math.random() > 0.6) {
+                  reject(new TypeError());
+                } else if (Math.random() > 0.3) {
+                  reject(new SyntaxError());
+                } else {
+                  resolve(true);
+                }
+              });
+            }
+          }
+        `,
+        output: `
+          /**
+           * foobar
+           * @param {any} value
+           * @throws {RangeError}
+           * @throws {Promise<TypeError>}
+           * @throws {Promise<SyntaxError>}
+           */
+          function foo(value) {
+            if (Math.random() > 0.5) {
+              throw new RangeError();
+            } else {
+              return new Promise((resolve, reject) => {
+                if (Math.random() > 0.6) {
+                  reject(new TypeError());
+                } else if (Math.random() > 0.3) {
+                  reject(new SyntaxError());
+                } else {
+                  resolve(true);
+                }
+              });
+            }
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+        options: [{ preferUnionType: false }],
+      },
+      {
+        code: `
+          function foo(value) {
+            if (Math.random() > 0.5) {
+              throw new RangeError();
+            } else {
+              return new Promise((resolve, reject) => {
+                if (Math.random() > 0.6) {
+                  reject(new TypeError());
+                } else if (Math.random() > 0.3) {
+                  reject(new SyntaxError());
+                } else {
+                  resolve(true);
+                }
+              });
+            }
+          }
+        `,
+        output: `
+          /**
+           * @throws {RangeError}
+           * @throws {Promise<TypeError>}
+           * @throws {Promise<SyntaxError>}
+           */
+          function foo(value) {
+            if (Math.random() > 0.5) {
+              throw new RangeError();
+            } else {
+              return new Promise((resolve, reject) => {
+                if (Math.random() > 0.6) {
+                  reject(new TypeError());
+                } else if (Math.random() > 0.3) {
+                  reject(new SyntaxError());
+                } else {
+                  resolve(true);
+                }
+              });
+            }
+          }
+        `,
+        errors: [{ messageId: 'missingThrowsTag' }],
+        options: [{ preferUnionType: false }],
       },
     ],
   },

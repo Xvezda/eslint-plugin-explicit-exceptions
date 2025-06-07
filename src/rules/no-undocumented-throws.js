@@ -24,6 +24,7 @@ const {
   getCalleeDeclaration,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
+  getQualifiedTypeName,
   findParent,
   findClosest,
   findClosestFunctionNode,
@@ -54,13 +55,21 @@ module.exports = createRule({
             type: 'boolean',
             default: false,
           },
+          preferUnionType: {
+            type: 'boolean',
+            default: true,
+          }
         },
         additionalProperties: false,
       },
     ],
   },
   defaultOptions: [
-    { useBaseTypeOfLiteral: false },
+    /** @type {{ useBaseTypeOfLiteral?: boolean; preferUnionType?: boolean }} */
+    ({
+      useBaseTypeOfLiteral: false,
+      preferUnionType: true,
+    }),
   ],
 
   create(context) {
@@ -70,6 +79,7 @@ module.exports = createRule({
 
     const {
       useBaseTypeOfLiteral = false,
+      preferUnionType = true,
     } = context.options[0] ?? {};
 
     /** @type {Set<string>} */
@@ -274,45 +284,92 @@ module.exports = createRule({
         return;
       }
 
+      if (preferUnionType) {
+        context.report({
+          node: nodeToComment,
+          messageId: 'missingThrowsTag',
+          fix(fixer) {
+            const newType = 
+              node.async
+                ? `Promise<${
+                  typesToUnionString(
+                    checker,
+                    toSortedByMetadata([
+                      ...throwableTypes,
+                      ...rejectableTypes,
+                    ]),
+                    { useBaseTypeOfLiteral }
+                  )
+                }>`
+                : typeStringsToUnionString([
+                  ...throwableTypes.length
+                    ? [
+                      typesToUnionString(
+                        checker,
+                        toSortedByMetadata(throwableTypes),
+                        { useBaseTypeOfLiteral }
+                      )
+                    ]
+                    : [],
+                  ...rejectableTypes.length
+                    ? [
+                      `Promise<${
+                        typesToUnionString(
+                          checker,
+                          toSortedByMetadata(rejectableTypes),
+                          { useBaseTypeOfLiteral }
+                        )
+                      }>`
+                    ]
+                    : [],
+                ]);
+
+            const indent = getNodeIndent(sourceCode, node);
+
+            if (hasJSDoc(sourceCode, nodeToComment)) {
+              const comments = sourceCode.getCommentsBefore(nodeToComment);
+              const comment = comments
+                .find(({ value }) => value.startsWith('*'));
+
+              if (comment) {
+                let newCommentText = sourceCode.getText(comment);
+                if (!/^\/\*\*[ \t]*\n/.test(newCommentText)) {
+                  newCommentText = newCommentText
+                    .replace(/^\/\*\*\s*/, `/**\n${indent} * `)
+                    .replace(/\s*\*\/$/, `\n${indent} * @throws {${newType}}\n${indent} */`)
+                } else {
+                  newCommentText = appendThrowsTags(
+                    newCommentText,
+                    [newType],
+                  );
+                }
+                return fixer.replaceTextRange(
+                  comment.range,
+                  newCommentText,
+                );
+              }
+            }
+
+            return fixer
+              .insertTextBefore(
+                nodeToComment,
+                `/**\n` +
+                `${indent} * @throws {${newType}}\n` +
+                `${indent} */\n` +
+                `${indent}`
+              );
+          }
+        });
+        return;
+      }
+
       context.report({
         node: nodeToComment,
         messageId: 'missingThrowsTag',
         fix(fixer) {
-          const newType = 
-            node.async
-              ? `Promise<${
-                typesToUnionString(
-                  checker,
-                  toSortedByMetadata([
-                    ...throwableTypes,
-                    ...rejectableTypes,
-                  ]),
-                  { useBaseTypeOfLiteral }
-                )
-              }>`
-              : typeStringsToUnionString([
-                ...throwableTypes.length
-                  ? [
-                    typesToUnionString(
-                      checker,
-                      toSortedByMetadata(throwableTypes),
-                      { useBaseTypeOfLiteral }
-                    )
-                  ]
-                  : [],
-                ...rejectableTypes.length
-                  ? [
-                    `Promise<${
-                      typesToUnionString(
-                        checker,
-                        toSortedByMetadata(rejectableTypes),
-                        { useBaseTypeOfLiteral }
-                      )
-                    }>`
-                  ]
-                  : [],
-              ]);
-
+          const sortedThrowableTypes = toSortedByMetadata(throwableTypes);
+          const sortedRejectableTypes = toSortedByMetadata(rejectableTypes);
+          
           const indent = getNodeIndent(sourceCode, node);
 
           if (hasJSDoc(sourceCode, nodeToComment)) {
@@ -322,14 +379,33 @@ module.exports = createRule({
 
             if (comment) {
               let newCommentText = sourceCode.getText(comment);
-              if (!/^\/\*\*[ \t]*\n/.test(newCommentText)) {
+              const isOneLiner = !/^\/\*\*[ \t]*\n/.test(newCommentText);
+              if (isOneLiner) {
                 newCommentText = newCommentText
                   .replace(/^\/\*\*\s*/, `/**\n${indent} * `)
-                  .replace(/\s*\*\/$/, `\n${indent} * @throws {${newType}}\n${indent} */`)
+                  .replace(
+                    /\s*\*\/$/,
+                    sortedThrowableTypes.map((t) =>
+                      `\n${indent} * @throws {${getQualifiedTypeName(checker, t)}}`
+                    ).join('') +
+                    '\n' +
+                    sortedRejectableTypes.map((t) =>
+                      `${indent} * @throws {Promise<${getQualifiedTypeName(checker, t)}>}`
+                    ).join('\n') +
+                    '\n' +
+                    `${indent} */`
+                  );
               } else {
                 newCommentText = appendThrowsTags(
                   newCommentText,
-                  [newType],
+                  [
+                    ...sortedThrowableTypes.map((t) =>
+                      getQualifiedTypeName(checker, t)
+                    ),
+                    ...sortedRejectableTypes.map((t) =>
+                      `Promise<${getQualifiedTypeName(checker, t)}>`
+                    ),
+                  ],
                 );
               }
               return fixer.replaceTextRange(
@@ -343,7 +419,12 @@ module.exports = createRule({
             .insertTextBefore(
               nodeToComment,
               `/**\n` +
-              `${indent} * @throws {${newType}}\n` +
+              sortedThrowableTypes.map((t) =>
+                `${indent} * @throws {${getQualifiedTypeName(checker, t)}}\n`
+              ).join('') +
+              sortedRejectableTypes.map((t) =>
+                `${indent} * @throws {Promise<${getQualifiedTypeName(checker, t)}>}\n`
+              ).join('') +
               `${indent} */\n` +
               `${indent}`
             );
