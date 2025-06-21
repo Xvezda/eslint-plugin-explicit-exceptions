@@ -3452,7 +3452,6 @@ ruleTester.run(
           { messageId: 'missingThrowsTag' },
         ],
       },
-      // XXX
       {
         code: `
           async function* g() {
