@@ -456,7 +456,7 @@ debugger;
   });
 
   describe('getCalleeDeclaration', () => {
-    test.only('get declaration of a function calls', (t) => {
+    test('get declaration of a function calls', (t) => {
       const { ast, services, sourceCode } = parse(`
 // foo declaration
 function foo() {}
