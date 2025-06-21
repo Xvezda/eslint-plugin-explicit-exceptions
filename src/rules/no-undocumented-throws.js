@@ -194,7 +194,7 @@ module.exports = createRule({
     /**
      * Visit iterable node and collect types.
      *
-     * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
+     * @param {import('@typescript-eslint/utils').TSESTree.Node} node
      */
     const visitIterableNode = (node) => {
       const iterableType = services.getTypeAtLocation(node);
@@ -203,7 +203,15 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
-      const calleeDeclaration = getCalleeDeclaration(services, node);
+      if (!ts.isExpression(services.esTreeNodeToTSNodeMap.get(node))) return;
+
+      const calleeDeclaration =
+        getCalleeDeclaration(
+          services,
+          /** @type {import('@typescript-eslint/utils').TSESTree.Expression} */
+          (node)
+        );
+
       if (!calleeDeclaration) return;
 
       /** @type {import('typescript').JSDocThrowsTag[]} */
