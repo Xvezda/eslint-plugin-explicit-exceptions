@@ -748,6 +748,18 @@ module.exports = createRule({
 
         visitIterableNode(firstArgumentNode);
       },
+      /**
+       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/yield* MDN}
+       * @param {import('@typescript-eslint/utils').TSESTree.YieldExpression} node
+       */
+      'YieldExpression[delegate=true]'(node) {
+        if (!node || !node.argument) return;
+
+        const iterableType = services.getTypeAtLocation(node.argument);
+        if (!isGeneratorLike(iterableType)) return;
+
+        visitIterableNode(node.argument);
+      },
 
       /**
        * Process collected types when each function node exits
