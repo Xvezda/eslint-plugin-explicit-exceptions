@@ -228,6 +228,11 @@ module.exports = createRule({
 
       if (!calleeDeclaration) return;
 
+      /** @type {import('typescript').JSDocThrowsTag[]} */
+      const comments = [];
+      comments.push(...getJSDocThrowsTags(calleeDeclaration));
+      throwsComments.set(getNodeID(callerDeclaration), comments);
+
       const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
       if (!calleeThrowsTypes.length) return;
 
@@ -735,12 +740,22 @@ module.exports = createRule({
        */
       /**
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for...of MDN}
+       * @example
+       * ```
+       * for (const item of iterable) { ... }
+       * //                 ^ this
+       * ```
        */
       'ForOfStatement'(node) {
         visitIterableNode(node.right);
       },
       /**
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax MDN}
+       * @example
+       * ```
+       * [...iterable]
+       * //  ^ this
+       * ```
        */
       'SpreadElement'(node) {
         visitIterableNode(node.argument);
@@ -748,6 +763,11 @@ module.exports = createRule({
       /**
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/from MDN}
        * @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node
+       * @example
+       * ```
+       * Array.from(iterable)
+       * //         ^ this
+       * ```
        */
       'CallExpression:has(> MemberExpression[object.name="Array"][property.name="from"])'(node) {
         if (node.arguments.length < 1) return;
@@ -759,6 +779,11 @@ module.exports = createRule({
       /**
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/fromAsync MDN}
        * @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node
+       * @example
+       * ```
+       * await Array.fromAsync(iterable)
+       * //                    ^ this
+       * ```
        */
       'CallExpression:has(> MemberExpression[object.name="Array"][property.name="fromAsync"])'(node) {
         if (node.arguments.length < 1) return;
@@ -770,6 +795,18 @@ module.exports = createRule({
       /**
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/yield* MDN}
        * @param {import('@typescript-eslint/utils').TSESTree.YieldExpression} node
+       * @example
+       * ```
+       * function* gen() {
+       *   yield* iterable;
+       *   //     ^ this
+       * }
+       * // or
+       * async function* asyncGen() {
+       *   yield* iterable;
+       *   //     ^ this
+       * }
+       * ```
        */
       'YieldExpression[delegate=true]'(node) {
         if (!node.argument) return;
@@ -779,6 +816,11 @@ module.exports = createRule({
       /**
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator/next MDN}
        * @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node
+       * @example
+       * ```
+       * iterable.next();
+       * //       ^ this
+       * ```
        */
       'CallExpression[callee.property.name="next"]'(node) {
         if (node.callee.type !== AST_NODE_TYPES.MemberExpression) return;
