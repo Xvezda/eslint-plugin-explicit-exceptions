@@ -1,6 +1,8 @@
+// @ts-check
 /* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
 const { test, describe } = require('node:test');
+const { strict: assert } = require('node:assert');
 
 const { TSESLint, AST_NODE_TYPES } = require('@typescript-eslint/utils');
 const { simpleTraverse } = require('@typescript-eslint/typescript-estree');
@@ -39,7 +41,7 @@ const {
 } = require('../src/utils');
 
 describe('utils', () => {
-  test('TypeMap', (t) => {
+  test('TypeMap', () => {
     const { ast, services } = parse(`
 function foo() {
   const a: number = 42;
@@ -49,9 +51,12 @@ function foo() {
     const ids = new Map();
     simpleTraverse(ast, {
       visitors: {
-        /** @param {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} node */
         Identifier(node) {
-          ids.set(node.name, node);
+          ids.set(
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+            (node).name,
+            node
+          );
         },
       },
     }, true);
@@ -64,30 +69,30 @@ function foo() {
 
     const typeMap = new TypeMap();
 
-    t.assert.deepEqual([], typeMap.get(foo));
+    assert.deepEqual([], typeMap.get(foo));
 
     typeMap.add(foo, [aType]);
 
-    t.assert.deepEqual([aType], typeMap.get(foo));
+    assert.deepEqual([aType], typeMap.get(foo));
 
     typeMap.add(foo, [bType]);
 
-    t.assert.deepEqual([aType, bType], typeMap.get(foo));
+    assert.deepEqual([aType, bType], typeMap.get(foo));
   });
 
-  test('getFirst', (t) => {
-    t.assert.equal(getFirst([]), null);
-    t.assert.equal(getFirst([42]), 42);
-    t.assert.equal(getFirst(['foo', 'bar']), 'foo');
+  test('getFirst', () => {
+    assert.equal(getFirst([]), null);
+    assert.equal(getFirst([42]), 42);
+    assert.equal(getFirst(['foo', 'bar']), 'foo');
   });
 
-  test('getLast', (t) => {
-    t.assert.equal(getLast([]), null);
-    t.assert.equal(getLast([42]), 42);
-    t.assert.equal(getLast(['foo', 'bar']), 'bar');
+  test('getLast', () => {
+    assert.equal(getLast([]), null);
+    assert.equal(getLast([42]), 42);
+    assert.equal(getLast(['foo', 'bar']), 'bar');
   });
 
-  test('getNodeIndent', (t) => {
+  test('getNodeIndent', () => {
     const { ast, sourceCode } = parse(`
 function foo() {
   const bar: string = 'baz';
@@ -96,18 +101,20 @@ function foo() {
 
     simpleTraverse(ast, {
       visitors: {
-        /** @param {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} node */
         Identifier(node) {
-          if (node.name === 'bar') {
+          if (
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+            (node).name === 'bar'
+          ) {
             const indent = getNodeIndent(sourceCode, node);
-            t.assert.equal(indent.length, 2);
+            assert.equal(indent.length, 2);
           }
         },
       },
     }, true);
   });
 
-  test('getNodeID', (t) => {
+  test('getNodeID', () => {
     const { ast } = parse(`
 function foo() {}
 function foo() {
@@ -125,10 +132,10 @@ function foo() {
       },
     }, true);
 
-    t.assert.equal(ids.size, 4);
+    assert.equal(ids.size, 4);
   });
 
-  test('hasThrowsTag', (t) => {
+  test('hasThrowsTag', () => {
     const { ast, sourceCode } = parse(`
 function foo() {
   throw new Error();
@@ -153,31 +160,35 @@ function bar() {
     const functionNodes = [];
     simpleTraverse(ast, {
       visitors: {
-        /** @param {import('@typescript-eslint/utils').TSESTree.FunctionDeclaration} node */
         FunctionDeclaration(node) {
-          functionNodes.push(node);
+          functionNodes.push(
+            /** @type {import('@typescript-eslint/utils').TSESTree.FunctionDeclaration} */
+            (node)
+          );
         },
       },
     }, true);
 
-    t.assert.equal(functionNodes.length, 2);
+    assert.equal(functionNodes.length, 2);
 
-    const foo = functionNodes.find((node) => node.id.name === 'foo');
+    const foo = functionNodes.find((node) => node.id?.name === 'foo');
 
-    t.assert.equal(
+    assert(foo);
+    assert.equal(
       hasThrowsTag(commentsToString(sourceCode.getCommentsBefore(foo))),
       false,
     );
     
-    const bar = functionNodes.find((node) => node.id.name === 'bar');
+    const bar = functionNodes.find((node) => node.id?.name === 'bar');
 
-    t.assert.equal(
+    assert(bar);
+    assert.equal(
       hasThrowsTag(commentsToString(sourceCode.getCommentsBefore(bar))),
       true,
     );
   });
 
-  test('hasJSDocThrowsTag', (t) => {
+  test('hasJSDocThrowsTag', () => {
     const { ast, sourceCode } = parse(`
 function foo() {
   throw new Error();
@@ -195,30 +206,32 @@ function bar() {
     const functionNodes = [];
     simpleTraverse(ast, {
       visitors: {
-        /** @param {import('@typescript-eslint/utils').TSESTree.FunctionDeclaration} node */
         FunctionDeclaration(node) {
-          functionNodes.push(node);
+          functionNodes.push(
+            /** @type {import('@typescript-eslint/utils').TSESTree.FunctionDeclaration} */
+            (node)
+          );
         },
       },
     }, true);
 
     const foo = functionNodes.find((node) =>
-      node.id.name === 'foo'
+      node.id?.name === 'foo'
     );
-
-    t.assert.equal(hasJSDocThrowsTag(sourceCode, foo), false);
+    assert(foo);
+    assert.equal(hasJSDocThrowsTag(sourceCode, foo), false);
     
-    const bar = functionNodes.find((node) => node.id.name === 'bar');
-
-    t.assert.equal(hasJSDocThrowsTag(sourceCode, bar), true);
+    const bar = functionNodes.find((node) => node.id?.name === 'bar');
+    assert(bar);
+    assert.equal(hasJSDocThrowsTag(sourceCode, bar), true);
   });
 
-  test('typeStringsToUnionString', (t) => {
-    t.assert.equal(typeStringsToUnionString(['string']), 'string');
-    t.assert.equal(typeStringsToUnionString(['string', 'number']), 'string | number');
+  test('typeStringsToUnionString', () => {
+    assert.equal(typeStringsToUnionString(['string']), 'string');
+    assert.equal(typeStringsToUnionString(['string', 'number']), 'string | number');
   });
 
-  test('typesToUnionString', (t) => {
+  test('typesToUnionString', () => {
     const { ast, services } = parse(`
 const a: number = 42;
 const b: string = 'foo';
@@ -230,6 +243,7 @@ const f: number = 456;
 
     const checker = services.program.getTypeChecker();
 
+    /** @type {import('typescript').Type[]} */
     const types = [];
     simpleTraverse(ast, {
       visitors: {
@@ -239,13 +253,13 @@ const f: number = 456;
       },
     }, true);
 
-    t.assert.equal(
+    assert.equal(
       typesToUnionString(checker, types),
       'number | string'
     );
   });
 
-  test('typesToUnionString preserves namespaces', (t) => {
+  test('typesToUnionString preserves namespaces', () => {
     const { ast, services } = parse(`
 declare namespace NodeJS {
   interface ErrnoException extends Error {
@@ -260,11 +274,15 @@ const error: NodeJS.ErrnoException = new Error() as NodeJS.ErrnoException;
 
     const checker = services.program.getTypeChecker();
 
+    /** @type {import('typescript').Type[]} */
     const types = [];
     simpleTraverse(ast, {
       visitors: {
         Identifier(node) {
-          if (node.name === 'error') {
+          if (
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+            (node).name === 'error'
+          ) {
             types.push(services.getTypeAtLocation(node));
           }
         },
@@ -272,13 +290,14 @@ const error: NodeJS.ErrnoException = new Error() as NodeJS.ErrnoException;
     }, true);
 
     const result = typesToUnionString(checker, types);
-    t.assert.ok(
-      result.includes('NodeJS.ErrnoException'),
+    assert.match(
+      result,
+      /NodeJS\.ErrnoException/,
       `Expected fully qualified name 'NodeJS.ErrnoException' in type string, got: ${result}`
     );
   });
 
-  test('findClosest', (t) => {
+  test('findClosest', () => {
     const { ast } = parse(`
 function foo() {
   function bar() {
@@ -286,31 +305,36 @@ function foo() {
 }
     `);
 
-    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier | null} */
+    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration | null} */
     let found = null;
     simpleTraverse(ast, {
       visitors: {
-        /** @param {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} node */
         FunctionDeclaration(node) {
-          if (node.id.name === 'bar') {
-            found = node;
+          if (
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} */
+            (node).id?.name === 'bar'
+          ) {
+            found =
+              /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} */
+              (node);
           }
         },
       },
     }, true);
 
+    assert(found);
     const closest = findClosest(
       found, 
       (n) => n.type === AST_NODE_TYPES.FunctionDeclaration
     );
 
-    t.assert.ok(
+    assert(
       closest?.type === AST_NODE_TYPES.FunctionDeclaration &&
-      closest.id.name === 'bar'
+      closest.id?.name === 'bar'
     );
   });
 
-  test('findParent', (t) => {
+  test('findParent', () => {
     const { ast } = parse(`
 function foo() {
   function bar() {
@@ -318,31 +342,36 @@ function foo() {
 }
     `);
 
-    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier | null} */
+    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration | null} */
     let found = null;
     simpleTraverse(ast, {
       visitors: {
-        /** @param {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} node */
         FunctionDeclaration(node) {
-          if (node.id.name === 'bar') {
-            found = node;
+          if (
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} */
+            (node).id?.name === 'bar'
+          ) {
+            found =
+              /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} */
+              (node);
           }
         },
       },
     }, true);
 
+    assert(found);
     const closest = findParent(
       found, 
       (n) => n.type === AST_NODE_TYPES.FunctionDeclaration
     );
 
-    t.assert.ok(
+    assert(
       closest?.type === AST_NODE_TYPES.FunctionDeclaration &&
-      closest.id.name === 'foo'
+      closest.id?.name === 'foo'
     );
   });
 
-  test('getCallSignatureDeclaration', (t) => {
+  test('getCallSignatureDeclaration', () => {
     const { ast, services } = parse(`
 /**
  * @throws {number}
@@ -361,14 +390,19 @@ if (typeof value === 'number') {
 }
     `);
 
-    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
-    const callExpression = getNodeNextToDebugger(ast);
+    const callExpression =
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.CallExpression} */
+      (getNodeNextToDebugger(ast));
+
+    assert(callExpression);
 
     const declaration = getCallSignatureDeclaration(services, callExpression);
 
+    assert(declaration);
+
     const tags = getJSDocThrowsTags(declaration);
 
-    t.assert.equal(
+    assert.equal(
       tags.every(tag => {
         const text = tag.getFullText();
         return (
@@ -380,7 +414,7 @@ if (typeof value === 'number') {
     );
   });
 
-  test('getCallee', (t) => {
+  test('getCallee', () => {
     const { ast } = parse(`
 function foo() {}
 
@@ -414,41 +448,51 @@ debugger;
       },
     }, true);
 
-    t.assert.equal(map.size, 3);
+    assert.equal(map.size, 3);
 
-    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.CallExpression} */
-    const callExpression = map.get(AST_NODE_TYPES.CallExpression);
-    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.MemberExpression} */
-    const memberExpression = map.get(AST_NODE_TYPES.MemberExpression);
-    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.AssignmentExpression} */
-    const assignmentExpression = map.get(AST_NODE_TYPES.AssignmentExpression);
+    const callExpression =
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.CallExpression} */
+      (map.get(AST_NODE_TYPES.CallExpression));
+    const memberExpression =
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.MemberExpression} */
+      (map.get(AST_NODE_TYPES.MemberExpression));
+    const assignmentExpression =
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.AssignmentExpression} */
+      (map.get(AST_NODE_TYPES.AssignmentExpression));
 
-    t.assert.ok(
-      getCallee(callExpression).type === AST_NODE_TYPES.Identifier &&
-      getCallee(callExpression).name === 'foo'
+    assert(
+      getCallee(callExpression)?.type === AST_NODE_TYPES.Identifier &&
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+      (getCallee(callExpression))?.name === 'foo'
     );
 
-    t.assert.ok(
-      getCallee(memberExpression).type === AST_NODE_TYPES.Identifier &&
-      getCallee(memberExpression).name === 'bar',
+    assert(
+      getCallee(memberExpression)?.type === AST_NODE_TYPES.Identifier &&
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+      (getCallee(memberExpression)).name === 'bar',
       'accessing property returns getter and must be named "bar"'
     );
 
-    t.assert.ok(
-      getCallee(assignmentExpression).type === AST_NODE_TYPES.MemberExpression &&
+    assert(
+      getCallee(assignmentExpression)?.type === AST_NODE_TYPES.MemberExpression &&
       /** @type {import('@typescript-eslint/typescript-estree').TSESTree.MemberExpression} */
       (getCallee(assignmentExpression)).property.type === AST_NODE_TYPES.Identifier &&
-      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.MemberExpression} */
-      (getCallee(assignmentExpression)).property.name === 'baz',
+      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+      (/** @type {import('@typescript-eslint/typescript-estree').TSESTree.MemberExpression} */
+        (getCallee(assignmentExpression))
+          .property
+      ).name === 'baz',
       'assignment to member expression returns setter must be named "baz"'
     );
 
     // Identifier of expression should be handled as well.
-    t.assert.ok(getCallee(callExpression.callee));
-    t.assert.ok(getCallee(memberExpression.property));
+    assert(getCallee(callExpression.callee));
+    assert(getCallee(memberExpression.property));
 
     const debuggerStatement = findDebuggerStatement(ast);
-    t.assert.equal(
+
+    assert(debuggerStatement);
+    assert.equal(
       getCallee(debuggerStatement),
       null,
       'non callable node should return null',
@@ -456,7 +500,7 @@ debugger;
   });
 
   describe('getCalleeDeclaration', () => {
-    test('get declaration of a function calls', (t) => {
+    test('get declaration of a function calls', () => {
       const { ast, services, sourceCode } = parse(`
 // foo declaration
 function foo() {}
@@ -489,47 +533,59 @@ obj.baz = 42;
         },
       }, true);
 
-      t.assert.equal(map.size, 3);
+      assert.equal(map.size, 3);
 
-      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.CallExpression} */
-      const callExpression = map.get(AST_NODE_TYPES.CallExpression);
-      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.MemberExpression} */
-      const memberExpression = map.get(AST_NODE_TYPES.MemberExpression);
-      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.AssignmentExpression} */
-      const assignmentExpression = map.get(AST_NODE_TYPES.AssignmentExpression);
+      const callExpression =
+        /** @type {import('@typescript-eslint/typescript-estree').TSESTree.CallExpression} */
+        (map.get(AST_NODE_TYPES.CallExpression));
+      const memberExpression =
+        /** @type {import('@typescript-eslint/typescript-estree').TSESTree.MemberExpression} */
+        (map.get(AST_NODE_TYPES.MemberExpression));
+      const assignmentExpression =
+        /** @type {import('@typescript-eslint/typescript-estree').TSESTree.AssignmentExpression} */
+        (map.get(AST_NODE_TYPES.AssignmentExpression));
 
-      t.assert.ok(
+      assert(
         sourceCode
           .getCommentsBefore(
             services.tsNodeToESTreeNodeMap
-              .get(getCalleeDeclaration(services, callExpression))
+              .get(
+                /** @type {import('@typescript-eslint/typescript-estree').TSNode} */
+                (getCalleeDeclaration(services, callExpression))
+              )
           )
           .some(({ value }) => value.includes('foo declaration')),
         '`foo()` must return the declaration of `foo`',
       );
 
-      t.assert.ok(
+      assert(
         sourceCode
           .getCommentsBefore(
             services.tsNodeToESTreeNodeMap
-              .get(getCalleeDeclaration(services, memberExpression)),
+              .get(
+                /** @type {import('@typescript-eslint/typescript-estree').TSNode} */
+                (getCalleeDeclaration(services, memberExpression))
+              ),
           )
           .some(({ value }) => value.includes('bar declaration')),
         '`const value = obj.bar` must return the declaration of `obj.bar`',
       );
 
-      t.assert.ok(
+      assert(
         sourceCode
           .getCommentsBefore(
             services.tsNodeToESTreeNodeMap
-              .get(getCalleeDeclaration(services, assignmentExpression)),
+              .get(
+                /** @type {import('@typescript-eslint/typescript-estree').TSNode} */
+                (getCalleeDeclaration(services, assignmentExpression))
+              ),
           )
           .some(({ value }) => value.includes('baz declaration')),
         '`obj.baz = 42` must return the declaration of `obj.baz`',
       );
     });
 
-    test('return null if it is not getter or setter', (t) => {
+    test('return null if it is not getter or setter', () => {
       const { ast, services } = parse(`
 const obj = {
   bar: 123,
@@ -553,32 +609,34 @@ obj.baz = 42;
         },
       }, true);
 
-      t.assert.equal(map.size, 2);
+      assert.equal(map.size, 2);
 
-      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.MemberExpression} */
-      const memberExpression = map.get(AST_NODE_TYPES.MemberExpression);
-      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.AssignmentExpression} */
-      const assignmentExpression = map.get(AST_NODE_TYPES.AssignmentExpression);
+      const memberExpression =
+        /** @type {import('@typescript-eslint/typescript-estree').TSESTree.MemberExpression} */
+        (map.get(AST_NODE_TYPES.MemberExpression));
+      const assignmentExpression =
+        /** @type {import('@typescript-eslint/typescript-estree').TSESTree.AssignmentExpression} */
+        (map.get(AST_NODE_TYPES.AssignmentExpression));
 
-      t.assert.equal(
+      assert.equal(
         getCalleeDeclaration(services, memberExpression),
         null
       );
 
-      t.assert.equal(
+      assert.equal(
         getCalleeDeclaration(services, assignmentExpression),
         null
       );
     });
 
-    test('non-callable node should return nothing', (t) => {
+    test('non-callable node should return nothing', () => {
       const { ast, services } = parse(`
 const a = 42;
 a;
       `);
 
       const identifier = getFirstFoundIdentifier(ast, 'a');
-      t.assert.equal(
+      assert.equal(
         getCalleeDeclaration(services, identifier),
         null,
         'non-callable node should return null',
@@ -586,7 +644,7 @@ a;
     });
   });
 
-  test('getJSDocThrowsTags', (t) => {
+  test('getJSDocThrowsTags', () => {
     const { ast, services } = parse(`
 /**
  * @throws {Error} This throws an error.
@@ -604,26 +662,29 @@ function foo() {
     let found = null;
     simpleTraverse(ast, {
       visitors: {
-        /** @param {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} node */
         FunctionDeclaration(node) {
-          if (node.id.name === 'foo') {
+          if (
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} */
+            (node).id?.name === 'foo'
+          ) {
             found = node;
           }
         },
       },
     }, true);
 
+    assert(found);
     const tsNode = services.esTreeNodeToTSNodeMap.get(found);
     const tags = getJSDocThrowsTags(tsNode);
 
-    t.assert.equal(tags.length, 2);
-    t.assert.ok(tags.every((tag) => tag.typeExpression?.type));
+    assert.equal(tags.length, 2);
+    assert(tags.every((tag) => tag.typeExpression?.type));
 
-    t.assert.ok(tags.some((tag) => /This throws an error/.test(tag.comment)));
-    t.assert.ok(tags.some((tag) => /This also throws a type error/.test(tag.comment)));
+    assert(tags.some((tag) => /This throws an error/.test(String(tag.comment))));
+    assert(tags.some((tag) => /This also throws a type error/.test(String(tag.comment))));
   });
 
-  test('getJSDocThrowsTagTypes', (t) => {
+  test('getJSDocThrowsTagTypes', () => {
     const { ast, services } = parse(`
 /**
  * @throws {Error} This throws an error.
@@ -641,29 +702,32 @@ function foo() {
     let found = null;
     simpleTraverse(ast, {
       visitors: {
-        /** @param {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} node */
         FunctionDeclaration(node) {
-          if (node.id.name === 'foo') {
+          if (
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} */
+            (node).id?.name === 'foo'
+          ) {
             found = node;
           }
         },
       },
     }, true);
+    assert(found);
 
     const checker = services.program.getTypeChecker();
 
     const tsNode = services.esTreeNodeToTSNodeMap.get(found);
     const types = getJSDocThrowsTagTypes(checker, tsNode);
 
-    t.assert.equal(types.length, 2);
+    assert.equal(types.length, 2);
 
-    t.assert.ok(
+    assert(
       types.every((type) =>
         /^(Error|TypeError)$/.test(checker.typeToString(type)))
     );
   });
 
-  test('toFlattenTypeArray', (t) => {
+  test('toFlattenTypeArray', () => {
     const { ast, services } = parse(`
 let a: string = 'foo';
 let b: number = 42;
@@ -671,33 +735,37 @@ let c: string | number = 'bar';
 let d: number | null = null;
     `);
 
+    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier[]} */
     const nodes = [];
     simpleTraverse(ast, {
       visitors: {
         Identifier(node) {
-          nodes.push(node);
+          nodes.push(
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+            (node)
+          );
         },
       },
     }, true);
 
-    t.assert.equal(nodes.length, 4);
+    assert.equal(nodes.length, 4);
 
     // ['string', 'number', 'string | number', 'number | null']
     const types = nodes.map((node => services.getTypeAtLocation(node)));
-    t.assert.equal(types.length, 4);
+    assert.equal(types.length, 4);
 
     const checker = services.program.getTypeChecker();
 
     // ['string', 'number', 'string', 'number', 'number', 'null']
     const flattened = toFlattenedTypeArray(types);
-    t.assert.equal(flattened.length, 6);
-    t.assert.ok(
+    assert.equal(flattened.length, 6);
+    assert(
       flattened
         .every((type) => !checker.typeToString(type).includes('|'))
     );
   });
 
-  test('findFunctionCallNodes', (t) => {
+  test('findFunctionCallNodes', () => {
     const { ast, sourceCode } = parse(`
 function foo(bar) {
   bar(42);
@@ -709,32 +777,41 @@ function foo(bar) {
     let found = null;
     simpleTraverse(ast, {
       visitors: {
-        /** @param {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} node */
         Identifier(node) {
-          if (node.name === 'bar') {
-            found = node;
+          if (
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+            (node).name === 'bar'
+          ) {
+            found =
+              /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+              (node);
           }
         },
       },
     }, true);
 
+    assert(found);
     const callExpressions =
       findFunctionCallNodes(sourceCode, found);
 
-    t.assert.equal(callExpressions.length, 2);
+    assert.equal(callExpressions.length, 2);
   });
 
-  test('isGeneratorLike', (t) => {
+  test('isGeneratorLike', () => {
     const { ast, services } = parse(`
 function* foo() {}
 async function* bar() {}
     `);
     const checker = services.program.getTypeChecker();
+    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration[]} */
     const nodes = [];
     simpleTraverse(ast, {
       visitors: {
         FunctionDeclaration(node) {
-          nodes.push(node);
+          nodes.push(
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} */
+            (node)
+          );
         },
       },
     }, true);
@@ -748,11 +825,11 @@ async function* bar() {}
     const fooReturnType = getReturnType(nodes[0]);
     const barReturnType = getReturnType(nodes[1]);
 
-    t.assert.equal(isGeneratorLike(fooReturnType), true);
-    t.assert.equal(isGeneratorLike(barReturnType), true);
+    assert.equal(isGeneratorLike(fooReturnType), true);
+    assert.equal(isGeneratorLike(barReturnType), true);
   });
 
-  test('isPromiseType', (t) => {
+  test('isPromiseType', () => {
     const { ast, services } = parse(`
 function foo() {
   return Promise.resolve('foo');
@@ -763,11 +840,15 @@ function bar() {
 }
     `);
     const checker = services.program.getTypeChecker();
+    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration[]} */
     const nodes = [];
     simpleTraverse(ast, {
       visitors: {
         FunctionDeclaration(node) {
-          nodes.push(node);
+          nodes.push(
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} */
+            (node)
+          );
         },
       },
     }, true);
@@ -781,11 +862,11 @@ function bar() {
     const fooReturnType = getReturnType(nodes[0]);
     const barReturnType = getReturnType(nodes[1]);
 
-    t.assert.equal(isPromiseType(services, fooReturnType), true);
-    t.assert.equal(isPromiseType(services, barReturnType), false);
+    assert.equal(isPromiseType(services, fooReturnType), true);
+    assert.equal(isPromiseType(services, barReturnType), false);
   });
 
-  test('isAccessorNode', (t) => {
+  test('isAccessorNode', () => {
     const { ast } = parse(`
 const obj = {
   get foo() { return 42; },
@@ -798,7 +879,10 @@ const obj = {
     simpleTraverse(ast, {
       visitors: {
         Identifier(node) {
-          nodes.push(node);
+          nodes.push(
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+            (node)
+          );
         },
       },
     }, true);
@@ -806,11 +890,14 @@ const obj = {
     const foo = nodes.find((node) => node.name === 'foo');
     const bar = nodes.find((node) => node.name === 'bar');
 
-    t.assert.equal(isAccessorNode(foo.parent), true);
-    t.assert.equal(isAccessorNode(bar.parent), false);
+    assert(foo && foo.parent);
+    assert(bar && bar.parent);
+
+    assert.equal(isAccessorNode(foo.parent), true);
+    assert.equal(isAccessorNode(bar.parent), false);
   });
 
-  test('findClosestFunctionNode', (t) => {
+  test('findClosestFunctionNode', () => {
     const { ast } = parse(`
 const foo = 'baz';
 const buzz = 42;
@@ -828,29 +915,33 @@ function bar() {
     simpleTraverse(ast, {
       visitors: {
         Identifier(node) {
-          if (node.parent.type === AST_NODE_TYPES.VariableDeclarator) return;
-          nodes.push(node);
+          if (node.parent?.type === AST_NODE_TYPES.VariableDeclarator) return;
+          nodes.push(
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+            (node)
+          );
         },
       },
     }, true);
 
     const foo = nodes.find((node) => node.name === 'foo');
-
+    assert(foo);
     const fooClosest = findClosestFunctionNode(foo);
-    t.assert.ok(
+    assert(
       fooClosest?.type === AST_NODE_TYPES.FunctionDeclaration &&
-      fooClosest.id.name === 'bar',
+      fooClosest.id?.name === 'bar',
     );
 
     const buzz = nodes.find((node) => node.name === 'buzz');
+    assert(buzz);
     const buzzClosest = findClosestFunctionNode(buzz);
-    t.assert.ok(
+    assert(
       buzzClosest?.type === AST_NODE_TYPES.FunctionDeclaration &&
-      buzzClosest.id.name === 'fizz',
+      buzzClosest.id?.name === 'fizz',
     );
   });
 
-  test('isPromiseConstructorCallbackNode', (t) => {
+  test('isPromiseConstructorCallbackNode', () => {
     const { ast } = parse(`
 function foo() {
   return new Promise((resolve) => {});
@@ -862,21 +953,26 @@ function foo() {
     simpleTraverse(ast, {
       visitors: {
         Identifier(node) {
-          nodes.push(node);
+          nodes.push(
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+            (node)
+          );
         },
       },
     }, true);
 
     const resolve = nodes.find((node) => node.name === 'resolve');
     const callback = resolve?.parent;
+    assert(callback);
 
-    t.assert.equal(isPromiseConstructorCallbackNode(callback), true);
+    assert.equal(isPromiseConstructorCallbackNode(callback), true);
 
     const foo = nodes.find((node) => node.name === 'foo');
-    t.assert.equal(isPromiseConstructorCallbackNode(foo), false);
+    assert(foo);
+    assert.equal(isPromiseConstructorCallbackNode(foo), false);
   });
 
-  test('isThenableCallbackNode', (t) => {
+  test('isThenableCallbackNode', () => {
     const { ast } = parse(`
 function foo() {
   return Promise((resolve, reject) => {
@@ -901,42 +997,48 @@ function foo() {
           if (node.parent?.type !== AST_NODE_TYPES.ArrowFunctionExpression) {
             return;
           }
-          nodes.push(node);
+          nodes.push(
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+            (node)
+          );
         },
       },
     }, true);
 
 
-    t.assert.equal(
+    assert.equal(
       isThenableCallbackNode(
-        nodes
-        .find((node) => node.name === 'num')
-        ?.parent
+        /** @type {import('@typescript-eslint/typescript-estree').TSESTree.ArrowFunctionExpression} */
+        (nodes
+          .find((node) => node.name === 'num')
+          ?.parent)
       ),
       true,
     );
 
-    t.assert.equal(
+    assert.equal(
       isThenableCallbackNode(
-        nodes
-        .find((node) => node.name === 'str')
-        ?.parent
+        /** @type {import('@typescript-eslint/typescript-estree').TSESTree.ArrowFunctionExpression} */
+        (nodes
+          .find((node) => node.name === 'str')
+          ?.parent)
       ),
       true,
     );
 
-    t.assert.equal(
+    assert.equal(
       isThenableCallbackNode(
-        nodes
-        .find((node) => node.name === 'resolve')
-        ?.parent
+        /** @type {import('@typescript-eslint/typescript-estree').TSESTree.ArrowFunctionExpression} */
+        (nodes
+          .find((node) => node.name === 'resolve')
+          ?.parent)
       ),
       false,
     );
   });
 
   describe('findNodeToComment', () => {
-    test('comment to declared function', (t) => {
+    test('comment to declared function', () => {
       const { ast, sourceCode } = parse(`
 // here
 function foo() {}
@@ -953,15 +1055,18 @@ function foo() {}
 
       const functionDeclaration = map.get(AST_NODE_TYPES.FunctionDeclaration);
 
-      t.assert.equal(
+      assert.equal(
         sourceCode
-          .getCommentsBefore(findNodeToComment(functionDeclaration))
+          .getCommentsBefore(
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Node} */
+            (findNodeToComment(functionDeclaration))
+          )
           .some((comment) => comment.value.includes('here')),
         true,
       );
     });
 
-    test('comment to assigned arrow function', (t) => {
+    test('comment to assigned arrow function', () => {
       const { ast, sourceCode } = parse(`
 // here
 const foo = () => {};
@@ -978,20 +1083,23 @@ const foo = () => {};
 
       const arrowFunction = map.get(AST_NODE_TYPES.ArrowFunctionExpression);
 
-      t.assert.equal(
+      assert.equal(
         sourceCode.getCommentsBefore(arrowFunction).length,
         0,
       );
 
-      t.assert.equal(
+      assert.equal(
         sourceCode
-          .getCommentsBefore(findNodeToComment(arrowFunction))
+          .getCommentsBefore(
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Node} */
+            (findNodeToComment(arrowFunction))
+          )
           .some((comment) => comment.value.includes('here')),
         true,
       );
     });
 
-    test('comment to exported assigned arrow function', (t) => {
+    test('comment to exported assigned arrow function', () => {
       const { ast, sourceCode } = parse(`
 // here
 export const foo = () => {};
@@ -1008,20 +1116,23 @@ export const foo = () => {};
 
       const arrowFunction = map.get(AST_NODE_TYPES.ArrowFunctionExpression);
 
-      t.assert.equal(
+      assert.equal(
         sourceCode.getCommentsBefore(arrowFunction).length,
         0,
       );
 
-      t.assert.equal(
+      assert.equal(
         sourceCode
-          .getCommentsBefore(findNodeToComment(arrowFunction))
+          .getCommentsBefore(
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Node} */
+            (findNodeToComment(arrowFunction))
+          )
           .some((comment) => comment.value.includes('here')),
         true,
       );
     });
 
-    test('find node to comment from promise constructor', (t) => {
+    test('find node to comment from promise constructor', () => {
       const { ast, sourceCode } = parse(`
 // here
 export const foo = () => {
@@ -1035,7 +1146,12 @@ export const foo = () => {
       simpleTraverse(ast, {
         visitors: {
           [AST_NODE_TYPES.Identifier](node) {
-            map.set(node.name, node);
+            map.set(
+              /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+              (node).name,
+              /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+              (node)
+            );
           },
         },
       }, true);
@@ -1043,20 +1159,27 @@ export const foo = () => {
       const resolveIdentifier = map.get('resolve');
       const arrowFunction = resolveIdentifier?.parent;
 
-      t.assert.equal(
+      assert(arrowFunction);
+      assert.equal(
         sourceCode.getCommentsBefore(arrowFunction).length,
         0,
       );
 
-      t.assert.equal(
+      assert.equal(
         sourceCode
-          .getCommentsBefore(findNodeToComment(arrowFunction))
+          .getCommentsBefore(
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Node} */
+            (findNodeToComment(
+              /** @type {import('@typescript-eslint/typescript-estree').TSESTree.ArrowFunctionExpression} */
+              (arrowFunction)
+            ))
+          )
           .some((comment) => comment.value.includes('here')),
         true,
       );
     });
 
-    test('find node to comment from promise chain method', (t) => {
+    test('find node to comment from promise chain method', () => {
       const { ast, sourceCode } = parse(`
 // here
 export const foo = () => {
@@ -1065,27 +1188,38 @@ export const foo = () => {
 };
     `);
 
-      /** @type {Map<string, import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+      /** @type {Map<string, import('@typescript-eslint/typescript-estree').TSESTree.Identifier>} */
       const map = new Map();
       simpleTraverse(ast, {
         visitors: {
           [AST_NODE_TYPES.Identifier](node) {
-            map.set(node.name, node);
+            map.set(
+              /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+              (node).name,
+              /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+              (node)
+            );
           },
         },
       }, true);
 
       const identifier = map.get('value');
-      const arrowFunction = identifier?.parent;
+      const arrowFunction =
+        /** @type {import('@typescript-eslint/typescript-estree').TSESTree.ArrowFunctionExpression} */
+        (identifier?.parent);
+      assert(arrowFunction);
 
-      t.assert.equal(
+      assert.equal(
         sourceCode.getCommentsBefore(arrowFunction).length,
         0,
       );
 
-      t.assert.equal(
+      assert.equal(
         sourceCode
-          .getCommentsBefore(findNodeToComment(arrowFunction))
+          .getCommentsBefore(
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Node} */
+            (findNodeToComment(arrowFunction))
+          )
           .some((comment) => comment.value.includes('here')),
         true,
       );
@@ -1093,7 +1227,7 @@ export const foo = () => {
   });
 
   describe('findIdentifierDeclaration', () => {
-    test('reference function declaration', (t) => {
+    test('reference function declaration', () => {
       const { ast, sourceCode } = parse(`
 function foo() {}
 
@@ -1101,19 +1235,20 @@ debugger;
 foo;
     `);
 
-      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
-      const identifier = getNodeNextToDebugger(ast);
+      const identifier =
+        /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+        (getNodeNextToDebugger(ast));
 
-      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration | null} */
       const declaration =
-        findIdentifierDeclaration(sourceCode, identifier);
+        /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration | null} */
+        (findIdentifierDeclaration(sourceCode, identifier));
 
-      t.assert.ok(declaration);
-      t.assert.equal(declaration.type, AST_NODE_TYPES.FunctionDeclaration);
-      t.assert.equal(declaration.id.name, 'foo');
+      assert(declaration);
+      assert.equal(declaration.type, AST_NODE_TYPES.FunctionDeclaration);
+      assert.equal(declaration.id?.name, 'foo');
     });
 
-    test('reference variable', (t) => {
+    test('reference variable', () => {
       const { ast, sourceCode } = parse(`
 const foo = function () {};
 
@@ -1121,20 +1256,21 @@ debugger;
 foo;
     `);
 
-      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
-      const identifier = getNodeNextToDebugger(ast);
+      const identifier =
+        /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+        (getNodeNextToDebugger(ast));
 
-      /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration | null} */
       const declaration =
-        findIdentifierDeclaration(sourceCode, identifier);
+        /** @type {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration | null} */
+        (findIdentifierDeclaration(sourceCode, identifier));
 
-      t.assert.ok(declaration);
-      t.assert.equal(declaration.type, AST_NODE_TYPES.FunctionExpression);
+      assert(declaration);
+      assert.equal(declaration.type, AST_NODE_TYPES.FunctionExpression);
     });
   });
 
   describe('isInHandledContext', () => {
-    test('in try with catch clause', (t) => {
+    test('in try with catch clause', () => {
       const { ast } = parse(`
 try {
   debugger;
@@ -1142,10 +1278,11 @@ try {
       `);
 
       const debuggerStatement = findDebuggerStatement(ast);
-      t.assert.equal(isInHandledContext(debuggerStatement), true);
+      assert(debuggerStatement);
+      assert.equal(isInHandledContext(debuggerStatement), true);
     });
 
-    test('in try without catch clause', (t) => {
+    test('in try without catch clause', () => {
       const { ast } = parse(`
 try {
   debugger;
@@ -1153,10 +1290,11 @@ try {
       `);
 
       const debuggerStatement = findDebuggerStatement(ast);
-      t.assert.equal(isInHandledContext(debuggerStatement), false);
+      assert(debuggerStatement);
+      assert.equal(isInHandledContext(debuggerStatement), false);
     });
 
-    test('in catch clause', (t) => {
+    test('in catch clause', () => {
       const { ast } = parse(`
 try {
 } catch {
@@ -1165,10 +1303,11 @@ try {
       `);
 
       const debuggerStatement = findDebuggerStatement(ast);
-      t.assert.equal(isInHandledContext(debuggerStatement), false);
+      assert(debuggerStatement);
+      assert.equal(isInHandledContext(debuggerStatement), false);
     });
 
-    test('in finally block', (t) => {
+    test('in finally block', () => {
       const { ast } = parse(`
 try {
 } catch {
@@ -1178,10 +1317,11 @@ try {
       `);
 
       const debuggerStatement = findDebuggerStatement(ast);
-      t.assert.equal(isInHandledContext(debuggerStatement), false);
+      assert(debuggerStatement);
+      assert.equal(isInHandledContext(debuggerStatement), false);
     });
 
-    test('in nested context', (t) => {
+    test('in nested context', () => {
       const { ast } = parse(`
 try {
   try {
@@ -1192,48 +1332,49 @@ try {
       `);
 
       const debuggerStatement = findDebuggerStatement(ast);
-      t.assert.equal(isInHandledContext(debuggerStatement), true);
+      assert(debuggerStatement);
+      assert.equal(isInHandledContext(debuggerStatement), true);
     });
   });
 
   describe('isInAsyncHandledContext', () => {
-    test('using catch method', (t) => {
+    test('using catch method', () => {
       const { ast, sourceCode } = parse(`
 foo().catch(console.error);
       `);
 
       const foo = getFirstFoundIdentifier(ast, 'foo');
-      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
+      assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
     });
 
-    test('using then reject handler', (t) => {
+    test('using then reject handler', () => {
       const { ast, sourceCode } = parse(`
 foo().then(() => {}, console.error);
       `);
 
       const foo = getFirstFoundIdentifier(ast, 'foo');
-      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
+      assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
     });
 
-    test('without then reject handler', (t) => {
+    test('without then reject handler', () => {
       const { ast, sourceCode } = parse(`
 foo().then(() => {});
       `);
 
       const foo = getFirstFoundIdentifier(ast, 'foo');
-      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
+      assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
     });
 
-    test('catch method after then method', (t) => {
+    test('catch method after then method', () => {
       const { ast, sourceCode } = parse(`
 foo().then(() => {}).catch(console.error);
       `);
 
       const foo = getFirstFoundIdentifier(ast, 'foo');
-      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
+      assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
     });
 
-    test('in try with catch clause', (t) => {
+    test('in try with catch clause', () => {
       const { ast, sourceCode } = parse(`
 try {
   await foo();
@@ -1241,10 +1382,10 @@ try {
       `);
 
       const foo = getFirstFoundIdentifier(ast, 'foo');
-      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
+      assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
     });
 
-    test('in try with catch clause without await', (t) => {
+    test('in try with catch clause without await', () => {
       const { ast, sourceCode } = parse(`
 try {
   foo();
@@ -1252,10 +1393,10 @@ try {
       `);
 
       const foo = getFirstFoundIdentifier(ast, 'foo');
-      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
+      assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
     });
 
-    test('in try with catch clause without await, with catch method', (t) => {
+    test('in try with catch clause without await, with catch method', () => {
       const { ast, sourceCode } = parse(`
 try {
   foo().catch(console.error);
@@ -1263,10 +1404,10 @@ try {
       `);
 
       const foo = getFirstFoundIdentifier(ast, 'foo');
-      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
+      assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
     });
 
-    test('in try with catch clause with await, with catch method', (t) => {
+    test('in try with catch clause with await, with catch method', () => {
       const { ast, sourceCode } = parse(`
 try {
   await foo().catch(console.error);
@@ -1274,10 +1415,10 @@ try {
       `);
 
       const foo = getFirstFoundIdentifier(ast, 'foo');
-      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
+      assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
     });
 
-    test('in try without catch clause', (t) => {
+    test('in try without catch clause', () => {
       const { ast, sourceCode } = parse(`
 try {
   await foo();
@@ -1285,10 +1426,10 @@ try {
       `);
 
       const foo = getFirstFoundIdentifier(ast, 'foo');
-      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
+      assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
     });
 
-    test('in catch clause', (t) => {
+    test('in catch clause', () => {
       const { ast, sourceCode } = parse(`
 try {
 } catch {
@@ -1297,10 +1438,10 @@ try {
       `);
 
       const foo = getFirstFoundIdentifier(ast, 'foo');
-      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
+      assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
     });
 
-    test('in finally block', (t) => {
+    test('in finally block', () => {
       const { ast, sourceCode } = parse(`
 try {
 } catch {
@@ -1310,10 +1451,10 @@ try {
       `);
 
       const foo = getFirstFoundIdentifier(ast, 'foo');
-      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
+      assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
     });
 
-    test('in nested context', (t) => {
+    test('in nested context', () => {
       const { ast, sourceCode } = parse(`
 try {
   try {
@@ -1324,10 +1465,10 @@ try {
       `);
 
       const foo = getFirstFoundIdentifier(ast, 'foo');
-      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
+      assert.equal(isInAsyncHandledContext(sourceCode, foo), true);
     });
 
-    test('in nested context without await', (t) => {
+    test('in nested context without await', () => {
       const { ast, sourceCode } = parse(`
 try {
   try {
@@ -1338,12 +1479,12 @@ try {
       `);
 
       const foo = getFirstFoundIdentifier(ast, 'foo');
-      t.assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
+      assert.equal(isInAsyncHandledContext(sourceCode, foo), false);
     });
   });
 
   describe('isNodeReturned', () => {
-    test('return inside function', (t) => {
+    test('return inside function', () => {
       const { ast } = parse(`
 function foo() {
   return bar;
@@ -1351,10 +1492,10 @@ function foo() {
       `);
 
       const bar = getFirstFoundIdentifier(ast, 'bar');
-      t.assert.equal(isNodeReturned(bar), true);
+      assert.equal(isNodeReturned(bar), true);
     });
 
-    test('not last item of sequence expression', (t) => {
+    test('not last item of sequence expression', () => {
       const { ast } = parse(`
 function foo() {
   return bar, 42;
@@ -1362,10 +1503,10 @@ function foo() {
       `);
 
       const bar = getFirstFoundIdentifier(ast, 'bar');
-      t.assert.equal(isNodeReturned(bar), false);
+      assert.equal(isNodeReturned(bar), false);
     });
 
-    test('last item of sequence expression', (t) => {
+    test('last item of sequence expression', () => {
       const { ast } = parse(`
 function foo() {
   return 42, bar;
@@ -1373,10 +1514,10 @@ function foo() {
       `);
 
       const bar = getFirstFoundIdentifier(ast, 'bar');
-      t.assert.equal(isNodeReturned(bar), true);
+      assert.equal(isNodeReturned(bar), true);
     });
 
-    test('after return statement', (t) => {
+    test('after return statement', () => {
       const { ast } = parse(`
 function foo() {
   return;
@@ -1385,19 +1526,19 @@ function foo() {
       `);
 
       const bar = getFirstFoundIdentifier(ast, 'bar');
-      t.assert.equal(isNodeReturned(bar), false);
+      assert.equal(isNodeReturned(bar), false);
     });
 
-    test('arrow function with no block statement', (t) => {
+    test('arrow function with no block statement', () => {
       const { ast } = parse(`
 const foo = () => bar;
       `);
 
       const bar = getFirstFoundIdentifier(ast, 'bar');
-      t.assert.equal(isNodeReturned(bar), true);
+      assert.equal(isNodeReturned(bar), true);
     });
 
-    test('arrow function with block statement, no return', (t) => {
+    test('arrow function with block statement, no return', () => {
       const { ast } = parse(`
 const foo = () => {
   bar;
@@ -1405,10 +1546,10 @@ const foo = () => {
       `);
 
       const bar = getFirstFoundIdentifier(ast, 'bar');
-      t.assert.equal(isNodeReturned(bar), false);
+      assert.equal(isNodeReturned(bar), false);
     });
 
-    test('arrow function with block statement, with return', (t) => {
+    test('arrow function with block statement, with return', () => {
       const { ast } = parse(`
 const foo = () => {
   return bar;
@@ -1416,7 +1557,7 @@ const foo = () => {
       `);
 
       const bar = getFirstFoundIdentifier(ast, 'bar');
-      t.assert.equal(isNodeReturned(bar), true);
+      assert.equal(isNodeReturned(bar), true);
     });
   });
 });
@@ -1461,7 +1602,7 @@ function parse(code) {
  * @returns {import('@typescript-eslint/typescript-estree').TSESTree.Node | null}
  */
 const getNodeNextTo = (node) => {
-  switch (node.parent.type) {
+  switch (node.parent?.type) {
     case AST_NODE_TYPES.Program:
     case AST_NODE_TYPES.BlockStatement: {
       /** @type {import('@typescript-eslint/typescript-estree').TSESTree.BlockStatement['body']} */
@@ -1475,7 +1616,7 @@ const getNodeNextTo = (node) => {
 };
 
 /**
- * @param {import('@typescript-eslint/typescript-estree').AST} ast
+ * @param {import('@typescript-eslint/typescript-estree').AST<any>} ast
  * @returns {import('@typescript-eslint/typescript-estree').TSESTree.DebuggerStatement | null}
  */
 const findDebuggerStatement = (ast) => {
@@ -1484,7 +1625,9 @@ const findDebuggerStatement = (ast) => {
   simpleTraverse(ast, {
     visitors: {
       [AST_NODE_TYPES.DebuggerStatement](node) {
-        found = node;
+        found =
+          /** @type {import('@typescript-eslint/typescript-estree').TSESTree.DebuggerStatement} */
+          (node);
       },
     },
   }, true);
@@ -1493,7 +1636,7 @@ const findDebuggerStatement = (ast) => {
 };
 
 /**
- * @param {import('@typescript-eslint/typescript-estree').AST} ast
+ * @param {import('@typescript-eslint/typescript-estree').AST<any>} ast
  * @param {string} name
  * @returns {import('@typescript-eslint/typescript-estree').TSESTree.Identifier[]}
  */
@@ -1503,8 +1646,14 @@ const findIdentifiers = (ast, name) => {
   simpleTraverse(ast, {
     visitors: {
       [AST_NODE_TYPES.Identifier](node) {
-        if (node.name === name) {
-          ids.push(node);
+        if (
+          /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+          (node).name === name
+        ) {
+          ids.push(
+            /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier} */
+            (node)
+          );
         }
       },
     },
@@ -1514,9 +1663,9 @@ const findIdentifiers = (ast, name) => {
 };
 
 /**
- * @param {import('@typescript-eslint/typescript-estree').AST} ast
+ * @param {import('@typescript-eslint/typescript-estree').AST<any>} ast
  * @param {string} name
- * @returns {import('@typescript-eslint/typescript-estree').TSESTree.Identifier[]}
+ * @returns {import('@typescript-eslint/typescript-estree').TSESTree.Identifier}
  */
 const getFirstFoundIdentifier = (ast, name) => {
   /** @type {import('@typescript-eslint/typescript-estree').TSESTree.Identifier[]} */
@@ -1525,14 +1674,17 @@ const getFirstFoundIdentifier = (ast, name) => {
 };
 
 /**
- * @param {import('@typescript-eslint/typescript-estree').AST} ast
- * @returns {import('@typescript-eslint/typescript-estree').Node | null}
+ * @param {import('@typescript-eslint/typescript-estree').AST<any>} ast
+ * @returns {import('@typescript-eslint/typescript-estree').TSESTree.Node | null}
  */
 const getNodeNextToDebugger = (ast) => {
-  /** @type {import('@typescript-eslint/typescript-estree').TSESTree.DebuggerStatement} */
-  const debuggerStatement = findDebuggerStatement(ast);
-  /** @type {import('@typescript-eslint/typescript-estree').TSESTree.ExpressionStatement} */
-  const found = getNodeNextTo(debuggerStatement);
+  const debuggerStatement =
+    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.DebuggerStatement} */
+    (findDebuggerStatement(ast));
+
+  const found =
+    /** @type {import('@typescript-eslint/typescript-estree').TSESTree.ExpressionStatement} */
+    (getNodeNextTo(debuggerStatement));
 
   return found.expression;
 };
