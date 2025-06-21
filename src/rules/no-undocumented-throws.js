@@ -198,6 +198,46 @@ module.exports = createRule({
       throwsComments.set(getNodeID(callerDeclaration), comments);
     };
 
+    /**
+     * Visit iterable node and collect types.
+     *
+     * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+     */
+    const visitIterableNode = (node) => {
+      const callerDeclaration = findClosestFunctionNode(node);
+      if (!callerDeclaration) return;
+
+      const calleeNode = getCallee(node);
+      if (!calleeNode) return;
+
+      // TODO: Extract duplicated logic of extracting narrowed type declaration
+      const calleeDeclaration =
+        (calleeNode.type === AST_NODE_TYPES.CallExpression ||
+          calleeNode.type === AST_NODE_TYPES.NewExpression)
+        ? getCallSignatureDeclaration(services, calleeNode)
+        : calleeNode.parent?.type === AST_NODE_TYPES.CallExpression
+        ? getCallSignatureDeclaration(services, calleeNode.parent)
+        : getCalleeDeclaration(
+          services,
+          /** @type {import('@typescript-eslint/utils').TSESTree.Expression} */
+          (calleeNode)
+        );
+
+      if (!calleeDeclaration) return;
+
+      const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
+      if (!calleeThrowsTypes.length) return;
+
+      for (const type of calleeThrowsTypes) {
+        const flattened = toFlattenedTypeArray([type]);
+
+        throwTypes.add(callerDeclaration, flattened);
+
+        flattened
+          .forEach(t => metadata.set(t, { pos: node.range[0] }));
+      }
+    };
+
     /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */
     const visitFunctionOnExit = (node) => {
       if (visitedFunctionNodes.has(getNodeID(node))) return;
@@ -684,38 +724,7 @@ module.exports = createRule({
         const iterableType = services.getTypeAtLocation(node.right);
         if (!isGeneratorLike(iterableType)) return;
 
-        const callerDeclaration = findClosestFunctionNode(node);
-        if (!callerDeclaration) return;
-
-        const calleeNode = getCallee(node.right);
-        if (!calleeNode) return;
-
-        // TODO: Extract duplicated logic of extracting narrowed type declaration
-        const calleeDeclaration =
-          (calleeNode.type === AST_NODE_TYPES.CallExpression ||
-           calleeNode.type === AST_NODE_TYPES.NewExpression)
-            ? getCallSignatureDeclaration(services, calleeNode)
-            : calleeNode.parent?.type === AST_NODE_TYPES.CallExpression
-            ? getCallSignatureDeclaration(services, calleeNode.parent)
-            : getCalleeDeclaration(
-              services,
-              /** @type {import('@typescript-eslint/utils').TSESTree.Expression} */
-              (calleeNode)
-            );
-
-        if (!calleeDeclaration) return;
-
-        const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
-        if (!calleeThrowsTypes.length) return;
-
-        for (const type of calleeThrowsTypes) {
-          const flattened = toFlattenedTypeArray([type]);
-
-          throwTypes.add(callerDeclaration, flattened);
-
-          flattened
-            .forEach(t => metadata.set(t, { pos: node.right.range[0] }));
-        }
+        visitIterableNode(node.right);
       },
       /**
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax MDN}
@@ -724,38 +733,7 @@ module.exports = createRule({
         const iterableType = services.getTypeAtLocation(node.argument);
         if (!isGeneratorLike(iterableType)) return;
 
-        const callerDeclaration = findClosestFunctionNode(node);
-        if (!callerDeclaration) return;
-
-        const calleeNode = getCallee(node.argument);
-        if (!calleeNode) return;
-
-        // TODO: Extract duplicated logic of extracting narrowed type declaration
-        const calleeDeclaration =
-          (calleeNode.type === AST_NODE_TYPES.CallExpression ||
-           calleeNode.type === AST_NODE_TYPES.NewExpression)
-            ? getCallSignatureDeclaration(services, calleeNode)
-            : calleeNode.parent?.type === AST_NODE_TYPES.CallExpression
-            ? getCallSignatureDeclaration(services, calleeNode.parent)
-            : getCalleeDeclaration(
-              services,
-              /** @type {import('@typescript-eslint/utils').TSESTree.Expression} */
-              (calleeNode)
-            );
-
-        if (!calleeDeclaration) return;
-
-        const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
-        if (!calleeThrowsTypes.length) return;
-
-        for (const type of calleeThrowsTypes) {
-          const flattened = toFlattenedTypeArray([type]);
-
-          throwTypes.add(callerDeclaration, flattened);
-
-          flattened
-            .forEach(t => metadata.set(t, { pos: node.argument.range[0] }));
-        }
+        visitIterableNode(node.argument);
       },
 
       /**
