@@ -615,6 +615,9 @@ const isGeneratorLike = (type) => {
   const members = type.getSymbol()?.members;
   if (!members) return false;
 
+  /**
+   * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator#instance_methods MDN}
+   */
   return (
     // @ts-expect-error - Not assignable to '__String'
     members.has('next') &&
