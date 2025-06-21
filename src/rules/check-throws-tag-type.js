@@ -9,7 +9,6 @@ const {
   getFirst,
   getLast,
   getNodeIndent,
-  getCallee,
   isInHandledContext,
   isInAsyncHandledContext,
   isNodeReturned,
@@ -23,7 +22,6 @@ const {
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
   getCalleeDeclaration,
-  getCallSignatureDeclaration,
   findParent,
   findClosest,
   findClosestFunctionNode,
@@ -218,14 +216,7 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node.parent);
       if (!callerDeclaration) return;
 
-      const calleeDeclaration =
-        (node.type === AST_NODE_TYPES.CallExpression ||
-         node.type === AST_NODE_TYPES.NewExpression)
-          ? getCallSignatureDeclaration(services, node)
-          : node.parent?.type === AST_NODE_TYPES.CallExpression
-          ? getCallSignatureDeclaration(services, node.parent)
-          : getCalleeDeclaration(services, node);
-
+      const calleeDeclaration = getCalleeDeclaration(services, node);
       if (!calleeDeclaration) return;
 
       const calleeThrowsTypes =
@@ -255,7 +246,7 @@ module.exports = createRule({
     /**
      * Visit iterable node and collect types.
      *
-     * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+     * @param {import('@typescript-eslint/utils').TSESTree.Expression} node
      */
     const visitIterableNode = (node) => {
       const iterableType = services.getTypeAtLocation(node);
@@ -264,22 +255,7 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
-      const calleeNode = getCallee(node);
-      if (!calleeNode) return;
-
-      // TODO: Extract duplicated logic of extracting narrowed type declaration
-      const calleeDeclaration =
-        (calleeNode.type === AST_NODE_TYPES.CallExpression ||
-          calleeNode.type === AST_NODE_TYPES.NewExpression)
-        ? getCallSignatureDeclaration(services, calleeNode)
-        : calleeNode.parent?.type === AST_NODE_TYPES.CallExpression
-        ? getCallSignatureDeclaration(services, calleeNode.parent)
-        : getCalleeDeclaration(
-          services,
-          /** @type {import('@typescript-eslint/utils').TSESTree.Expression} */
-          (calleeNode)
-        );
-
+      const calleeDeclaration = getCalleeDeclaration(services, node);
       if (!calleeDeclaration) return;
 
       const calleeThrowsTypes =
