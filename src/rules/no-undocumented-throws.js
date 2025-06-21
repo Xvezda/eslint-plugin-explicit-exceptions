@@ -677,13 +677,15 @@ module.exports = createRule({
       /**
        * Collect throwable types of generators
        */
-      // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for...of
+      /**
+       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for...of MDN}
+       */
       'ForOfStatement'(node) {
-        const callerDeclaration = findClosestFunctionNode(node);
-        if (!callerDeclaration) return;
-
         const iterableType = services.getTypeAtLocation(node.right);
         if (!isGeneratorLike(iterableType)) return;
+
+        const callerDeclaration = findClosestFunctionNode(node);
+        if (!callerDeclaration) return;
 
         const calleeNode = getCallee(node.right);
         if (!calleeNode) return;
@@ -713,6 +715,46 @@ module.exports = createRule({
 
           flattened
             .forEach(t => metadata.set(t, { pos: node.right.range[0] }));
+        }
+      },
+      /**
+       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax MDN}
+       */
+      'SpreadElement'(node) {
+        const iterableType = services.getTypeAtLocation(node.argument);
+        if (!isGeneratorLike(iterableType)) return;
+
+        const callerDeclaration = findClosestFunctionNode(node);
+        if (!callerDeclaration) return;
+
+        const calleeNode = getCallee(node.argument);
+        if (!calleeNode) return;
+
+        // TODO: Extract duplicated logic of extracting narrowed type declaration
+        const calleeDeclaration =
+          (calleeNode.type === AST_NODE_TYPES.CallExpression ||
+           calleeNode.type === AST_NODE_TYPES.NewExpression)
+            ? getCallSignatureDeclaration(services, calleeNode)
+            : calleeNode.parent?.type === AST_NODE_TYPES.CallExpression
+            ? getCallSignatureDeclaration(services, calleeNode.parent)
+            : getCalleeDeclaration(
+              services,
+              /** @type {import('@typescript-eslint/utils').TSESTree.Expression} */
+              (calleeNode)
+            );
+
+        if (!calleeDeclaration) return;
+
+        const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
+        if (!calleeThrowsTypes.length) return;
+
+        for (const type of calleeThrowsTypes) {
+          const flattened = toFlattenedTypeArray([type]);
+
+          throwTypes.add(callerDeclaration, flattened);
+
+          flattened
+            .forEach(t => metadata.set(t, { pos: node.argument.range[0] }));
         }
       },
 
