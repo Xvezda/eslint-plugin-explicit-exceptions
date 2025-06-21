@@ -753,12 +753,21 @@ module.exports = createRule({
        * @param {import('@typescript-eslint/utils').TSESTree.YieldExpression} node
        */
       'YieldExpression[delegate=true]'(node) {
-        if (!node || !node.argument) return;
+        if (!node.argument) return;
 
         const iterableType = services.getTypeAtLocation(node.argument);
         if (!isGeneratorLike(iterableType)) return;
 
         visitIterableNode(node.argument);
+      },
+      /** @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node */
+      'CallExpression[callee.property.name="next"]'(node) {
+        if (node.callee.type !== AST_NODE_TYPES.MemberExpression) return;
+
+        const iterableType = services.getTypeAtLocation(node.callee.object);
+        if (!isGeneratorLike(iterableType)) return;
+
+        visitIterableNode(node.callee.object);
       },
 
       /**
