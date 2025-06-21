@@ -735,6 +735,19 @@ module.exports = createRule({
 
         visitIterableNode(node.argument);
       },
+      /**
+       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/from MDN}
+       * @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node
+       */
+      'CallExpression:has(> MemberExpression[object.type="Identifier"][object.name="Array"][property.type="Identifier"][property.name="from"])'(node) {
+        if (node.arguments.length < 1) return;
+
+        const [firstArgumentNode] = node.arguments;
+        const iterableType = services.getTypeAtLocation(firstArgumentNode);
+        if (!isGeneratorLike(iterableType)) return;
+
+        visitIterableNode(firstArgumentNode);
+      },
 
       /**
        * Process collected types when each function node exits

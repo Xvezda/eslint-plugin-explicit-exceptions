@@ -290,12 +290,7 @@ const getDeclarationsByNode = (services, node) => {
 const getCallSignature = (services, node) => {
   const checker = services.program.getTypeChecker();
 
-  const calleeTSNode = services.esTreeNodeToTSNodeMap
-    .get(node?.parent.type === AST_NODE_TYPES.CallExpression
-      ? node.parent
-      : /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
-      (node));
-
+  const calleeTSNode = services.esTreeNodeToTSNodeMap.get(node);
   if (!calleeTSNode) return null;
 
   const signature = checker.getResolvedSignature(calleeTSNode);
