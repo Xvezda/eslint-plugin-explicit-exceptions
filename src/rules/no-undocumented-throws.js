@@ -207,8 +207,6 @@ module.exports = createRule({
       const iterableType = services.getTypeAtLocation(node);
       if (!isGeneratorLike(iterableType)) return;
 
-      // if (isInHandledContext(node)) return;
-
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
@@ -236,15 +234,6 @@ module.exports = createRule({
       for (const type of calleeThrowsTypes) {
         if (isPromiseType(services, type)) {
           if (isInAsyncHandledContext(sourceCode, node)) continue;
-
-          // const isPromiseReturned =
-          //   // Promise is assigned and returned
-          //   sourceCode.getScope(node.parent)
-          //   ?.references
-          //   .map(ref => ref.identifier)
-          //   .some(n => findClosest(n, isNodeReturned));
-          //
-          // if (!isPromiseReturned) continue;
 
           const flattened =
             toFlattenedTypeArray([checker.getAwaitedType(type) ?? type]);
