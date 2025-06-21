@@ -20,7 +20,7 @@ const {
   findParent,
   getCallSignatureDeclaration,
   getCallee,
-  getCalleeDeclarations,
+  getCalleeDeclaration,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
   toFlattenedTypeArray,
@@ -455,8 +455,8 @@ debugger;
     );
   });
 
-  describe('getCalleeDeclarations', () => {
-    test('get declaration of a function calls', (t) => {
+  describe('getCalleeDeclaration', () => {
+    test.only('get declaration of a function calls', (t) => {
       const { ast, services, sourceCode } = parse(`
 // foo declaration
 function foo() {}
@@ -500,31 +500,31 @@ obj.baz = 42;
 
       t.assert.ok(
         sourceCode
-        .getCommentsBefore(
-          services.tsNodeToESTreeNodeMap
-            .get(getCalleeDeclarations(services, callExpression)[0])
-        )
-        .some(({ value }) => value.includes('foo declaration')),
+          .getCommentsBefore(
+            services.tsNodeToESTreeNodeMap
+              .get(getCalleeDeclaration(services, callExpression))
+          )
+          .some(({ value }) => value.includes('foo declaration')),
         '`foo()` must return the declaration of `foo`',
       );
 
       t.assert.ok(
         sourceCode
-        .getCommentsBefore(
-          services.tsNodeToESTreeNodeMap
-          .get(getCalleeDeclarations(services, memberExpression)[0]),
-        )
-        .some(({ value }) => value.includes('bar declaration')),
+          .getCommentsBefore(
+            services.tsNodeToESTreeNodeMap
+              .get(getCalleeDeclaration(services, memberExpression)),
+          )
+          .some(({ value }) => value.includes('bar declaration')),
         '`const value = obj.bar` must return the declaration of `obj.bar`',
       );
 
       t.assert.ok(
         sourceCode
-        .getCommentsBefore(
-          services.tsNodeToESTreeNodeMap
-          .get(getCalleeDeclarations(services, assignmentExpression)[0]),
-        )
-        .some(({ value }) => value.includes('baz declaration')),
+          .getCommentsBefore(
+            services.tsNodeToESTreeNodeMap
+              .get(getCalleeDeclaration(services, assignmentExpression)),
+          )
+          .some(({ value }) => value.includes('baz declaration')),
         '`obj.baz = 42` must return the declaration of `obj.baz`',
       );
     });
@@ -561,13 +561,13 @@ obj.baz = 42;
       const assignmentExpression = map.get(AST_NODE_TYPES.AssignmentExpression);
 
       t.assert.equal(
-        getCalleeDeclarations(services, memberExpression).length,
-        0
+        getCalleeDeclaration(services, memberExpression),
+        null
       );
 
       t.assert.equal(
-        getCalleeDeclarations(services, assignmentExpression).length,
-        0
+        getCalleeDeclaration(services, assignmentExpression),
+        null
       );
     });
 
@@ -579,9 +579,9 @@ a;
 
       const identifier = getFirstFoundIdentifier(ast, 'a');
       t.assert.equal(
-        getCalleeDeclarations(services, identifier).length,
-        0,
-        'non-callable node should return nothing',
+        getCalleeDeclaration(services, identifier),
+        null,
+        'non-callable node should return null',
       );
     });
   });
