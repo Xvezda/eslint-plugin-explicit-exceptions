@@ -694,11 +694,11 @@ module.exports = createRule({
        * //          ^ here
        * ```
        */
-      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > :function:first-child:exit':
+      'NewExpression[callee.name="Promise"] > :function:first-child:exit':
         visitPromiseCallbackOnExit,
-      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > Identifier:first-child:exit':
+      'NewExpression[callee.name="Promise"] > Identifier:first-child:exit':
         visitPromiseCallbackOnExit,
-      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > MemberExpression:first-child:exit':
+      'NewExpression[callee.name="Promise"] > MemberExpression:first-child:exit':
         visitPromiseCallbackOnExit,
       /**
        * @example
@@ -709,11 +709,11 @@ module.exports = createRule({
        * //                       ^ or here
        * ```
        */
-      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > :function:first-child:exit':
+      'CallExpression[callee.property.name=/^(then|finally)$/] > :function:first-child:exit':
         visitPromiseCallbackOnExit,
-      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > Identifier:first-child:exit':
+      'CallExpression[callee.property.name=/^(then|finally)$/] > Identifier:first-child:exit':
         visitPromiseCallbackOnExit,
-      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > MemberExpression:first-child:exit':
+      'CallExpression[callee.property.name=/^(then|finally)$/] > MemberExpression:first-child:exit':
         visitPromiseCallbackOnExit,
 
       /**
@@ -741,7 +741,7 @@ module.exports = createRule({
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/from MDN}
        * @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node
        */
-      'CallExpression:has(> MemberExpression[object.type="Identifier"][object.name="Array"][property.type="Identifier"][property.name="from"])'(node) {
+      'CallExpression:has(> MemberExpression[object.name="Array"][property.name="from"])'(node) {
         if (node.arguments.length < 1) return;
 
         const [firstArgumentNode] = node.arguments;
