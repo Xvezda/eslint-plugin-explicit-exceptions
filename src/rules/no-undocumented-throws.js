@@ -163,6 +163,7 @@ module.exports = createRule({
       /** @type {import('typescript').JSDocThrowsTag[]} */
       const comments = [];
       comments.push(...getJSDocThrowsTags(calleeDeclaration));
+      throwsComments.set(getNodeID(callerDeclaration), comments);
 
       const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
       for (const type of calleeThrowsTypes) {
@@ -194,8 +195,7 @@ module.exports = createRule({
           flattened
             .forEach(t => metadata.set(t, { pos: node.range[0] }));
         }
-      };
-      throwsComments.set(getNodeID(callerDeclaration), comments);
+      }
     };
 
     /**
@@ -207,7 +207,7 @@ module.exports = createRule({
       const iterableType = services.getTypeAtLocation(node);
       if (!isGeneratorLike(iterableType)) return;
 
-      if (isInHandledContext(node)) return;
+      // if (isInHandledContext(node)) return;
 
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
@@ -234,12 +234,34 @@ module.exports = createRule({
       if (!calleeThrowsTypes.length) return;
 
       for (const type of calleeThrowsTypes) {
-        const flattened = toFlattenedTypeArray([type]);
+        if (isPromiseType(services, type)) {
+          if (isInAsyncHandledContext(sourceCode, node)) continue;
 
-        throwTypes.add(callerDeclaration, flattened);
+          // const isPromiseReturned =
+          //   // Promise is assigned and returned
+          //   sourceCode.getScope(node.parent)
+          //   ?.references
+          //   .map(ref => ref.identifier)
+          //   .some(n => findClosest(n, isNodeReturned));
+          //
+          // if (!isPromiseReturned) continue;
 
-        flattened
-          .forEach(t => metadata.set(t, { pos: node.range[0] }));
+          const flattened =
+            toFlattenedTypeArray([checker.getAwaitedType(type) ?? type]);
+
+          rejectTypes.add(callerDeclaration, flattened);
+
+          flattened
+            .forEach(t => metadata.set(t, { pos: node.range[0] }));
+        } else {
+          if (isInHandledContext(node)) continue;
+          const flattened = toFlattenedTypeArray([type]);
+
+          throwTypes.add(callerDeclaration, flattened);
+
+          flattened
+            .forEach(t => metadata.set(t, { pos: node.range[0] }));
+        }
       }
     };
 
@@ -739,6 +761,17 @@ module.exports = createRule({
        * @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node
        */
       'CallExpression:has(> MemberExpression[object.name="Array"][property.name="from"])'(node) {
+        if (node.arguments.length < 1) return;
+
+        const [firstArgumentNode] = node.arguments;
+
+        visitIterableNode(firstArgumentNode);
+      },
+      /**
+       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/fromAsync MDN}
+       * @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node
+       */
+      'CallExpression:has(> MemberExpression[object.name="Array"][property.name="fromAsync"])'(node) {
         if (node.arguments.length < 1) return;
 
         const [firstArgumentNode] = node.arguments;
