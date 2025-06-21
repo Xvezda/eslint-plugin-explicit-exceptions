@@ -9,7 +9,6 @@ const {
   getFirst,
   getLast,
   getNodeIndent,
-  getCallee,
   isInHandledContext,
   isInAsyncHandledContext,
   isNodeReturned,
@@ -23,7 +22,6 @@ const {
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
   getCalleeDeclaration,
-  getCallSignatureDeclaration,
   findParent,
   findClosest,
   findClosestFunctionNode,
@@ -118,7 +116,8 @@ module.exports = createRule({
   meta: {
     type: 'problem',
     docs: {
-      description: 'Disallow type mismatches between JSDoc @throws tags and thrown exceptions',
+      description:
+        'Disallow type mismatches between JSDoc @throws tags and thrown exceptions',
     },
     fixable: 'code',
     messages: {
@@ -217,23 +216,17 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node.parent);
       if (!callerDeclaration) return;
 
-      const calleeDeclaration =
-        (node.type === AST_NODE_TYPES.CallExpression ||
-         node.type === AST_NODE_TYPES.NewExpression)
-          ? getCallSignatureDeclaration(services, node)
-          : node.parent?.type === AST_NODE_TYPES.CallExpression
-          ? getCallSignatureDeclaration(services, node.parent)
-          : getCalleeDeclaration(services, node);
-
+      const calleeDeclaration = getCalleeDeclaration(services, node);
       if (!calleeDeclaration) return;
 
-      const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
+      const calleeThrowsTypes =
+        getJSDocThrowsTagTypes(checker, calleeDeclaration);
 
       if (
         isPromiseConstructorCallbackNode(callerDeclaration) ||
         isThenableCallbackNode(callerDeclaration) ||
         calleeThrowsTypes
-        .some(type => utils.isPromiseLike(services.program, type))
+          .some(type => utils.isPromiseLike(services.program, type))
       ) {
         const awaitedTypes = calleeThrowsTypes
           .map(t => checker.getAwaitedType(t) ?? t);
@@ -262,25 +255,20 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
-      const calleeNode = getCallee(node);
-      if (!calleeNode) return;
+      if (!ts.isExpression(services.esTreeNodeToTSNodeMap.get(node))) return;
 
-      // TODO: Extract duplicated logic of extracting narrowed type declaration
       const calleeDeclaration =
-        (calleeNode.type === AST_NODE_TYPES.CallExpression ||
-          calleeNode.type === AST_NODE_TYPES.NewExpression)
-        ? getCallSignatureDeclaration(services, calleeNode)
-        : calleeNode.parent?.type === AST_NODE_TYPES.CallExpression
-        ? getCallSignatureDeclaration(services, calleeNode.parent)
-        : getCalleeDeclaration(
+        getCalleeDeclaration(
           services,
           /** @type {import('@typescript-eslint/utils').TSESTree.Expression} */
-          (calleeNode)
+          (node)
         );
 
       if (!calleeDeclaration) return;
 
-      const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
+      const calleeThrowsTypes =
+        getJSDocThrowsTagTypes(checker, calleeDeclaration);
+
       if (!calleeThrowsTypes.length) return;
 
       for (const type of calleeThrowsTypes) {
@@ -292,16 +280,14 @@ module.exports = createRule({
 
           rejectTypes.add(callerDeclaration, flattened);
 
-          flattened
-            .forEach(t => metadata.set(t, { pos: node.range[0] }));
+          flattened.forEach(t => metadata.set(t, { pos: node.range[0] }));
         } else {
           if (isInHandledContext(node)) continue;
           const flattened = toFlattenedTypeArray([type]);
 
           throwTypes.add(callerDeclaration, flattened);
 
-          flattened
-            .forEach(t => metadata.set(t, { pos: node.range[0] }));
+          flattened.forEach(t => metadata.set(t, { pos: node.range[0] }));
         }
       }
     };
@@ -510,10 +496,15 @@ module.exports = createRule({
                 appendThrowsTags(
                   callerJSDocTSNode.getFullText(),
                   toSortedByMetadata([...throwTypeGroups.source.incompatible ?? []])
-                    .map(t => getQualifiedTypeName(checker, t, { useBaseTypeOfLiteral }))
+                    .map(t =>
+                      getQualifiedTypeName(checker, t, { useBaseTypeOfLiteral })
+                    )
                 ),
                 toSortedByMetadata([...rejectTypeGroups.source.incompatible ?? []])
-                  .map(t => `Promise<${getQualifiedTypeName(checker, t, { useBaseTypeOfLiteral })}>`)
+                  .map(t =>
+                    `Promise<${
+                      getQualifiedTypeName(checker, t, { useBaseTypeOfLiteral })
+                    }>`)
               )
             );
           },
@@ -783,10 +774,14 @@ module.exports = createRule({
         throwStatementNodes.push(node);
         metadata.set(node, { pos: node.range[0] });
       },
-      ':function NewExpression[callee.type="Identifier"]': visitFunctionCallNode,
-      ':function CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
-      ':function MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
-      ':function AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
+      ':function NewExpression[callee.type="Identifier"]':
+        visitFunctionCallNode,
+      ':function CallExpression[callee.type="Identifier"]':
+        visitFunctionCallNode,
+      ':function MemberExpression[property.type="Identifier"]':
+        visitFunctionCallNode,
+      ':function AssignmentExpression[left.type="MemberExpression"]':
+        visitFunctionCallNode,
 
       /**
        * @example
@@ -826,6 +821,8 @@ module.exports = createRule({
        * ```
        * for (const item of iterable) { ... }
        * //                 ^ this
+       * for await (const item of iterable) { ... }
+       * //                       ^ or this
        * ```
        */
       'ForOfStatement'(node) {
@@ -914,7 +911,8 @@ module.exports = createRule({
        * Process collected types when each function node exits
        */
       'FunctionDeclaration:exit': visitFunctionOnExit,
-      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > :function:exit': visitFunctionOnExit,
+      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > :function:exit':
+        visitFunctionOnExit,
       'Property > :function:exit': visitFunctionOnExit,
       'PropertyDefinition > :function:exit': visitFunctionOnExit,
       'ReturnStatement > :function:exit': visitFunctionOnExit,

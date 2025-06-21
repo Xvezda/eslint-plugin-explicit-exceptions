@@ -302,7 +302,7 @@ const getCallSignature = (services, node) => {
 /**
  * Get call expression node's declaration type.
  *
- * @public
+ * @private
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
  * @param {import('@typescript-eslint/utils').TSESTree.CallExpression | import('@typescript-eslint/utils').TSESTree.NewExpression} node
  * @return {import('typescript').Declaration | null}
@@ -348,28 +348,15 @@ const getCallee = (node) => {
  * @return {import('typescript').Declaration | null}
  */
 const getCalleeDeclaration = (services, node) => {
-  const checker = services.program.getTypeChecker();
-
   /** @type {import('typescript').Declaration | null} */
   let declaration = null;
   if (
-    node.type === AST_NODE_TYPES.NewExpression ||
     node.type === AST_NODE_TYPES.CallExpression ||
-    node.type === AST_NODE_TYPES.MemberExpression &&
-    node.parent?.type === AST_NODE_TYPES.CallExpression
+    node.type === AST_NODE_TYPES.NewExpression
   ) {
-    const calleeTSNode = services.esTreeNodeToTSNodeMap
-      .get(node?.parent.type === AST_NODE_TYPES.CallExpression
-        ? node.parent
-        : /** @type {import('@typescript-eslint/utils').TSESTree.CallExpression} */
-          (node));
-
-    if (!calleeTSNode) return null;
-
-    const signature = checker.getResolvedSignature(calleeTSNode);
-    if (!signature?.declaration) return null;
-
-    declaration = signature.declaration;
+    declaration = getCallSignatureDeclaration(services, node);
+  } else if (node.parent?.type === AST_NODE_TYPES.CallExpression) {
+    declaration = getCallSignatureDeclaration(services, node.parent);
   } else {
     /** @type {import('@typescript-eslint/utils').TSESTree.Node | null} */
     const calleeNode = getCallee(node);
@@ -612,9 +599,12 @@ const isPromiseType = (services, type) => {
  * @returns {boolean}
  */
 const isGeneratorLike = (type) => {
-  const members = type.getSymbol()?.members;
+  const members = type.symbol?.members;
   if (!members) return false;
 
+  /**
+   * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator#instance_methods MDN}
+   */
   return (
     // @ts-expect-error - Not assignable to '__String'
     members.has('next') &&

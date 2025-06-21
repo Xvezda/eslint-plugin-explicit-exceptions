@@ -25,6 +25,7 @@ const {
   getJSDocThrowsTagTypes,
   toFlattenedTypeArray,
   findFunctionCallNodes,
+  isGeneratorLike,
   isPromiseType,
   isAccessorNode,
   findClosestFunctionNode,
@@ -721,6 +722,34 @@ function foo(bar) {
       findFunctionCallNodes(sourceCode, found);
 
     t.assert.equal(callExpressions.length, 2);
+  });
+
+  test('isGeneratorLike', (t) => {
+    const { ast, services } = parse(`
+function* foo() {}
+async function* bar() {}
+    `);
+    const checker = services.program.getTypeChecker();
+    const nodes = [];
+    simpleTraverse(ast, {
+      visitors: {
+        FunctionDeclaration(node) {
+          nodes.push(node);
+        },
+      },
+    }, true);
+
+    /** @param {import('@typescript-eslint/typescript-estree').TSESTree.FunctionDeclaration} node */ 
+    const getReturnType = (node) => {
+      const type = services.getTypeAtLocation(node);
+      return checker.getReturnTypeOfSignature(type.getCallSignatures()[0]);
+    };
+
+    const fooReturnType = getReturnType(nodes[0]);
+    const barReturnType = getReturnType(nodes[1]);
+
+    t.assert.equal(isGeneratorLike(fooReturnType), true);
+    t.assert.equal(isGeneratorLike(barReturnType), true);
   });
 
   test('isPromiseType', (t) => {

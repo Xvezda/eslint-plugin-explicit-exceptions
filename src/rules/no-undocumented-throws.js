@@ -7,7 +7,6 @@ const {
   getNodeID,
   getNodeIndent,
   getFirst,
-  getCallee,
   createRule,
   appendThrowsTags,
   hasJSDoc,
@@ -23,7 +22,6 @@ const {
   isThenableCallbackNode,
   isAccessorNode,
   getCallSignature,
-  getCallSignatureDeclaration,
   getCalleeDeclaration,
   getJSDocThrowsTags,
   getJSDocThrowsTagTypes,
@@ -142,14 +140,7 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
-      const calleeDeclaration =
-        (node.type === AST_NODE_TYPES.CallExpression ||
-         node.type === AST_NODE_TYPES.NewExpression)
-          ? getCallSignatureDeclaration(services, node)
-          : node.parent?.type === AST_NODE_TYPES.CallExpression
-          ? getCallSignatureDeclaration(services, node.parent)
-          : getCalleeDeclaration(services, node);
-
+      const calleeDeclaration = getCalleeDeclaration(services, node);
       if (!calleeDeclaration) return;
 
       const signature = getCallSignature(
@@ -165,7 +156,9 @@ module.exports = createRule({
       comments.push(...getJSDocThrowsTags(calleeDeclaration));
       throwsComments.set(getNodeID(callerDeclaration), comments);
 
-      const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
+      const calleeThrowsTypes =
+        getJSDocThrowsTagTypes(checker, calleeDeclaration);
+
       for (const type of calleeThrowsTypes) {
         if (isPromiseType(services, type)) {
           if (isInAsyncHandledContext(sourceCode, node)) continue;
@@ -210,20 +203,13 @@ module.exports = createRule({
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
-      const calleeNode = getCallee(node);
-      if (!calleeNode) return;
+      if (!ts.isExpression(services.esTreeNodeToTSNodeMap.get(node))) return;
 
-      // TODO: Extract duplicated logic of extracting narrowed type declaration
       const calleeDeclaration =
-        (calleeNode.type === AST_NODE_TYPES.CallExpression ||
-          calleeNode.type === AST_NODE_TYPES.NewExpression)
-        ? getCallSignatureDeclaration(services, calleeNode)
-        : calleeNode.parent?.type === AST_NODE_TYPES.CallExpression
-        ? getCallSignatureDeclaration(services, calleeNode.parent)
-        : getCalleeDeclaration(
+        getCalleeDeclaration(
           services,
           /** @type {import('@typescript-eslint/utils').TSESTree.Expression} */
-          (calleeNode)
+          (node)
         );
 
       if (!calleeDeclaration) return;
@@ -233,7 +219,9 @@ module.exports = createRule({
       comments.push(...getJSDocThrowsTags(calleeDeclaration));
       throwsComments.set(getNodeID(callerDeclaration), comments);
 
-      const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
+      const calleeThrowsTypes =
+        getJSDocThrowsTagTypes(checker, calleeDeclaration);
+
       if (!calleeThrowsTypes.length) return;
 
       for (const type of calleeThrowsTypes) {
@@ -408,7 +396,10 @@ module.exports = createRule({
                 if (!/^\/\*\*[ \t]*\n/.test(newCommentText)) {
                   newCommentText = newCommentText
                     .replace(/^\/\*\*\s*/, `/**\n${indent} * `)
-                    .replace(/\s*\*\/$/, `\n${indent} * @throws {${newType}}\n${indent} */`)
+                    .replace(
+                      /\s*\*\/$/,
+                      `\n${indent} * @throws {${newType}}\n${indent} */`
+                    )
                 } else {
                   newCommentText = appendThrowsTags(
                     newCommentText,
@@ -458,11 +449,13 @@ module.exports = createRule({
                   .replace(
                     /\s*\*\/$/,
                     sortedThrowableTypes.map((t) =>
-                      `\n${indent} * @throws {${getQualifiedTypeName(checker, t)}}`
+                      `\n${indent}` +
+                      ` * @throws {${getQualifiedTypeName(checker, t)}}`
                     ).join('') +
                     '\n' +
                     sortedRejectableTypes.map((t) =>
-                      `${indent} * @throws {Promise<${getQualifiedTypeName(checker, t)}>}`
+                      `${indent}` +
+                      ` * @throws {Promise<${getQualifiedTypeName(checker, t)}>}`
                     ).join('\n') +
                     '\n' +
                     `${indent} */`
@@ -495,7 +488,8 @@ module.exports = createRule({
                 `${indent} * @throws {${getQualifiedTypeName(checker, t)}}\n`
               ).join('') +
               sortedRejectableTypes.map((t) =>
-                `${indent} * @throws {Promise<${getQualifiedTypeName(checker, t)}>}\n`
+                `${indent}` +
+                ` * @throws {Promise<${getQualifiedTypeName(checker, t)}>}\n`
               ).join('') +
               `${indent} */\n` +
               `${indent}`
@@ -590,7 +584,7 @@ module.exports = createRule({
           if (!declarationNode) return;
 
           callbackNode =
-            /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | import('@typescript-eslint/utils').TSESTree.FunctionLike} */
+            /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike} */
             (isAccessorNode(declarationNode)
               ? declarationNode.value
               : declarationNode);
@@ -634,8 +628,7 @@ module.exports = createRule({
           flattened
         );
 
-        flattened
-          .forEach(t => metadata.set(t, { pos: callbackNode.range[0] }));
+        flattened.forEach(t => metadata.set(t, { pos: callbackNode.range[0] }));
       }
 
       if (throwStatementsInFunction.has(getNodeID(callbackNode))) {
@@ -671,8 +664,7 @@ module.exports = createRule({
           flattened,
         );
 
-        flattened
-          .forEach(t => metadata.set(t, { pos: callbackNode.range[0] }));
+        flattened.forEach(t => metadata.set(t, { pos: callbackNode.range[0] }));
       }
     };
 
@@ -698,10 +690,14 @@ module.exports = createRule({
 
         throwStatementNodes.push(node);
       },
-      ':function NewExpression[callee.type="Identifier"]': visitFunctionCallNode,
-      ':function CallExpression[callee.type="Identifier"]': visitFunctionCallNode,
-      ':function MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
-      ':function AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
+      ':function NewExpression[callee.type="Identifier"]':
+        visitFunctionCallNode,
+      ':function CallExpression[callee.type="Identifier"]':
+        visitFunctionCallNode,
+      ':function MemberExpression[property.type="Identifier"]':
+        visitFunctionCallNode,
+      ':function AssignmentExpression[left.type="MemberExpression"]':
+        visitFunctionCallNode,
 
       /**
        * Collect promise rejectable types
@@ -744,6 +740,8 @@ module.exports = createRule({
        * ```
        * for (const item of iterable) { ... }
        * //                 ^ this
+       * for await (const item of iterable) { ... }
+       * //                       ^ or this
        * ```
        */
       'ForOfStatement'(node) {
@@ -832,7 +830,8 @@ module.exports = createRule({
        * Process collected types when each function node exits
        */
       'FunctionDeclaration:exit': visitFunctionOnExit,
-      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > :function:exit': visitFunctionOnExit,
+      'VariableDeclaration > VariableDeclarator[id.type="Identifier"] > :function:exit':
+        visitFunctionOnExit,
       'Property > :function:exit': visitFunctionOnExit,
       'PropertyDefinition > :function:exit': visitFunctionOnExit,
       'ReturnStatement > :function:exit': visitFunctionOnExit,
