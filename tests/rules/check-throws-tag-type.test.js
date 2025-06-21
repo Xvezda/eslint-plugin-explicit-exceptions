@@ -1122,6 +1122,25 @@ ruleTester.run(
         `,
         errors: [{ messageId: 'throwTypeMismatch' }],
       },
+      {
+        code: `
+          /**
+           * @throws {RangeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+        `,
+        output: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+        `,
+        errors: [{ messageId: 'throwTypeMismatch' }],
+      },
     ],
   },
 );

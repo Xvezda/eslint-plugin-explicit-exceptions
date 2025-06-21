@@ -3185,6 +3185,56 @@ ruleTester.run(
         errors: [{ messageId: 'missingThrowsTag' }],
         options: [{ preferUnionType: false }],
       },
+      {
+        code: `
+          function* g() {
+            throw new Error();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function f() {
+            for (const x of g()) {}
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          /**
+           * @throws {Error}
+           */
+          function f() {
+            for (const x of g()) {}
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
     ],
   },
 );

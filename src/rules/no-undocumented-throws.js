@@ -7,6 +7,7 @@ const {
   getNodeID,
   getNodeIndent,
   getFirst,
+  getCallee,
   createRule,
   appendThrowsTags,
   hasJSDoc,
@@ -616,6 +617,7 @@ module.exports = createRule({
 
     return {
       /**
+       * @description
        * Each throws or throwable calls are collected when enter nodes,
        * then processed when function nodes exit
        * to efficiently avoid duplicate processing of the same nodes.
@@ -640,6 +642,9 @@ module.exports = createRule({
       ':function MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
       ':function AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
 
+      /**
+       * Collect promise rejectable types
+       */
       /**
        * @example
        * ```
@@ -668,6 +673,48 @@ module.exports = createRule({
         visitPromiseCallbackOnExit,
       'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > MemberExpression:first-child:exit':
         visitPromiseCallbackOnExit,
+
+      /**
+       * Collect throwable types of generators
+       */
+      // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for...of
+      'ForOfStatement'(node) {
+        const callerDeclaration = findClosestFunctionNode(node);
+        if (!callerDeclaration) return;
+
+        const iterableType = services.getTypeAtLocation(node.right);
+        if (!isGeneratorLike(iterableType)) return;
+
+        const calleeNode = getCallee(node.right);
+        if (!calleeNode) return;
+
+        // TODO: Extract duplicated logic of extracting narrowed type declaration
+        const calleeDeclaration =
+          (calleeNode.type === AST_NODE_TYPES.CallExpression ||
+           calleeNode.type === AST_NODE_TYPES.NewExpression)
+            ? getCallSignatureDeclaration(services, calleeNode)
+            : calleeNode.parent?.type === AST_NODE_TYPES.CallExpression
+            ? getCallSignatureDeclaration(services, calleeNode.parent)
+            : getCalleeDeclaration(
+              services,
+              /** @type {import('@typescript-eslint/utils').TSESTree.Expression} */
+              (calleeNode)
+            );
+
+        if (!calleeDeclaration) return;
+
+        const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
+        if (!calleeThrowsTypes.length) return;
+
+        for (const type of calleeThrowsTypes) {
+          const flattened = toFlattenedTypeArray([type]);
+
+          throwTypes.add(callerDeclaration, flattened);
+
+          flattened
+            .forEach(t => metadata.set(t, { pos: node.right.range[0] }));
+        }
+      },
 
       /**
        * Process collected types when each function node exits
