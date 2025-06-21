@@ -7,6 +7,7 @@ const {
   getNodeID,
   getNodeIndent,
   getFirst,
+  getCallee,
   createRule,
   appendThrowsTags,
   hasJSDoc,
@@ -15,11 +16,13 @@ const {
   typeStringsToUnionString,
   isInHandledContext,
   isInAsyncHandledContext,
+  isGeneratorLike,
   isPromiseType,
   isNodeReturned,
   isPromiseConstructorCallbackNode,
   isThenableCallbackNode,
   isAccessorNode,
+  getCallSignature,
   getCallSignatureDeclaration,
   getCalleeDeclaration,
   getJSDocThrowsTags,
@@ -149,6 +152,14 @@ module.exports = createRule({
 
       if (!calleeDeclaration) return;
 
+      const signature = getCallSignature(
+        services,
+        services.tsNodeToESTreeNodeMap.get(calleeDeclaration)
+      );
+
+      const returnType = signature?.getReturnType();
+      if (returnType && isGeneratorLike(returnType)) return;
+
       /** @type {import('typescript').JSDocThrowsTag[]} */
       const comments = [];
       comments.push(...getJSDocThrowsTags(calleeDeclaration));
@@ -185,6 +196,48 @@ module.exports = createRule({
         }
       };
       throwsComments.set(getNodeID(callerDeclaration), comments);
+    };
+
+    /**
+     * Visit iterable node and collect types.
+     *
+     * @param {import('@typescript-eslint/utils').TSESTree.Node} node
+     */
+    const visitIterableNode = (node) => {
+      if (isInHandledContext(node)) return;
+
+      const callerDeclaration = findClosestFunctionNode(node);
+      if (!callerDeclaration) return;
+
+      const calleeNode = getCallee(node);
+      if (!calleeNode) return;
+
+      // TODO: Extract duplicated logic of extracting narrowed type declaration
+      const calleeDeclaration =
+        (calleeNode.type === AST_NODE_TYPES.CallExpression ||
+          calleeNode.type === AST_NODE_TYPES.NewExpression)
+        ? getCallSignatureDeclaration(services, calleeNode)
+        : calleeNode.parent?.type === AST_NODE_TYPES.CallExpression
+        ? getCallSignatureDeclaration(services, calleeNode.parent)
+        : getCalleeDeclaration(
+          services,
+          /** @type {import('@typescript-eslint/utils').TSESTree.Expression} */
+          (calleeNode)
+        );
+
+      if (!calleeDeclaration) return;
+
+      const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
+      if (!calleeThrowsTypes.length) return;
+
+      for (const type of calleeThrowsTypes) {
+        const flattened = toFlattenedTypeArray([type]);
+
+        throwTypes.add(callerDeclaration, flattened);
+
+        flattened
+          .forEach(t => metadata.set(t, { pos: node.range[0] }));
+      }
     };
 
     /** @param {import('@typescript-eslint/utils').TSESTree.FunctionLike} node */
@@ -606,6 +659,7 @@ module.exports = createRule({
 
     return {
       /**
+       * @description
        * Each throws or throwable calls are collected when enter nodes,
        * then processed when function nodes exit
        * to efficiently avoid duplicate processing of the same nodes.
@@ -630,6 +684,9 @@ module.exports = createRule({
       ':function MemberExpression[property.type="Identifier"]': visitFunctionCallNode,
       ':function AssignmentExpression[left.type="MemberExpression"]': visitFunctionCallNode,
 
+      /**
+       * Collect promise rejectable types
+       */
       /**
        * @example
        * ```
@@ -658,6 +715,65 @@ module.exports = createRule({
         visitPromiseCallbackOnExit,
       'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > MemberExpression:first-child:exit':
         visitPromiseCallbackOnExit,
+
+      /**
+       * Collect throwable types of generators
+       */
+      /**
+       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for...of MDN}
+       */
+      'ForOfStatement'(node) {
+        const iterableType = services.getTypeAtLocation(node.right);
+        if (!isGeneratorLike(iterableType)) return;
+
+        visitIterableNode(node.right);
+      },
+      /**
+       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax MDN}
+       */
+      'SpreadElement'(node) {
+        const iterableType = services.getTypeAtLocation(node.argument);
+        if (!isGeneratorLike(iterableType)) return;
+
+        visitIterableNode(node.argument);
+      },
+      /**
+       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/from MDN}
+       * @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node
+       */
+      'CallExpression:has(> MemberExpression[object.type="Identifier"][object.name="Array"][property.type="Identifier"][property.name="from"])'(node) {
+        if (node.arguments.length < 1) return;
+
+        const [firstArgumentNode] = node.arguments;
+        const iterableType = services.getTypeAtLocation(firstArgumentNode);
+        if (!isGeneratorLike(iterableType)) return;
+
+        visitIterableNode(firstArgumentNode);
+      },
+      /**
+       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/yield* MDN}
+       * @param {import('@typescript-eslint/utils').TSESTree.YieldExpression} node
+       */
+      'YieldExpression[delegate=true]'(node) {
+        if (!node.argument) return;
+
+        const iterableType = services.getTypeAtLocation(node.argument);
+        if (!isGeneratorLike(iterableType)) return;
+
+        visitIterableNode(node.argument);
+      },
+      /**
+       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator/next MDN}
+       * @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node
+       */
+      'CallExpression[callee.property.name="next"]'(node) {
+        if (node.callee.type !== AST_NODE_TYPES.MemberExpression) return;
+
+        const iterableType = services.getTypeAtLocation(node.callee.object);
+        if (!isGeneratorLike(iterableType)) return;
+
+        visitIterableNode(node.callee.object);
+      },
 
       /**
        * Process collected types when each function node exits

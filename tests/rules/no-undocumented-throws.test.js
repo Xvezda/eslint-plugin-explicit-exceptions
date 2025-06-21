@@ -779,6 +779,120 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          /**
+           * @throws
+           */
+          function* g() {
+            throw new Error();
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          // Generator does not throws directly
+          function f() {
+            g();
+          }
+        `,
+      },
+      {
+        code: `
+          function* g() {
+            try {
+              throw new Error();
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function f() {
+            try {
+              for (const x of g()) {}
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function f() {
+            try {
+              [...g()];
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function f() {
+            try {
+              Array.from(g());
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function* h() {
+            try {
+              yield* g();
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function h() {
+            try {
+              g().next();
+            } catch {}
+          }
+        `,
+      },
     ],
     invalid: [
       {
@@ -3159,6 +3273,184 @@ ruleTester.run(
         `,
         errors: [{ messageId: 'missingThrowsTag' }],
         options: [{ preferUnionType: false }],
+      },
+      {
+        code: `
+          function* g() {
+            throw new Error();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function f() {
+            for (const x of g()) {}
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          /**
+           * @throws {Error}
+           */
+          function f() {
+            for (const x of g()) {}
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function f() {
+            [...g()];
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          /**
+           * @throws {Error}
+           */
+          function f() {
+            [...g()];
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function f() {
+            Array.from(g());
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          /**
+           * @throws {Error}
+           */
+          function f() {
+            Array.from(g());
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function* h() {
+            yield* g();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          /**
+           * @throws {Error}
+           */
+          function* h() {
+            yield* g();
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function h() {
+            g().next();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          /**
+           * @throws {Error}
+           */
+          function h() {
+            g().next();
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
       },
     ],
   },
