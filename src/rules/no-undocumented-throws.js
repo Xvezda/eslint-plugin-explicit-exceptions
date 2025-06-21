@@ -204,6 +204,9 @@ module.exports = createRule({
      * @param {import('@typescript-eslint/utils').TSESTree.Node} node
      */
     const visitIterableNode = (node) => {
+      const iterableType = services.getTypeAtLocation(node);
+      if (!isGeneratorLike(iterableType)) return;
+
       if (isInHandledContext(node)) return;
 
       const callerDeclaration = findClosestFunctionNode(node);
@@ -723,18 +726,12 @@ module.exports = createRule({
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for...of MDN}
        */
       'ForOfStatement'(node) {
-        const iterableType = services.getTypeAtLocation(node.right);
-        if (!isGeneratorLike(iterableType)) return;
-
         visitIterableNode(node.right);
       },
       /**
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax MDN}
        */
       'SpreadElement'(node) {
-        const iterableType = services.getTypeAtLocation(node.argument);
-        if (!isGeneratorLike(iterableType)) return;
-
         visitIterableNode(node.argument);
       },
       /**
@@ -745,8 +742,6 @@ module.exports = createRule({
         if (node.arguments.length < 1) return;
 
         const [firstArgumentNode] = node.arguments;
-        const iterableType = services.getTypeAtLocation(firstArgumentNode);
-        if (!isGeneratorLike(iterableType)) return;
 
         visitIterableNode(firstArgumentNode);
       },
@@ -757,9 +752,6 @@ module.exports = createRule({
       'YieldExpression[delegate=true]'(node) {
         if (!node.argument) return;
 
-        const iterableType = services.getTypeAtLocation(node.argument);
-        if (!isGeneratorLike(iterableType)) return;
-
         visitIterableNode(node.argument);
       },
       /**
@@ -768,9 +760,6 @@ module.exports = createRule({
        */
       'CallExpression[callee.property.name="next"]'(node) {
         if (node.callee.type !== AST_NODE_TYPES.MemberExpression) return;
-
-        const iterableType = services.getTypeAtLocation(node.callee.object);
-        if (!isGeneratorLike(iterableType)) return;
 
         visitIterableNode(node.callee.object);
       },
