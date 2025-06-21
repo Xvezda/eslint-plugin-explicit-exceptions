@@ -94,6 +94,203 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function f() {
+            for (const x of g()) {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function f() {
+            [...g()];
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function f() {
+            Array.from(g());
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function* h() {
+            yield* g();
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function h() {
+            g().next();
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+
+          function h() {
+            g();
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function* g() {
+            throw new TypeError();
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function f() {
+            for await (const x of g()) {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function f() {
+            await Array.fromAsync(g());
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function* h() {
+            yield* g();
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function h() {
+            await g().next();
+          }
+        `,
+      },
     ],
     invalid: [
       {
@@ -1139,7 +1336,345 @@ ruleTester.run(
             throw new TypeError();
           }
         `,
-        errors: [{ messageId: 'throwTypeMismatch' }],
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function f() {
+            for (const x of g()) {}
+          }
+        `,
+        output: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function f() {
+            for (const x of g()) {}
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function f() {
+            [...g()];
+          }
+        `,
+        output: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function f() {
+            [...g()];
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function f() {
+            Array.from(g());
+          }
+        `,
+        output: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function f() {
+            Array.from(g());
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function* h() {
+            yield* g();
+          }
+        `,
+        output: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function* h() {
+            yield* g();
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function h() {
+            g().next();
+          }
+        `,
+        output: `
+          /**
+           * @throws {TypeError}
+           */
+          function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function h() {
+            g().next();
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<RangeError>}
+           */
+          async function* g() {
+            throw new TypeError();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function* g() {
+            throw new TypeError();
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {Promise<RangeError>}
+           */
+          async function f() {
+            for await (const x of g()) {}
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function f() {
+            for await (const x of g()) {}
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {Promise<RangeError>}
+           */
+          async function f() {
+            await Array.fromAsync(g());
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function f() {
+            await Array.fromAsync(g());
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {Promise<RangeError>}
+           */
+          async function* h() {
+            yield* g();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function* h() {
+            yield* g();
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {Promise<RangeError>}
+           */
+          async function h() {
+            await g().next();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function* g() {
+            throw new TypeError();
+          }
+
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          async function h() {
+            await g().next();
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+        ],
       },
     ],
   },

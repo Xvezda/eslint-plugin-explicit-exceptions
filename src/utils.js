@@ -940,7 +940,23 @@ const isCatchMethodCalled = (node) => {
  */
 const isAwaitCatchPattern = (node) => {
   return (
-    node.type === AST_NODE_TYPES.AwaitExpression &&
+    (
+      node.type === AST_NODE_TYPES.AwaitExpression ||
+      // yield*
+      findParent(node, (parent) =>
+        parent.type === AST_NODE_TYPES.YieldExpression &&
+        parent.delegate
+      ) ||
+      // for await
+      isParentOrAncestor(
+        node, 
+        /** @type {import('@typescript-eslint/utils').TSESTree.ForOfStatement} */
+        (findParent(node, (parent) =>
+          parent.type === AST_NODE_TYPES.ForOfStatement &&
+          parent.await
+        ))?.right
+      )
+    ) &&
     isParentOrAncestor(
       node, 
       /** @type {import('@typescript-eslint/utils').TSESTree.TryStatement} */

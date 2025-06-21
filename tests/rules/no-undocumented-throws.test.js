@@ -893,6 +893,93 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function h() {
+            g();
+          }
+        `,
+      },
+      {
+        code: `
+          async function* g() {
+            try {
+              throw new Error();
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function* g() {
+            throw new Error();
+          }
+
+          async function f() {
+            try {
+              for await (const x of g()) {}
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function* g() {
+            throw new Error();
+          }
+
+          async function f() {
+            try {
+              await Array.fromAsync(g());
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function* g() {
+            throw new Error();
+          }
+
+          async function* h() {
+            try {
+              yield* g();
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function* g() {
+            throw new Error();
+          }
+
+          async function h() {
+            try {
+              await g().next();
+            } catch {}
+          }
+        `,
+      },
     ],
     invalid: [
       {
@@ -3446,6 +3533,152 @@ ruleTester.run(
            */
           function h() {
             g().next();
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          async function* g() {
+            throw new Error();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function* g() {
+            throw new Error();
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function* g() {
+            throw new Error();
+          }
+
+          async function f() {
+            for await (const x of g()) {}
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function* g() {
+            throw new Error();
+          }
+
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function f() {
+            for await (const x of g()) {}
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function* g() {
+            throw new Error();
+          }
+
+          async function f() {
+            await Array.fromAsync(g());
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function* g() {
+            throw new Error();
+          }
+
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function f() {
+            await Array.fromAsync(g());
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function* g() {
+            throw new Error();
+          }
+
+          async function* h() {
+            yield* g();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function* g() {
+            throw new Error();
+          }
+
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function* h() {
+            yield* g();
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function* g() {
+            throw new Error();
+          }
+
+          async function h() {
+            await g().next();
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function* g() {
+            throw new Error();
+          }
+
+          /**
+           * @throws {Promise<Error>}
+           */
+          async function h() {
+            await g().next();
           }
         `,
         errors: [

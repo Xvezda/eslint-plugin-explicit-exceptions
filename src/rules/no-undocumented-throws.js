@@ -163,6 +163,7 @@ module.exports = createRule({
       /** @type {import('typescript').JSDocThrowsTag[]} */
       const comments = [];
       comments.push(...getJSDocThrowsTags(calleeDeclaration));
+      throwsComments.set(getNodeID(callerDeclaration), comments);
 
       const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
       for (const type of calleeThrowsTypes) {
@@ -194,8 +195,7 @@ module.exports = createRule({
           flattened
             .forEach(t => metadata.set(t, { pos: node.range[0] }));
         }
-      };
-      throwsComments.set(getNodeID(callerDeclaration), comments);
+      }
     };
 
     /**
@@ -204,7 +204,8 @@ module.exports = createRule({
      * @param {import('@typescript-eslint/utils').TSESTree.Node} node
      */
     const visitIterableNode = (node) => {
-      if (isInHandledContext(node)) return;
+      const iterableType = services.getTypeAtLocation(node);
+      if (!isGeneratorLike(iterableType)) return;
 
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
@@ -227,16 +228,34 @@ module.exports = createRule({
 
       if (!calleeDeclaration) return;
 
+      /** @type {import('typescript').JSDocThrowsTag[]} */
+      const comments = [];
+      comments.push(...getJSDocThrowsTags(calleeDeclaration));
+      throwsComments.set(getNodeID(callerDeclaration), comments);
+
       const calleeThrowsTypes = getJSDocThrowsTagTypes(checker, calleeDeclaration);
       if (!calleeThrowsTypes.length) return;
 
       for (const type of calleeThrowsTypes) {
-        const flattened = toFlattenedTypeArray([type]);
+        if (isPromiseType(services, type)) {
+          if (isInAsyncHandledContext(sourceCode, node)) continue;
 
-        throwTypes.add(callerDeclaration, flattened);
+          const flattened =
+            toFlattenedTypeArray([checker.getAwaitedType(type) ?? type]);
 
-        flattened
-          .forEach(t => metadata.set(t, { pos: node.range[0] }));
+          rejectTypes.add(callerDeclaration, flattened);
+
+          flattened
+            .forEach(t => metadata.set(t, { pos: node.range[0] }));
+        } else {
+          if (isInHandledContext(node)) continue;
+          const flattened = toFlattenedTypeArray([type]);
+
+          throwTypes.add(callerDeclaration, flattened);
+
+          flattened
+            .forEach(t => metadata.set(t, { pos: node.range[0] }));
+        }
       }
     };
 
@@ -721,56 +740,90 @@ module.exports = createRule({
        */
       /**
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for...of MDN}
+       * @example
+       * ```
+       * for (const item of iterable) { ... }
+       * //                 ^ this
+       * ```
        */
       'ForOfStatement'(node) {
-        const iterableType = services.getTypeAtLocation(node.right);
-        if (!isGeneratorLike(iterableType)) return;
-
         visitIterableNode(node.right);
       },
       /**
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax MDN}
+       * @example
+       * ```
+       * [...iterable]
+       * //  ^ this
+       * ```
        */
       'SpreadElement'(node) {
-        const iterableType = services.getTypeAtLocation(node.argument);
-        if (!isGeneratorLike(iterableType)) return;
-
         visitIterableNode(node.argument);
       },
       /**
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/from MDN}
        * @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node
+       * @example
+       * ```
+       * Array.from(iterable)
+       * //         ^ this
+       * ```
        */
       'CallExpression:has(> MemberExpression[object.name="Array"][property.name="from"])'(node) {
         if (node.arguments.length < 1) return;
 
         const [firstArgumentNode] = node.arguments;
-        const iterableType = services.getTypeAtLocation(firstArgumentNode);
-        if (!isGeneratorLike(iterableType)) return;
+
+        visitIterableNode(firstArgumentNode);
+      },
+      /**
+       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/fromAsync MDN}
+       * @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node
+       * @example
+       * ```
+       * await Array.fromAsync(iterable)
+       * //                    ^ this
+       * ```
+       */
+      'CallExpression:has(> MemberExpression[object.name="Array"][property.name="fromAsync"])'(node) {
+        if (node.arguments.length < 1) return;
+
+        const [firstArgumentNode] = node.arguments;
 
         visitIterableNode(firstArgumentNode);
       },
       /**
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/yield* MDN}
        * @param {import('@typescript-eslint/utils').TSESTree.YieldExpression} node
+       * @example
+       * ```
+       * function* gen() {
+       *   yield* iterable;
+       *   //     ^ this
+       * }
+       * // or
+       * async function* asyncGen() {
+       *   yield* iterable;
+       *   //     ^ this
+       * }
+       * ```
        */
       'YieldExpression[delegate=true]'(node) {
         if (!node.argument) return;
-
-        const iterableType = services.getTypeAtLocation(node.argument);
-        if (!isGeneratorLike(iterableType)) return;
 
         visitIterableNode(node.argument);
       },
       /**
        * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator/next MDN}
        * @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node
+       * @example
+       * ```
+       * iterable.next();
+       * //       ^ this
+       * ```
        */
       'CallExpression[callee.property.name="next"]'(node) {
         if (node.callee.type !== AST_NODE_TYPES.MemberExpression) return;
-
-        const iterableType = services.getTypeAtLocation(node.callee.object);
-        if (!isGeneratorLike(iterableType)) return;
 
         visitIterableNode(node.callee.object);
       },
