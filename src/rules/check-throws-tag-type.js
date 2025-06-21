@@ -737,11 +737,11 @@ module.exports = createRule({
        * //          ^ here
        * ```
        */
-      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > :function:first-child:exit':
+      'NewExpression[callee.name="Promise"] > :function:first-child:exit':
         visitPromiseCallbackOnExit,
-      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > Identifier:first-child:exit':
+      'NewExpression[callee.name="Promise"] > Identifier:first-child:exit':
         visitPromiseCallbackOnExit,
-      'NewExpression[callee.type="Identifier"][callee.name="Promise"] > MemberExpression:first-child:exit':
+      'NewExpression[callee.name="Promise"] > MemberExpression:first-child:exit':
         visitPromiseCallbackOnExit,
       /**
        * @example
@@ -752,11 +752,11 @@ module.exports = createRule({
        * //                       ^ or here
        * ```
        */
-      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > :function:first-child:exit':
+      'CallExpression[callee.property.name=/^(then|finally)$/] > :function:first-child:exit':
         visitPromiseCallbackOnExit,
-      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > Identifier:first-child:exit':
+      'CallExpression[callee.property.name=/^(then|finally)$/] > Identifier:first-child:exit':
         visitPromiseCallbackOnExit,
-      'CallExpression[callee.type="MemberExpression"][callee.property.type="Identifier"][callee.property.name=/^(then|finally)$/] > MemberExpression:first-child:exit':
+      'CallExpression[callee.property.name=/^(then|finally)$/] > MemberExpression:first-child:exit':
         visitPromiseCallbackOnExit,
 
       /**
