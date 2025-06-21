@@ -280,14 +280,14 @@ const getDeclarationsByNode = (services, node) => {
 };
 
 /**
- * Get call expression node's declaration type.
+ * Get call expression node's signature.
  *
  * @public
  * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
  * @param {import('@typescript-eslint/utils').TSESTree.CallExpression | import('@typescript-eslint/utils').TSESTree.NewExpression} node
- * @return {import('typescript').Declaration | null}
+ * @return {import('typescript').Signature | null}
  */
-const getCallSignatureDeclaration = (services, node) => {
+const getCallSignature = (services, node) => {
   const checker = services.program.getTypeChecker();
 
   const calleeTSNode = services.esTreeNodeToTSNodeMap
@@ -299,7 +299,22 @@ const getCallSignatureDeclaration = (services, node) => {
   if (!calleeTSNode) return null;
 
   const signature = checker.getResolvedSignature(calleeTSNode);
-  if (!signature?.declaration) return null;
+  if (!signature) return null;
+
+  return signature;
+};
+
+/**
+ * Get call expression node's declaration type.
+ *
+ * @public
+ * @param {import('@typescript-eslint/utils').ParserServicesWithTypeInformation} services
+ * @param {import('@typescript-eslint/utils').TSESTree.CallExpression | import('@typescript-eslint/utils').TSESTree.NewExpression} node
+ * @return {import('typescript').Declaration | null}
+ */
+const getCallSignatureDeclaration = (services, node) => {
+  const signature = getCallSignature(services, node);
+  if (!signature || !signature.declaration) return null;
 
   return signature.declaration;
 };
@@ -593,6 +608,25 @@ const isPromiseType = (services, type) => {
   return (
     utils.isPromiseLike(services.program, type) &&
     type.symbol.getName() === 'Promise'
+  );
+};
+
+/**
+ * @public
+ * @param {import('typescript').Type} type
+ * @returns {boolean}
+ */
+const isGeneratorLike = (type) => {
+  const members = type.getSymbol()?.members;
+  if (!members) return false;
+
+  return (
+    // @ts-expect-error - Not assignable to '__String'
+    members.has('next') &&
+    // @ts-expect-error - Not assignable to '__String'
+    members.has('return') &&
+    // @ts-expect-error - Not assignable to '__String'
+    members.has('throw')
   );
 };
 
@@ -986,6 +1020,7 @@ module.exports = {
   getQualifiedTypeName,
   findClosest,
   findParent,
+  getCallSignature,
   getCallSignatureDeclaration,
   getCallee,
   getCalleeDeclaration,
@@ -1000,6 +1035,7 @@ module.exports = {
   isInHandledContext,
   isInAsyncHandledContext,
   isNodeReturned,
+  isGeneratorLike,
   isPromiseType,
   isPromiseConstructorCallbackNode,
   isAccessorNode,

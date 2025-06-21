@@ -779,6 +779,31 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          /**
+           * @throws
+           */
+          function* g() {
+            throw new Error();
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          // Generator does not throws directly
+          function f() {
+            g();
+          }
+        `,
+      },
     ],
     invalid: [
       {

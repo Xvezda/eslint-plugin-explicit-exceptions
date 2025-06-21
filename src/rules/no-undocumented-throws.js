@@ -15,11 +15,13 @@ const {
   typeStringsToUnionString,
   isInHandledContext,
   isInAsyncHandledContext,
+  isGeneratorLike,
   isPromiseType,
   isNodeReturned,
   isPromiseConstructorCallbackNode,
   isThenableCallbackNode,
   isAccessorNode,
+  getCallSignature,
   getCallSignatureDeclaration,
   getCalleeDeclaration,
   getJSDocThrowsTags,
@@ -148,6 +150,14 @@ module.exports = createRule({
           : getCalleeDeclaration(services, node);
 
       if (!calleeDeclaration) return;
+
+      const signature = getCallSignature(
+        services,
+        services.tsNodeToESTreeNodeMap.get(calleeDeclaration)
+      );
+
+      const returnType = signature?.getReturnType();
+      if (returnType && isGeneratorLike(returnType)) return;
 
       /** @type {import('typescript').JSDocThrowsTag[]} */
       const comments = [];
