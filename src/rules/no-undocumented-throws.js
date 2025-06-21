@@ -204,6 +204,8 @@ module.exports = createRule({
      * @param {import('@typescript-eslint/utils').TSESTree.Node} node
      */
     const visitIterableNode = (node) => {
+      if (isInHandledContext(node)) return;
+
       const callerDeclaration = findClosestFunctionNode(node);
       if (!callerDeclaration) return;
 
@@ -760,7 +762,10 @@ module.exports = createRule({
 
         visitIterableNode(node.argument);
       },
-      /** @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node */
+      /**
+       * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator/next MDN}
+       * @param {import('@typescript-eslint/utils').TSESTree.CallExpression} node
+       */
       'CallExpression[callee.property.name="next"]'(node) {
         if (node.callee.type !== AST_NODE_TYPES.MemberExpression) return;
 

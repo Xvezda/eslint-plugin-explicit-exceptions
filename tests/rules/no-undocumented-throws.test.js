@@ -804,6 +804,95 @@ ruleTester.run(
           }
         `,
       },
+      {
+        code: `
+          function* g() {
+            try {
+              throw new Error();
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function f() {
+            try {
+              for (const x of g()) {}
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function f() {
+            try {
+              [...g()];
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function f() {
+            try {
+              Array.from(g());
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function* h() {
+            try {
+              yield* g();
+            } catch {}
+          }
+        `,
+      },
+      {
+        code: `
+          /**
+           * @throws {Error}
+           */
+          function* g() {
+            throw new Error();
+          }
+
+          function h() {
+            try {
+              g().next();
+            } catch {}
+          }
+        `,
+      },
     ],
     invalid: [
       {
