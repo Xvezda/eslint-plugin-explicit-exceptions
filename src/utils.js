@@ -350,11 +350,14 @@ const getCalleeDeclaration = (services, node) => {
     const calleeNode = getCallee(node);
     if (!calleeNode) return null;
 
-    const symbol = services
-      .getTypeAtLocation(calleeNode)
-      .symbol;
+    const type = services.getTypeAtLocation(calleeNode);
 
-    if (!symbol || !symbol.valueDeclaration) {
+    if (type.symbol?.valueDeclaration) {
+      declaration = type.symbol.valueDeclaration;
+    } else if (type.symbol?.declarations?.length) {
+      // If there are multiple declarations, we take the first one.
+      declaration = type.symbol.declarations[0];
+    } else {
       const declarations = services
         .getSymbolAtLocation(calleeNode)
         ?.declarations;
@@ -363,8 +366,6 @@ const getCalleeDeclaration = (services, node) => {
 
       // If there are multiple declarations, we take the first one.
       declaration = declarations[0];
-    } else {
-      declaration = symbol.valueDeclaration;
     }
   }
   if (!declaration) return null;

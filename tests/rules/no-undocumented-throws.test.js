@@ -3725,6 +3725,304 @@ ruleTester.run(
           { messageId: 'missingThrowsTag' },
         ],
       },
+      {
+        code: `
+          type Result = {
+            flag: true;
+            /**
+             * @throws {TypeError}
+             */
+            method(): void;
+          } | {
+            flag: false;
+            /**
+             * @throws {RangeError}
+             */
+            method(): void;
+          };
+
+          function foo(): Result {
+            if (Math.random() > 0.5) {
+              return {
+                flag: true,
+                /**
+                 * @throws {TypeError}
+                 */
+                method() {
+                  throw new TypeError();
+                },
+              };
+            } else {
+              return {
+                flag: false,
+                /**
+                 * @throws {RangeError}
+                 */
+                method() {
+                  throw new RangeError();
+                },
+              };
+            }
+          }
+
+          function bar() {
+            const result = foo();
+            if (!result.flag) {
+              result.method();
+            }
+          }
+
+          function baz() {
+            const result = foo();
+            if (result.flag) {
+              result.method();
+            }
+          }
+        `,
+        output: `
+          type Result = {
+            flag: true;
+            /**
+             * @throws {TypeError}
+             */
+            method(): void;
+          } | {
+            flag: false;
+            /**
+             * @throws {RangeError}
+             */
+            method(): void;
+          };
+
+          function foo(): Result {
+            if (Math.random() > 0.5) {
+              return {
+                flag: true,
+                /**
+                 * @throws {TypeError}
+                 */
+                method() {
+                  throw new TypeError();
+                },
+              };
+            } else {
+              return {
+                flag: false,
+                /**
+                 * @throws {RangeError}
+                 */
+                method() {
+                  throw new RangeError();
+                },
+              };
+            }
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            const result = foo();
+            if (!result.flag) {
+              result.method();
+            }
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function baz() {
+            const result = foo();
+            if (result.flag) {
+              result.method();
+            }
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            if (Math.random() > 0.5) {
+              return {
+                flag: true,
+                /**
+                 * @throws {TypeError}
+                 */
+                set value(v) {
+                  throw new TypeError();
+                },
+              } as const;
+            } else {
+              return {
+                flag: false,
+                /**
+                 * @throws {RangeError}
+                 */
+                set value(v) {
+                  throw new RangeError();
+                },
+              } as const;
+            }
+          }
+
+          function bar() {
+            const result = foo();
+            if (!result.flag) {
+              result.value = 42;
+            }
+          }
+
+          function baz() {
+            const result = foo();
+            if (result.flag) {
+              result.value = 42;
+            }
+          }
+        `,
+        output: `
+          function foo() {
+            if (Math.random() > 0.5) {
+              return {
+                flag: true,
+                /**
+                 * @throws {TypeError}
+                 */
+                set value(v) {
+                  throw new TypeError();
+                },
+              } as const;
+            } else {
+              return {
+                flag: false,
+                /**
+                 * @throws {RangeError}
+                 */
+                set value(v) {
+                  throw new RangeError();
+                },
+              } as const;
+            }
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            const result = foo();
+            if (!result.flag) {
+              result.value = 42;
+            }
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function baz() {
+            const result = foo();
+            if (result.flag) {
+              result.value = 42;
+            }
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            if (Math.random() > 0.5) {
+              return {
+                flag: true,
+                /**
+                 * @throws {TypeError}
+                 */
+                get value() {
+                  throw new TypeError();
+                },
+              } as const;
+            } else {
+              return {
+                flag: false,
+                /**
+                 * @throws {RangeError}
+                 */
+                get value() {
+                  throw new RangeError();
+                },
+              } as const;
+            }
+          }
+
+          function bar() {
+            const result = foo();
+            if (!result.flag) {
+              result.value;
+            }
+          }
+
+          function baz() {
+            const result = foo();
+            if (result.flag) {
+              result.value;
+            }
+          }
+        `,
+        output: `
+          function foo() {
+            if (Math.random() > 0.5) {
+              return {
+                flag: true,
+                /**
+                 * @throws {TypeError}
+                 */
+                get value() {
+                  throw new TypeError();
+                },
+              } as const;
+            } else {
+              return {
+                flag: false,
+                /**
+                 * @throws {RangeError}
+                 */
+                get value() {
+                  throw new RangeError();
+                },
+              } as const;
+            }
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            const result = foo();
+            if (!result.flag) {
+              result.value;
+            }
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function baz() {
+            const result = foo();
+            if (result.flag) {
+              result.value;
+            }
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
     ],
   },
 );
