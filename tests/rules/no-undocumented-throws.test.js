@@ -465,6 +465,17 @@ ruleTester.run(
       {
         code: `
           function foo() {
+            const promise = new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+
+            return promise.then(console.log, console.error);
+          }
+        `,
+      },
+      {
+        code: `
+          function foo() {
             return new Promise(function (resolve, reject) {
               reject(new Error());
             })
@@ -606,9 +617,6 @@ ruleTester.run(
             throw new TypeError();
           };
 
-          /**
-           * @throws {Promise<TypeError>}
-           */
           function foo() {
             const promise = Promise.resolve();
 
@@ -1782,6 +1790,38 @@ ruleTester.run(
                 throw new Error();
               })
               .catch(console.error)
+              .then(() => {
+                throw new TypeError();
+              });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            return Promise.resolve()
+              .then(() => {
+                throw new Error();
+              })
+              .then(console.log, console.error)
+              .then(() => {
+                throw new TypeError();
+              });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          function foo() {
+            return Promise.resolve()
+              .then(() => {
+                throw new Error();
+              })
+              .then(console.log, console.error)
               .then(() => {
                 throw new TypeError();
               });
