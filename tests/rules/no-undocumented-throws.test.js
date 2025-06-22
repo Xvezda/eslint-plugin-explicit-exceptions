@@ -465,6 +465,17 @@ ruleTester.run(
       {
         code: `
           function foo() {
+            const promise = new Promise((resolve, reject) => {
+              reject(new Error());
+            });
+
+            return promise.then(console.log, console.error);
+          }
+        `,
+      },
+      {
+        code: `
+          function foo() {
             return new Promise(function (resolve, reject) {
               reject(new Error());
             })
@@ -606,9 +617,6 @@ ruleTester.run(
             throw new TypeError();
           };
 
-          /**
-           * @throws {Promise<TypeError>}
-           */
           function foo() {
             const promise = Promise.resolve();
 
@@ -1782,6 +1790,38 @@ ruleTester.run(
                 throw new Error();
               })
               .catch(console.error)
+              .then(() => {
+                throw new TypeError();
+              });
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            return Promise.resolve()
+              .then(() => {
+                throw new Error();
+              })
+              .then(console.log, console.error)
+              .then(() => {
+                throw new TypeError();
+              });
+          }
+        `,
+        output: `
+          /**
+           * @throws {Promise<TypeError>}
+           */
+          function foo() {
+            return Promise.resolve()
+              .then(() => {
+                throw new Error();
+              })
+              .then(console.log, console.error)
               .then(() => {
                 throw new TypeError();
               });
@@ -3682,6 +3722,304 @@ ruleTester.run(
           }
         `,
         errors: [
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          type Result = {
+            flag: true;
+            /**
+             * @throws {TypeError}
+             */
+            method(): void;
+          } | {
+            flag: false;
+            /**
+             * @throws {RangeError}
+             */
+            method(): void;
+          };
+
+          function foo(): Result {
+            if (Math.random() > 0.5) {
+              return {
+                flag: true,
+                /**
+                 * @throws {TypeError}
+                 */
+                method() {
+                  throw new TypeError();
+                },
+              };
+            } else {
+              return {
+                flag: false,
+                /**
+                 * @throws {RangeError}
+                 */
+                method() {
+                  throw new RangeError();
+                },
+              };
+            }
+          }
+
+          function bar() {
+            const result = foo();
+            if (!result.flag) {
+              result.method();
+            }
+          }
+
+          function baz() {
+            const result = foo();
+            if (result.flag) {
+              result.method();
+            }
+          }
+        `,
+        output: `
+          type Result = {
+            flag: true;
+            /**
+             * @throws {TypeError}
+             */
+            method(): void;
+          } | {
+            flag: false;
+            /**
+             * @throws {RangeError}
+             */
+            method(): void;
+          };
+
+          function foo(): Result {
+            if (Math.random() > 0.5) {
+              return {
+                flag: true,
+                /**
+                 * @throws {TypeError}
+                 */
+                method() {
+                  throw new TypeError();
+                },
+              };
+            } else {
+              return {
+                flag: false,
+                /**
+                 * @throws {RangeError}
+                 */
+                method() {
+                  throw new RangeError();
+                },
+              };
+            }
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            const result = foo();
+            if (!result.flag) {
+              result.method();
+            }
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function baz() {
+            const result = foo();
+            if (result.flag) {
+              result.method();
+            }
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            if (Math.random() > 0.5) {
+              return {
+                flag: true,
+                /**
+                 * @throws {TypeError}
+                 */
+                set value(v) {
+                  throw new TypeError();
+                },
+              } as const;
+            } else {
+              return {
+                flag: false,
+                /**
+                 * @throws {RangeError}
+                 */
+                set value(v) {
+                  throw new RangeError();
+                },
+              } as const;
+            }
+          }
+
+          function bar() {
+            const result = foo();
+            if (!result.flag) {
+              result.value = 42;
+            }
+          }
+
+          function baz() {
+            const result = foo();
+            if (result.flag) {
+              result.value = 42;
+            }
+          }
+        `,
+        output: `
+          function foo() {
+            if (Math.random() > 0.5) {
+              return {
+                flag: true,
+                /**
+                 * @throws {TypeError}
+                 */
+                set value(v) {
+                  throw new TypeError();
+                },
+              } as const;
+            } else {
+              return {
+                flag: false,
+                /**
+                 * @throws {RangeError}
+                 */
+                set value(v) {
+                  throw new RangeError();
+                },
+              } as const;
+            }
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            const result = foo();
+            if (!result.flag) {
+              result.value = 42;
+            }
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function baz() {
+            const result = foo();
+            if (result.flag) {
+              result.value = 42;
+            }
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
+          function foo() {
+            if (Math.random() > 0.5) {
+              return {
+                flag: true,
+                /**
+                 * @throws {TypeError}
+                 */
+                get value() {
+                  throw new TypeError();
+                },
+              } as const;
+            } else {
+              return {
+                flag: false,
+                /**
+                 * @throws {RangeError}
+                 */
+                get value() {
+                  throw new RangeError();
+                },
+              } as const;
+            }
+          }
+
+          function bar() {
+            const result = foo();
+            if (!result.flag) {
+              result.value;
+            }
+          }
+
+          function baz() {
+            const result = foo();
+            if (result.flag) {
+              result.value;
+            }
+          }
+        `,
+        output: `
+          function foo() {
+            if (Math.random() > 0.5) {
+              return {
+                flag: true,
+                /**
+                 * @throws {TypeError}
+                 */
+                get value() {
+                  throw new TypeError();
+                },
+              } as const;
+            } else {
+              return {
+                flag: false,
+                /**
+                 * @throws {RangeError}
+                 */
+                get value() {
+                  throw new RangeError();
+                },
+              } as const;
+            }
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function bar() {
+            const result = foo();
+            if (!result.flag) {
+              result.value;
+            }
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function baz() {
+            const result = foo();
+            if (result.flag) {
+              result.value;
+            }
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
           { messageId: 'missingThrowsTag' },
         ],
       },

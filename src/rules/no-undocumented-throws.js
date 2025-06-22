@@ -143,13 +143,23 @@ module.exports = createRule({
       const calleeDeclaration = getCalleeDeclaration(services, node);
       if (!calleeDeclaration) return;
 
-      const signature = getCallSignature(
-        services,
-        services.tsNodeToESTreeNodeMap.get(calleeDeclaration)
-      );
+      switch (node.type) {
+        case AST_NODE_TYPES.CallExpression:
+        case AST_NODE_TYPES.NewExpression: {
+          if (services.tsNodeToESTreeNodeMap.has(calleeDeclaration)) {
+            const signature = getCallSignature(
+              services,
+              services.tsNodeToESTreeNodeMap.get(calleeDeclaration)
+            );
 
-      const returnType = signature?.getReturnType();
-      if (returnType && isGeneratorLike(returnType)) return;
+            const returnType = signature?.getReturnType();
+            if (returnType && isGeneratorLike(returnType)) return;
+          }
+          break;
+        }
+        default:
+          break;
+      }
 
       /** @type {import('typescript').JSDocThrowsTag[]} */
       const comments = [];
