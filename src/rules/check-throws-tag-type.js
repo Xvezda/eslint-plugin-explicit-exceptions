@@ -674,6 +674,7 @@ module.exports = createRule({
           callbackNode =
             /** @type {import('@typescript-eslint/utils').TSESTree.FunctionLike | null} */
             (declaration);
+          break;
         }
         default:
           break;
