@@ -157,6 +157,12 @@ module.exports = createRule({
           }
           break;
         }
+        // If getter/setter both exist and is used in assignment,
+        // only setter throw types are collected.
+        case AST_NODE_TYPES.MemberExpression:
+          if (node.parent?.type === AST_NODE_TYPES.AssignmentExpression) {
+            return;
+          }
         default:
           break;
       }
