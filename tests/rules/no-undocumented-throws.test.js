@@ -4025,6 +4025,166 @@ ruleTester.run(
       },
       {
         code: `
+          class TrueGetterError extends Error {}
+          class TrueSetterError extends Error {}
+          class FalseGetterError extends Error {}
+          class FalseSetterError extends Error {}
+
+          function foo() {
+            if (Math.random() > 0.5) {
+              return {
+                flag: true,
+                /**
+                 * @throws {TrueGetterError}
+                 */
+                get value() {
+                  throw new TrueGetterError();
+                },
+                /**
+                 * @throws {TrueSetterError}
+                 */
+                set value(v: any) {
+                  throw new TrueSetterError();
+                },
+              } as const;
+            } else {
+              return {
+                flag: false,
+                /**
+                 * @throws {FalseGetterError}
+                 */
+                get value() {
+                  throw new FalseGetterError();
+                },
+                /**
+                 * @throws {FalseSetterError}
+                 */
+                set value(v: any) {
+                  throw new FalseSetterError();
+                },
+              } as const;
+            }
+          }
+
+          function bar() {
+            const result = foo();
+            if (!result.flag) {
+              result.value;
+            }
+          }
+
+          function baz() {
+            const result = foo();
+            if (result.flag) {
+              result.value;
+            }
+          }
+
+          function qux() {
+            const result = foo();
+            if (!result.flag) {
+              result.value = 42;
+            }
+          }
+
+          function quux() {
+            const result = foo();
+            if (result.flag) {
+              result.value = 42;
+            }
+          }
+        `,
+        output: `
+          class TrueGetterError extends Error {}
+          class TrueSetterError extends Error {}
+          class FalseGetterError extends Error {}
+          class FalseSetterError extends Error {}
+
+          function foo() {
+            if (Math.random() > 0.5) {
+              return {
+                flag: true,
+                /**
+                 * @throws {TrueGetterError}
+                 */
+                get value() {
+                  throw new TrueGetterError();
+                },
+                /**
+                 * @throws {TrueSetterError}
+                 */
+                set value(v: any) {
+                  throw new TrueSetterError();
+                },
+              } as const;
+            } else {
+              return {
+                flag: false,
+                /**
+                 * @throws {FalseGetterError}
+                 */
+                get value() {
+                  throw new FalseGetterError();
+                },
+                /**
+                 * @throws {FalseSetterError}
+                 */
+                set value(v: any) {
+                  throw new FalseSetterError();
+                },
+              } as const;
+            }
+          }
+
+          /**
+           * @throws {FalseGetterError}
+           */
+          function bar() {
+            const result = foo();
+            if (!result.flag) {
+              result.value;
+            }
+          }
+
+          /**
+           * @throws {TrueGetterError}
+           */
+          function baz() {
+            const result = foo();
+            if (result.flag) {
+              result.value;
+            }
+          }
+
+          /**
+           * @throws {FalseSetterError}
+           */
+          function qux() {
+            const result = foo();
+            if (!result.flag) {
+              result.value = 42;
+            }
+          }
+
+          /**
+           * @throws {TrueSetterError}
+           */
+          function quux() {
+            const result = foo();
+            if (result.flag) {
+              result.value = 42;
+            }
+          }
+        `,
+        errors: [
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+          { messageId: 'missingThrowsTag' },
+        ],
+      },
+      {
+        code: `
           const foo = {
             /**
              * @throws {RangeError}
