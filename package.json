@@ -1,7 +1,7 @@
 {
   "name": "eslint-plugin-explicit-exceptions",
   "type": "commonjs",
-  "version": "0.13.2",
+  "version": "0.13.3",
   "description": "ESLint rules for explicitly handling exceptions",
   "main": "./src/plugin.js",
   "types": "./dist/plugin.d.ts",
