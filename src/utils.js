@@ -336,6 +336,44 @@ const getCallee = (node) => {
  * @return {import('typescript').Declaration | null}
  */
 const getCalleeDeclaration = (services, node) => {
+  /**
+   * Return type of setter when assigning
+   *
+   * @example
+   * ```
+   * foo.bar = 'baz';
+   * //  ^ This can be a setter
+   * ```
+   */
+  if (node.type === AST_NODE_TYPES.AssignmentExpression) {
+    /** @type {import('@typescript-eslint/utils').TSESTree.Node | null} */
+    const calleeNode = getCallee(node);
+    if (!calleeNode) return null;
+
+    const type = services.getTypeAtLocation(calleeNode);
+    for (
+      const declaration of
+      type.symbol?.declarations ??
+      services
+        .getSymbolAtLocation(calleeNode)
+        ?.declarations ??
+      []
+    ) {
+      if (!services.tsNodeToESTreeNodeMap.has(declaration)) continue;
+
+      const declarationNode =
+        services.tsNodeToESTreeNodeMap.get(declaration);
+
+      const isSetter = isAccessorNode(declarationNode) &&
+        declarationNode.kind === 'set';
+
+      if (isSetter) {
+        return declaration;
+      }
+    }
+    return null;
+  }
+
   /** @type {import('typescript').Declaration | null} */
   let declaration = null;
   if (
@@ -371,24 +409,6 @@ const getCalleeDeclaration = (services, node) => {
   if (!declaration) return null;
 
   switch (node.type) {
-    /**
-     * Return type of setter when assigning
-     *
-     * @example
-     * ```
-     * foo.bar = 'baz';
-     * //  ^ This can be a setter
-     * ```
-     */
-    case AST_NODE_TYPES.AssignmentExpression: {
-      const declarationNode =
-        services.tsNodeToESTreeNodeMap.get(declaration);
-
-      const isSetter = isAccessorNode(declarationNode) &&
-        declarationNode.kind === 'set';
-
-      return isSetter ? declaration : null;
-    }
     /**
      * Return type of getter when accessing
      *

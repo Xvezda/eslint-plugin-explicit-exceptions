@@ -1676,6 +1676,72 @@ ruleTester.run(
           { messageId: 'throwTypeMismatch' },
         ],
       },
+      {
+        code: `
+          const foo = {
+            /**
+             * @throws {RangeError}
+             */
+            get bar() {
+              throw new RangeError('baz');
+            },
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            },
+          };
+
+          /**
+           * @throws {TypeError}
+           */
+          function baz() {
+            foo.bar;
+          }
+
+          /**
+           * @throws {RangeError}
+           */
+          function qux() {
+            foo.bar = 'quux';
+          }
+        `,
+        output: `
+          const foo = {
+            /**
+             * @throws {RangeError}
+             */
+            get bar() {
+              throw new RangeError('baz');
+            },
+            /**
+             * @throws {TypeError}
+             */
+            set bar(value) {
+              throw new TypeError('baz');
+            },
+          };
+
+          /**
+           * @throws {RangeError}
+           */
+          function baz() {
+            foo.bar;
+          }
+
+          /**
+           * @throws {TypeError}
+           */
+          function qux() {
+            foo.bar = 'quux';
+          }
+        `,
+        errors: [
+          { messageId: 'throwTypeMismatch' },
+          { messageId: 'throwTypeMismatch' },
+        ],
+      },
     ],
   },
 );
