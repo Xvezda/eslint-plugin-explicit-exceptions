@@ -8,6 +8,7 @@
   "files": [
     "README.md",
     "LICENSE",
+    "docs",
     "dist",
     "src"
   ],
