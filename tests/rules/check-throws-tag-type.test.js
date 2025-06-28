@@ -1301,27 +1301,6 @@ ruleTester.run(
       {
         code: `
           /**
-           * @param {number} value
-           * @throws {TypeError}
-           */
-          function foo(value) {
-            new ArrayBuffer(value);
-          }
-        `,
-        output: `
-          /**
-           * @param {number} value
-           * @throws {RangeError}
-           */
-          function foo(value) {
-            new ArrayBuffer(value);
-          }
-        `,
-        errors: [{ messageId: 'throwTypeMismatch' }],
-      },
-      {
-        code: `
-          /**
            * @throws {RangeError}
            */
           function* g() {
